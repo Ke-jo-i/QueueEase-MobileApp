@@ -1,98 +1,173 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+// In-update ang import ng SafeAreaView papuntang react-native-safe-area-context
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+export default function EntryScreen() {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
+  useEffect(() => {
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: 2500,
+      useNativeDriver: false,
+    }).start(() => {
+      setIsLoading(false);
+    });
+  }, []);
+
+  // 1. SPLASH LOADING SCREEN
+  if (isLoading) {
+    const progressWidth = progressAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: ['0%', '100%'],
+    });
+
     return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
+      <SafeAreaView style={styles.splashContainer}>
+        <View style={styles.splashContent}>
+          <View style={styles.logoBadgeDark}>
+            <Text style={styles.logoTextLight}>Q</Text>
+          </View>
+          <Text style={styles.appNameDark}>QueueEase</Text>
+          <Text style={styles.appSubtitle}>Mobile Queue Management System</Text>
+        </View>
+
+        <View style={styles.loadingBarContainer}>
+          <View style={styles.loadingBarTrack}>
+            <Animated.View style={[styles.loadingBarFill, { width: progressWidth }]} />
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
+
+  // 2. WELCOME SCREEN
   return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+    <SafeAreaView style={styles.welcomeContainer}>
+      <View style={styles.welcomeContent}>
+        <View style={styles.logoBadgeLight}>
+          <Text style={styles.logoTextDark}>Q</Text>
+        </View>
 
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+        <Text style={styles.welcomeTitle}>Welcome to{"\n"}QueueEase</Text>
+        <Text style={styles.welcomeSubtitle}>Manage your queue with ease</Text>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+        <TouchableOpacity
+          style={styles.getStartedBtn}
+          onPress={() => router.push('/landing')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.getStartedText}>Get Started</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  splashContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  splashContent: {
     flex: 1,
     justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
     alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
   },
-  heroSection: {
-    alignItems: 'center',
+  logoBadgeDark: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#003366',
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  title: {
+  logoTextLight: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  appNameDark: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#003366',
+    marginBottom: 6,
+  },
+  appSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  loadingBarContainer: {
+    width: '60%',
+    alignItems: 'center',
+  },
+  loadingBarTrack: {
+    width: '100%',
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  loadingBarFill: {
+    height: '100%',
+    backgroundColor: '#003366',
+  },
+  welcomeContainer: {
+    flex: 1,
+    backgroundColor: '#003366',
+  },
+  welcomeContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  logoBadgeLight: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  logoTextDark: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#003366',
+  },
+  welcomeTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
     textAlign: 'center',
+    lineHeight: 36,
+    marginBottom: 8,
   },
-  code: {
-    textTransform: 'uppercase',
+  welcomeSubtitle: {
+    fontSize: 14,
+    color: '#E0F2FE',
+    textAlign: 'center',
+    marginBottom: 60,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  getStartedBtn: {
+    width: '100%',
+    backgroundColor: '#D1D5DB',
+    borderRadius: 25,
+    paddingVertical: 16,
+    alignItems: 'center',
   },
-});
+  getStartedText: {
+    color: '#003366',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+});   

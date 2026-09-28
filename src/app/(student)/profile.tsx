@@ -4,11 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/contexts/session';
 import { DarkModeToggle } from '@/components/dark-mode-toggle';
 import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Modal,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,7 +19,7 @@ import {
 export default function StudentProfileScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const { signOut } = useSession();
+  const { signOut, studentId } = useSession();
 
   // Hover states
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
@@ -32,7 +32,7 @@ export default function StudentProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Page Title */}
         <Text style={styles.pageTitle}>Student Profile</Text>
@@ -45,7 +45,7 @@ export default function StudentProfileScreen() {
           <View style={styles.profileDetails}>
             <Text style={styles.userName}>Juan Dela Cruz</Text>
             <Text style={styles.userSubtext}>BS Information Technology • Year 3</Text>
-            <Text style={styles.studentId}>ID: 2021-00123 (Tagum Campus)</Text>
+            <Text style={styles.studentId}>ID: {studentId} (Tagum Campus)</Text>
           </View>
         </View>
 
@@ -128,7 +128,7 @@ export default function StudentProfileScreen() {
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Student ID</Text>
-                <Text style={styles.infoValue}>2021-00123</Text>
+                <Text style={styles.infoValue}>{studentId}</Text>
               </View>
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Email</Text>

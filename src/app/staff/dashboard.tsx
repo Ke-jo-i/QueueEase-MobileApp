@@ -2,12 +2,13 @@ import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Alert, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useQueue } from '@/contexts/queue';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-interface QueueItem {
-  ticketNumber: string;
-  serviceName: string;
+function showMessage(title: string, message: string) {
+  if (Platform.OS === 'web') globalThis.alert(`${title}\n${message}`);
+  else Alert.alert(title, message);
 }
 
 export default function StaffDashboardScreen() {
@@ -15,70 +16,66 @@ export default function StaffDashboardScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
-  // Initial queue state
-  const [queue, setQueue] = useState<QueueItem[]>([
-    { ticketNumber: 'R - 103', serviceName: 'Certificate of Grades' },
-    { ticketNumber: 'R - 104', serviceName: 'Transcript of Records' },
-    { ticketNumber: 'R - 105', serviceName: 'Diploma Request' },
-  ]);
-
-  // Current active ticket state
-  const [currentServing, setCurrentServing] = useState<QueueItem | null>({
-    ticketNumber: 'R - 102',
-    serviceName: 'Certificate of Enrollment',
-  });
+  const { assignedWindow, waiting, currentServing, callNext, completeCurrent } = useQueue();
+  const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
 
   // Handler para sa Call Next
   const handleCallNext = () => {
-    if (queue.length === 0) {
-      Alert.alert(
+    if (currentServing) {
+      showMessage('Finish Current Ticket', 'Mark the current ticket as done before calling the next one.');
+      return;
+    }
+    if (windowWaiting.length === 0) {
+      showMessage(
         'No Pending Queue',
-        'There are currently no waiting tickets in the queue.'
+        `There are currently no waiting tickets for ${assignedWindow}.`
       );
       return;
     }
 
-    const nextTicket = queue[0];
-    const remainingQueue = queue.slice(1);
+    const nextTicket = callNext();
+    if (!nextTicket) return;
 
-    setCurrentServing(nextTicket);
-    setQueue(remainingQueue);
-
-    Alert.alert(
+    showMessage(
       'Calling Next Ticket',
-      `Now serving Ticket ${nextTicket.ticketNumber} for ${nextTicket.serviceName}.`
+      `Now serving Ticket ${nextTicket.number} for ${nextTicket.service}.`
     );
   };
 
   // Handler para sa Recall
   const handleRecall = () => {
     if (!currentServing) {
-      Alert.alert(
+      showMessage(
         'No Active Ticket',
         'There is currently no active ticket to recall.'
       );
       return;
     }
 
-    Alert.alert(
+    showMessage(
       'Ticket Recalled',
-      `Re-calling Ticket ${currentServing.ticketNumber} for ${currentServing.serviceName}.`
+      `Re-calling Ticket ${currentServing.number} for ${currentServing.service}.`
     );
   };
 
   // Handler para sa Mark as Done
   const handleMarkAsDone = () => {
     if (!currentServing) {
-      Alert.alert(
+      showMessage(
         'No Active Ticket',
         'There is currently no active ticket to complete.'
       );
       return;
     }
 
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Mark Ticket ${currentServing.number} as completed?`)) completeCurrent();
+      return;
+    }
+
     Alert.alert(
       'Complete Transaction',
-      `Are you sure you want to mark Ticket ${currentServing.ticketNumber} as completed?`,
+      `Are you sure you want to mark Ticket ${currentServing.number} as completed?`,
       [
         {
           text: 'Cancel',
@@ -86,37 +83,28 @@ export default function StaffDashboardScreen() {
         },
         {
           text: 'Yes, Complete',
-          onPress: () => {
-            if (queue.length > 0) {
-              const nextTicket = queue[0];
-              setCurrentServing(nextTicket);
-              setQueue(queue.slice(1));
-            } else {
-              setCurrentServing(null);
-            }
-          },
+          onPress: completeCurrent,
         },
       ]
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} testID="staff-dashboard">
       <View style={styles.content}>
         {/* Header Title */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Staff Portal</Text>
-          <Text style={styles.headerSubtitle}>Window 3 - Registrar</Text>
+          <Text style={styles.headerSubtitle}>{assignedWindow}</Text>
         </View>
 
         {/* Currently Serving Display Box */}
         <View style={styles.servingCard}>
           <Text style={styles.servingLabel}>CURRENTLY SERVING</Text>
           <Text style={styles.ticketNumber}>
-            {currentServing ? currentServing.ticketNumber : 'NO QUEUE'}
+            {currentServing ? currentServing.number : 'NO QUEUE'}
           </Text>
           <Text style={styles.serviceText}>
-            {currentServing ? currentServing.serviceName : 'Waiting for next tickets...'}
+            {currentServing ? currentServing.service : 'Tap Call Next when ready'}
           </Text>
         </View>
 
@@ -154,7 +142,7 @@ export default function StaffDashboardScreen() {
           onPress={() => router.push('/staff/queue-list')}
         >
           <Text style={styles.queueListBtnText}>
-            View Waiting Queue List ({queue.length})
+            View Waiting Queue List ({windowWaiting.length})
           </Text>
         </TouchableOpacity>
       </View>
@@ -168,15 +156,15 @@ export default function StaffDashboardScreen() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push('/staff/analytics')}
+          onPress={() => router.replace('/staff/history')}
         >
-          <Ionicons name="bar-chart-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Analytics</Text>
+          <Ionicons name="time-outline" size={22} color={colors.textDisabled} />
+          <Text style={styles.navLabel}>History</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push('/staff/profile')}
+          onPress={() => router.replace('/staff/profile')}
         >
           <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Profile</Text>
@@ -199,11 +187,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.brandText,
   },
   headerSubtitle: {
     fontSize: 13,

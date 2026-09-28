@@ -3,12 +3,16 @@ import { StatusBar } from 'expo-status-bar';
 import { AppearanceProvider, useAppearance } from '@/contexts/appearance';
 import { SessionProvider, useSession } from '@/contexts/session';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { QueueProvider } from '@/contexts/queue';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 export default function RootLayout() {
   return (
-    <AppearanceProvider>
-      <SessionProvider><RootNavigator /></SessionProvider>
-    </AppearanceProvider>
+    <SafeAreaProvider>
+      <AppearanceProvider>
+        <SessionProvider><QueueProvider><RootNavigator /></QueueProvider></SessionProvider>
+      </AppearanceProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -38,7 +42,7 @@ function RootNavigator() {
         <Stack.Protected guard={role === 'staff'}>
           <Stack.Screen name="staff/dashboard" />
           <Stack.Screen name="staff/queue-list" />
-          <Stack.Screen name="staff/analytics" />
+          <Stack.Screen name="staff/history" />
           <Stack.Screen name="staff/profile" />
         </Stack.Protected>
       </Stack>

@@ -1,26 +1,18 @@
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
-import { useSession } from '@/contexts/session';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 export default function LandingScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { signedOutRole, clearSignedOutRole } = useSession();
 
   const [isStudentHovered, setIsStudentHovered] = useState(false);
   const [isStaffHovered, setIsStaffHovered] = useState(false);
-
-  useEffect(() => {
-    if (signedOutRole) {
-      clearSignedOutRole();
-      router.push(signedOutRole === 'staff' ? '/staff/login' : '/login');
-    }
-  }, [clearSignedOutRole, router, signedOutRole]);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -2,7 +2,11 @@ import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useQueue } from '@/contexts/queue';
+import { useSession } from '@/contexts/session';
+import { getServiceWindow } from '@/constants/service-windows';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 // Dynamic data para sa bawat Registrar Service
 const SERVICE_DETAILS: Record<string, {
@@ -77,6 +81,8 @@ export default function ConfirmServiceScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { bookTicket } = useQueue();
+  const { studentId } = useSession();
   const params = useLocalSearchParams();
   const serviceTitle = (params.serviceName as string) || 'Certificate of Enrollment';
 
@@ -84,7 +90,11 @@ export default function ConfirmServiceScreen() {
   const details = SERVICE_DETAILS[serviceTitle] || SERVICE_DETAILS['Certificate of Enrollment'];
 
   const handleGetQueue = () => {
-    router.replace('/tickets');
+    if (!bookTicket(serviceTitle, getServiceWindow(serviceTitle))) {
+      Alert.alert('Active ticket', 'Cancel your current ticket before getting another one.');
+      return;
+    }
+    router.navigate('/tickets');
   };
 
   return (
@@ -96,7 +106,7 @@ export default function ConfirmServiceScreen() {
           <Text style={styles.headerTitle}>Confirm Service</Text>
         </TouchableOpacity>
 
-        <Text style={styles.studentInfo}>Student: 2021-00123 (Tagum Campus)</Text>
+        <Text style={styles.studentInfo}>Student: {studentId} (Tagum Campus)</Text>
 
         {/* Selected Service Detail Card */}
         <View style={styles.serviceDetailCard}>

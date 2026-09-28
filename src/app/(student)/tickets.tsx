@@ -1,16 +1,16 @@
 import { AppPalette } from '@/constants/app-colors';
 import { useThemedStyles } from '@/hooks/use-app-theme';
-import { useLocalSearchParams } from 'expo-router';
+import { useQueue } from '@/contexts/queue';
+import { useSession } from '@/contexts/session';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const SERVICE_REMINDERS: Record<string, {
-  window: string;
   reminders: string[];
   processingTime: string;
 }> = {
   'Certificate of Enrollment': {
-    window: 'Window 3 - Registrar',
     reminders: [
       'Show valid Student ID at Window 3',
       'Bring printed Assessment Form',
@@ -19,7 +19,6 @@ const SERVICE_REMINDERS: Record<string, {
     processingTime: 'Est. Processing: 1-2 Working Days',
   },
   'Certificate of Grades': {
-    window: 'Window 2 - Registrar',
     reminders: [
       'Ensure all grades are submitted',
       'Present clearance from previous semester',
@@ -28,7 +27,6 @@ const SERVICE_REMINDERS: Record<string, {
     processingTime: 'Est. Processing: Same Day',
   },
   'Academic Records Request': {
-    window: 'Window 1 - Registrar',
     reminders: [
       'Submit 2x2 ID photos with white background',
       'Clearance from Library and Accounting required',
@@ -37,7 +35,6 @@ const SERVICE_REMINDERS: Record<string, {
     processingTime: 'Est. Processing: 3-5 Working Days',
   },
   'Enrollment Concern': {
-    window: 'Window 3 - Registrar',
     reminders: [
       'Prepare list of affected subject codes',
       'Bring signed endorsement from Department Head',
@@ -46,7 +43,6 @@ const SERVICE_REMINDERS: Record<string, {
     processingTime: 'Est. Processing: Immediate upon review',
   },
   'Student Record Update': {
-    window: 'Window 4 - Registrar',
     reminders: [
       'Bring original and photocopy of PSA Birth Certificate',
       'Submit formal letter request addressed to Registrar',
@@ -55,7 +51,6 @@ const SERVICE_REMINDERS: Record<string, {
     processingTime: 'Est. Processing: 2-3 Working Days',
   },
   'Other Registrar Concern': {
-    window: 'Window 3 - Registrar',
     reminders: [
       'Prepare a clear explanation of your concern',
       'Bring any relevant documents',
@@ -67,18 +62,12 @@ const SERVICE_REMINDERS: Record<string, {
 
 export default function MyTicketsScreen() {
   const styles = useThemedStyles(createStyles);
-  const params = useLocalSearchParams();
+  const { studentTicket, studentHistory, cancelTicket } = useQueue();
+  const { studentId } = useSession();
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
-  // Active Queue State
-  const [hasActiveTicket, setHasActiveTicket] = useState(true);
-  const [historyTickets, setHistoryTickets] = useState([
-    { id: '1', ticketNumber: 'B - 045', service: 'Certificate of Grades', status: 'COMPLETED', date: 'Oct 12, 2026' },
-    { id: '2', ticketNumber: 'A - 088', service: 'Academic Records Request', status: 'CANCELLED', date: 'Sep 28, 2026' },
-  ]);
-
-  const activeService = (params.serviceName as string) || 'Certificate of Enrollment';
+  const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
   const details = SERVICE_REMINDERS[activeService] || SERVICE_REMINDERS['Certificate of Enrollment'];
 
   // Handle Ticket Cancellation Logic
@@ -86,22 +75,11 @@ export default function MyTicketsScreen() {
     setShowCancelModal(false);
     setShowQrModal(false);
 
-    // Ilipat ang Active Ticket papuntang History bilang CANCELLED
-    setHasActiveTicket(false);
-    setHistoryTickets((prev) => [
-      {
-        id: Date.now().toString(),
-        ticketNumber: 'R - 102',
-        service: activeService,
-        status: 'CANCELLED',
-        date: 'Today',
-      },
-      ...prev,
-    ]);
+    cancelTicket();
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="student-tickets">
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -110,35 +88,33 @@ export default function MyTicketsScreen() {
         </View>
 
         {/* NOW IN QUEUE Section (Ise-show lamang kapag may active ticket) */}
-        {hasActiveTicket && (
+        {studentTicket && (
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>NOW IN QUEUE</Text>
 
             {/* Active Ticket Card */}
             <View style={styles.activeCard}>
               <View style={styles.activeHeader}>
-                <Text style={styles.activeTicketNumber}>R - 102</Text>
+                <Text style={styles.activeTicketNumber}>{studentTicket.number}</Text>
                 <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>ACTIVE</Text>
+                  <Text style={styles.activeBadgeText}>{studentTicket.status === 'SERVING' ? 'SERVING' : 'ACTIVE'}</Text>
                 </View>
               </View>
 
               <Text style={styles.activeServiceName}>{activeService}</Text>
-              <Text style={styles.activeWindowText}>{details.window}</Text>
+              <Text style={styles.activeWindowText}>{studentTicket.window}</Text>
 
               {/* View QR Ticket Action */}
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="View QR Ticket"
                 style={({ pressed }) => [
                   styles.viewQrContainer,
                   pressed && styles.pressedEffect,
                 ]}
                 onPress={() => setShowQrModal(true)}
               >
-                {({ pressed }) => (
-                  <Text style={[styles.viewQrText, pressed && styles.viewQrTextPressed]}>
-                    View QR Ticket
-                  </Text>
-                )}
+                <Text style={styles.viewQrText}>View QR Ticket</Text>
               </Pressable>
             </View>
           </View>
@@ -148,10 +124,11 @@ export default function MyTicketsScreen() {
         <View style={styles.section}>
           <Text style={styles.historySectionTitle}>Ticket History</Text>
 
-          {historyTickets.map((ticket) => (
-            <View key={ticket.id} style={styles.historyCard}>
+          {studentHistory.length === 0 && <Text style={styles.historyDate}>No past tickets yet.</Text>}
+          {studentHistory.map((ticket) => (
+            <View key={ticket.number} style={styles.historyCard}>
               <View style={styles.historyHeader}>
-                <Text style={styles.historyTicketNumber}>{ticket.ticketNumber}</Text>
+                <Text style={styles.historyTicketNumber}>{ticket.number}</Text>
                 <View style={ticket.status === 'COMPLETED' ? styles.completedBadge : styles.cancelledBadge}>
                   <Text style={ticket.status === 'COMPLETED' ? styles.completedBadgeText : styles.cancelledBadgeText}>
                     {ticket.status}
@@ -167,17 +144,17 @@ export default function MyTicketsScreen() {
 
       {/* QUEUE TICKET MODAL */}
       <Modal
-        visible={showQrModal}
+        visible={showQrModal && !!studentTicket}
         animationType="slide"
         onRequestClose={() => setShowQrModal(false)}
       >
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Header with Close */}
             <View style={styles.modalHeaderRow}>
               <View>
                 <Text style={styles.title}>Queue Ticket</Text>
-                <Text style={styles.studentInfo}>Student: 2021-00123 (Tagum Campus)</Text>
+                <Text style={styles.studentInfo}>Student: {studentId} (Tagum Campus)</Text>
               </View>
               <TouchableOpacity onPress={() => setShowQrModal(false)} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>✕</Text>
@@ -186,23 +163,23 @@ export default function MyTicketsScreen() {
 
             {/* Ticket Status Card */}
             <View style={styles.card}>
-              <Text style={styles.ticketNumber}>R - 102</Text>
+              <Text style={styles.ticketNumber}>{studentTicket?.number}</Text>
               <Text style={styles.statusLabel}>
-                Status: <Text style={styles.statusValue}>Waiting in Line</Text>
+                Status: <Text style={styles.statusValue}>{studentTicket?.status === 'SERVING' ? 'Now Serving' : 'Waiting in Line'}</Text>
               </Text>
-              <Text style={styles.windowText}>{details.window}</Text>
+              <Text style={styles.windowText}>{studentTicket?.window}</Text>
             </View>
 
             {/* QR Code Card */}
             <View style={styles.cardCenter}>
               <Image
                 source={{
-                  uri: 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=R-102-REGISTRAR',
+                  uri: `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(studentTicket?.number ?? '')}`,
                 }}
                 style={styles.qrCodeImage}
               />
               <Text style={styles.qrSubtext}>
-                Present this QR code when called at {details.window.split(' - ')[0]}
+                Present this QR code when called at {studentTicket?.window.split(' - ')[0]}
               </Text>
             </View>
 
@@ -220,15 +197,17 @@ export default function MyTicketsScreen() {
             </View>
 
             {/* Cancel Queue Ticket Button */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.cancelButton,
-                pressed && styles.cancelButtonPressed,
-              ]}
-              onPress={() => setShowCancelModal(true)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel Queue Ticket</Text>
-            </Pressable>
+            {studentTicket?.status === 'WAITING' && (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.cancelButton,
+                  pressed && styles.cancelButtonPressed,
+                ]}
+                onPress={() => setShowCancelModal(true)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel Queue Ticket</Text>
+              </Pressable>
+            )}
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -244,7 +223,7 @@ export default function MyTicketsScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.modalTitle}>Cancel Queue Ticket?</Text>
             <Text style={styles.modalSubtext}>
-              Are you sure you want to cancel your ticket (R-102)? This action cannot be undone.
+              Are you sure you want to cancel your ticket ({studentTicket?.number})? This action cannot be undone.
             </Text>
 
             <TouchableOpacity
@@ -349,22 +328,18 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   viewQrContainer: {
     alignSelf: 'flex-end',
-    paddingVertical: 4,
-    paddingHorizontal: 6,
-    borderRadius: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+    borderRadius: 10,
+    backgroundColor: colors.brand,
   },
   viewQrText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: colors.brandText,
-    textDecorationLine: 'underline',
+    color: '#FFFFFF',
   },
   pressedEffect: {
     opacity: 0.6,
-    backgroundColor: colors.surfaceMuted,
-  },
-  viewQrTextPressed: {
-    color: colors.info,
   },
   historySectionTitle: {
     fontSize: 16,

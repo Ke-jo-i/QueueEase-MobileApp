@@ -3,19 +3,17 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-const queueData = [
-  { id: '1', number: 'R - 103', service: 'Certificate of Grades', status: 'NEXT' },
-  { id: '2', number: 'R - 104', service: 'Academic Records Request', status: 'WAITING' },
-  { id: '3', number: 'R - 105', service: 'Enrollment Concern', status: 'WAITING' },
-];
+import { useQueue } from '@/contexts/queue';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function StaffQueueListScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'all' | 'priority'>('all');
+  const { waiting, assignedWindow } = useQueue();
+  const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -23,7 +21,7 @@ export default function StaffQueueListScreen() {
         {/* Header Title */}
         <View style={styles.header}>
           <Text style={styles.title}>Waiting Queue</Text>
-          <Text style={styles.subtitle}>3 Customers Waiting</Text>
+          <Text style={styles.subtitle}>{windowWaiting.length} Customers Waiting · {assignedWindow}</Text>
         </View>
 
         {/* Filter Tabs */}
@@ -33,7 +31,7 @@ export default function StaffQueueListScreen() {
             onPress={() => setActiveTab('all')}
           >
             <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-              All (3)
+              All ({windowWaiting.length})
             </Text>
           </TouchableOpacity>
 
@@ -49,8 +47,8 @@ export default function StaffQueueListScreen() {
 
         {/* Queue Items List */}
         <FlatList
-          data={queueData}
-          keyExtractor={(item) => item.id}
+          data={activeTab === 'all' ? windowWaiting : []}
+          keyExtractor={(item) => item.number}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
             <View style={styles.queueCard}>
@@ -62,16 +60,16 @@ export default function StaffQueueListScreen() {
               <View
                 style={[
                   styles.statusBadge,
-                  item.status === 'NEXT' ? styles.nextBadge : styles.waitingBadge,
+                  windowWaiting[0]?.number === item.number ? styles.nextBadge : styles.waitingBadge,
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
-                    item.status === 'NEXT' ? styles.nextStatusText : styles.waitingStatusText,
+                    windowWaiting[0]?.number === item.number ? styles.nextStatusText : styles.waitingStatusText,
                   ]}
                 >
-                  {item.status}
+                  {windowWaiting[0]?.number === item.number ? 'NEXT' : 'WAITING'}
                 </Text>
               </View>
             </View>
@@ -91,15 +89,15 @@ export default function StaffQueueListScreen() {
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push('/staff/analytics')}
+          onPress={() => router.replace('/staff/history')}
         >
-          <Ionicons name="bar-chart-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Analytics</Text>
+          <Ionicons name="time-outline" size={22} color={colors.textDisabled} />
+          <Text style={styles.navLabel}>History</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => router.push('/staff/profile')}
+          onPress={() => router.replace('/staff/profile')}
         >
           <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Profile</Text>

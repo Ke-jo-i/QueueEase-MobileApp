@@ -2,12 +2,15 @@ import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useQueue } from '@/contexts/queue';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { studentTicket } = useQueue();
 
   const registrarServices = [
     'Certificate of Enrollment',
@@ -26,7 +29,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="student-home">
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -42,8 +45,8 @@ export default function HomeScreen() {
 
           <View style={styles.queueBanner}>
             <Text style={styles.queueBannerLabel}>Current Queue</Text>
-            <Text style={styles.queueBannerTitle}>No Active Queue</Text>
-            <Text style={styles.queueBannerSub}>You don&apos;t have an active queue right now</Text>
+            <Text style={styles.queueBannerTitle}>{studentTicket ? studentTicket.number : 'No ticket yet'}</Text>
+            {studentTicket && <Text style={styles.queueBannerSub}>{studentTicket.service}</Text>}
           </View>
         </View>
 

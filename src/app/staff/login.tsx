@@ -4,11 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/contexts/session';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,

@@ -3,12 +3,13 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/contexts/session';
 import { DarkModeToggle } from '@/components/dark-mode-toggle';
+import { useQueue } from '@/contexts/queue';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Alert,
   Modal,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Switch,
@@ -26,7 +27,7 @@ export default function ProfileScreen() {
 
   // 1. Window Assignment State
   const [isWindowModalVisible, setIsWindowModalVisible] = useState(false);
-  const [assignedWindow, setAssignedWindow] = useState('Window 1 - Registrar');
+  const { assignedWindow, setAssignedWindow } = useQueue();
 
   // 2. Change Password Modal State
   const [isChangePasswordVisible, setIsChangePasswordVisible] = useState(false);
@@ -138,7 +139,7 @@ export default function ProfileScreen() {
       <View style={styles.navBar}>
         <TouchableOpacity 
           style={styles.navItem} 
-          onPress={() => router.push('/staff/dashboard' as any)}
+          onPress={() => router.replace('/staff/dashboard')}
         >
           <Ionicons name="list-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Queue</Text>
@@ -146,15 +147,15 @@ export default function ProfileScreen() {
 
         <TouchableOpacity 
           style={styles.navItem} 
-          onPress={() => router.push('/staff/analytics' as any)}
+          onPress={() => router.replace('/staff/history')}
         >
-          <Ionicons name="bar-chart-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Analytics</Text>
+          <Ionicons name="time-outline" size={22} color={colors.textDisabled} />
+          <Text style={styles.navLabel}>History</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
           <Ionicons name="person" size={22} color={colors.brandText} />
-          <Text style={[styles.navLabel, styles.navLabelActive]}>Logout</Text>
+          <Text style={[styles.navLabel, styles.navLabelActive]}>Profile</Text>
         </TouchableOpacity>
       </View>
 
@@ -191,7 +192,7 @@ export default function ProfileScreen() {
             })}
 
             <TouchableOpacity
-              style={[styles.modalBtn, styles.cancelBtn, { marginTop: 12 }]}
+              style={[styles.modalBtn, styles.cancelBtn, { marginTop: 12, flex: 0, width: '100%' }]}
               onPress={() => setIsWindowModalVisible(false)}
             >
               <Text style={styles.cancelBtnText}>Cancel</Text>
@@ -449,6 +450,8 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontWeight: '700',
   },
   windowOption: {
+    width: '100%',
+    minHeight: 52,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',

@@ -4,11 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/contexts/session';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -28,7 +28,7 @@ export default function StudentLoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = () => {
-    signIn('student');
+    signIn('student', studentIdOrEmail);
     router.push('/(student)/home');
   };
 

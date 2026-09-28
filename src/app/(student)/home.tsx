@@ -1,8 +1,12 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   const registrarServices = [
@@ -28,7 +32,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <Text style={styles.brandTitle}>QueueEase</Text>
           <TouchableOpacity style={styles.profileIconBtn} onPress={() => router.push('/profile')}>
-            <Ionicons name="person-outline" size={22} color="#003366" />
+            <Ionicons name="person-outline" size={22} color={colors.brandText} />
           </TouchableOpacity>
         </View>
 
@@ -39,7 +43,7 @@ export default function HomeScreen() {
           <View style={styles.queueBanner}>
             <Text style={styles.queueBannerLabel}>Current Queue</Text>
             <Text style={styles.queueBannerTitle}>No Active Queue</Text>
-            <Text style={styles.queueBannerSub}>You don't have an active queue right now</Text>
+            <Text style={styles.queueBannerSub}>You don&apos;t have an active queue right now</Text>
           </View>
         </View>
 
@@ -75,10 +79,10 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -94,13 +98,13 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
   },
   profileIconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -110,28 +114,28 @@ const styles = StyleSheet.create({
   greeting: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 12,
   },
   queueBanner: {
-    backgroundColor: '#F0F5FF',
+    backgroundColor: colors.bluePale,
     borderRadius: 16,
     padding: 20,
   },
   queueBannerLabel: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 4,
   },
   queueBannerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 4,
   },
   queueBannerSub: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
   },
   servicesSection: {
     marginTop: 8,
@@ -139,42 +143,42 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 16,
   },
 
   // Default Box Style
   serviceCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 14,
     paddingVertical: 18,
     paddingHorizontal: 16,
     marginBottom: 12,
     justifyContent: 'center',
-    cursor: 'pointer', 
+    cursor: 'pointer',
   },
 
-  
+
   serviceCardHovered: {
-    backgroundColor: '#F0F7FF', 
-    borderColor: '#003366',    
+    backgroundColor: colors.blueSoft,
+    borderColor: colors.brandText,
   },
 
-  
+
   serviceCardPressed: {
-    backgroundColor: '#E0EDFF',
+    backgroundColor: colors.blueSurface,
   },
 
   serviceName: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1E293B',
+    color: colors.text,
   },
 
   serviceNameHovered: {
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: 'bold',
   },
 });

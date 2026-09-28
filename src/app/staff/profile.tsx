@@ -1,4 +1,8 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useSession } from '@/contexts/session';
+import { DarkModeToggle } from '@/components/dark-mode-toggle';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,7 +19,10 @@ import {
 } from 'react-native';
 
 export default function ProfileScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { signOut } = useSession();
 
   // 1. Window Assignment State
   const [isWindowModalVisible, setIsWindowModalVisible] = useState(false);
@@ -56,9 +63,8 @@ export default function ProfileScreen() {
     setConfirmPassword('');
   };
 
-  // Handle Logout (Direct Redirect to Staff Login Screen)
   const handleLogout = () => {
-    router.replace('/staff/login' as any);
+    signOut();
   };
 
   return (
@@ -79,6 +85,7 @@ export default function ProfileScreen() {
 
         {/* Settings List */}
         <View style={styles.settingsGroup}>
+          <DarkModeToggle />
           
           {/* 1. WINDOW ASSIGNMENT */}
           <TouchableOpacity
@@ -90,7 +97,7 @@ export default function ProfileScreen() {
               <Text style={styles.settingTitle}>Window Assignment</Text>
               <Text style={styles.settingSub}>{assignedWindow}</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textDisabled} />
           </TouchableOpacity>
 
           {/* 2. CHANGE PASSWORD */}
@@ -103,7 +110,7 @@ export default function ProfileScreen() {
               <Text style={styles.settingTitle}>Change Password</Text>
               <Text style={styles.settingSub}>Update account credentials</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={20} color={colors.textDisabled} />
           </TouchableOpacity>
 
           {/* 3. SYSTEM NOTIFICATIONS */}
@@ -115,8 +122,8 @@ export default function ProfileScreen() {
             <Switch
               value={notificationsEnabled}
               onValueChange={setNotificationsEnabled}
-              trackColor={{ false: '#CBD5E1', true: '#93C5FD' }}
-              thumbColor={notificationsEnabled ? '#003366' : '#F1F5F9'}
+              trackColor={{ false: colors.borderStrong, true: colors.blueLight }}
+              thumbColor={notificationsEnabled ? colors.brandText : colors.surfaceMuted}
             />
           </View>
         </View>
@@ -133,7 +140,7 @@ export default function ProfileScreen() {
           style={styles.navItem} 
           onPress={() => router.push('/staff/dashboard' as any)}
         >
-          <Ionicons name="list-outline" size={22} color="#94A3B8" />
+          <Ionicons name="list-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Queue</Text>
         </TouchableOpacity>
 
@@ -141,12 +148,12 @@ export default function ProfileScreen() {
           style={styles.navItem} 
           onPress={() => router.push('/staff/analytics' as any)}
         >
-          <Ionicons name="bar-chart-outline" size={22} color="#94A3B8" />
+          <Ionicons name="bar-chart-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Analytics</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="person" size={22} color="#003366" />
+          <Ionicons name="person" size={22} color={colors.brandText} />
           <Text style={[styles.navLabel, styles.navLabelActive]}>Logout</Text>
         </TouchableOpacity>
       </View>
@@ -178,7 +185,7 @@ export default function ProfileScreen() {
                   <Text style={[styles.windowOptionText, isSelected && styles.windowOptionTextSelected]}>
                     {win}
                   </Text>
-                  {isSelected && <Ionicons name="checkmark-circle" size={20} color="#003366" />}
+                  {isSelected && <Ionicons name="checkmark-circle" size={20} color={colors.brandText} />}
                 </TouchableOpacity>
               );
             })}
@@ -208,7 +215,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder="Current Password"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textDisabled}
               secureTextEntry
               value={currentPassword}
               onChangeText={setCurrentPassword}
@@ -217,7 +224,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder="New Password"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textDisabled}
               secureTextEntry
               value={newPassword}
               onChangeText={setNewPassword}
@@ -226,7 +233,7 @@ export default function ProfileScreen() {
             <TextInput
               style={styles.input}
               placeholder="Confirm New Password"
-              placeholderTextColor="#94A3B8"
+              placeholderTextColor={colors.textDisabled}
               secureTextEntry
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -254,10 +261,10 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
   },
   scrollContent: {
     padding: 24,
@@ -269,14 +276,14 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 20,
     marginTop: 10,
   },
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
@@ -285,7 +292,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -293,7 +300,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   profileTextContainer: {
     flex: 1,
@@ -305,14 +312,14 @@ const styles = StyleSheet.create({
   },
   userRole: {
     fontSize: 13,
-    color: '#93C5FD',
+    color: colors.blueLight,
     marginTop: 2,
   },
   settingsGroup: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     overflow: 'hidden',
     marginBottom: 24,
   },
@@ -322,27 +329,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 18,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.surfaceMuted,
     width: '100%',
   },
   settingTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: colors.textStrong,
   },
   settingSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   logoutBtn: {
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.dangerSurface,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
   },
   logoutText: {
-    color: '#DC2626',
+    color: colors.dangerStrong,
     fontSize: 15,
     fontWeight: '800',
   },
@@ -355,9 +362,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    borderTopColor: colors.border,
     paddingVertical: 10,
     elevation: 8,
     shadowColor: '#000',
@@ -372,11 +379,11 @@ const styles = StyleSheet.create({
  navLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: colors.textDisabled,
     marginTop: 2,
   },
   navLabelActive: {
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '800',
   },
 
@@ -390,30 +397,30 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 24,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 4,
   },
   modalSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 16,
   },
   input: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.textStrong,
     marginBottom: 12,
   },
   modalActionRow: {
@@ -428,14 +435,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtn: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
   },
   cancelBtnText: {
-    color: '#64748B',
+    color: colors.textMuted,
     fontWeight: '700',
   },
   saveBtn: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
   },
   saveBtnText: {
     color: '#FFFFFF',
@@ -449,21 +456,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: 8,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
   },
   windowOptionSelected: {
-    borderColor: '#003366',
-    backgroundColor: '#EFF6FF',
+    borderColor: colors.brandText,
+    backgroundColor: colors.blueSubtle,
   },
   windowOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.textBody,
   },
   windowOptionTextSelected: {
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '800',
   },
 });

@@ -1,23 +1,34 @@
-import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { AppPalette } from '@/constants/app-colors';
+import { useThemedStyles } from '@/hooks/use-app-theme';
+import { Redirect, useRouter } from 'expo-router';
+import { useSession } from '@/contexts/session';
+import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // In-update ang import ng SafeAreaView papuntang react-native-safe-area-context
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EntryScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { signedOutRole } = useSession();
   const [isLoading, setIsLoading] = useState(true);
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const [progressAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    Animated.timing(progressAnim, {
+    const animation = Animated.timing(progressAnim, {
       toValue: 1,
       duration: 2500,
       useNativeDriver: false,
-    }).start(() => {
-      setIsLoading(false);
     });
-  }, []);
+    animation.start(({ finished }) => {
+      if (finished) setIsLoading(false);
+    });
+    return () => animation.stop();
+  }, [progressAnim]);
+
+  if (signedOutRole) {
+    return <Redirect href="/landing" />;
+  }
 
   // 1. SPLASH LOADING SCREEN
   if (isLoading) {
@@ -68,10 +79,10 @@ export default function EntryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   splashContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 60,
@@ -85,7 +96,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -98,12 +109,12 @@ const styles = StyleSheet.create({
   appNameDark: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 6,
   },
   appSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
   },
   loadingBarContainer: {
     width: '60%',
@@ -112,17 +123,17 @@ const styles = StyleSheet.create({
   loadingBarTrack: {
     width: '100%',
     height: 4,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: colors.border,
     borderRadius: 2,
     overflow: 'hidden',
   },
   loadingBarFill: {
     height: '100%',
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
   },
   welcomeContainer: {
     flex: 1,
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
   },
   welcomeContent: {
     flex: 1,
@@ -134,7 +145,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
@@ -142,7 +153,7 @@ const styles = StyleSheet.create({
   logoTextDark: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   welcomeTitle: {
     fontSize: 28,
@@ -160,14 +171,14 @@ const styles = StyleSheet.create({
   },
   getStartedBtn: {
     width: '100%',
-    backgroundColor: '#D1D5DB',
+    backgroundColor: colors.neutralFill,
     borderRadius: 25,
     paddingVertical: 16,
     alignItems: 'center',
   },
   getStartedText: {
-    color: '#003366',
+    color: colors.brandText,
     fontSize: 15,
     fontWeight: '800',
   },
-});   
+});

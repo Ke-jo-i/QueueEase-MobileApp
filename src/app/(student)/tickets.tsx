@@ -1,3 +1,5 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Image, Modal, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -64,6 +66,7 @@ const SERVICE_REMINDERS: Record<string, {
 };
 
 export default function MyTicketsScreen() {
+  const styles = useThemedStyles(createStyles);
   const params = useLocalSearchParams();
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -266,10 +269,10 @@ export default function MyTicketsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -282,16 +285,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
   },
   subtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   studentInfo: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   section: {
@@ -300,14 +303,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#16A34A',
+    color: colors.success,
     letterSpacing: 0.8,
     marginBottom: 8,
   },
   activeCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#16A34A',
+    borderColor: colors.success,
     borderRadius: 16,
     padding: 18,
   },
@@ -320,10 +323,10 @@ const styles = StyleSheet.create({
   activeTicketNumber: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
   },
   activeBadge: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSurface,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
@@ -331,17 +334,17 @@ const styles = StyleSheet.create({
   activeBadgeText: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#16A34A',
+    color: colors.success,
   },
   activeServiceName: {
     fontSize: 14,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 2,
   },
   activeWindowText: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 12,
   },
   viewQrContainer: {
@@ -353,26 +356,26 @@ const styles = StyleSheet.create({
   viewQrText: {
     fontSize: 13,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     textDecorationLine: 'underline',
   },
   pressedEffect: {
     opacity: 0.6,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
   },
   viewQrTextPressed: {
-    color: '#0284C7',
+    color: colors.info,
   },
   historySectionTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 12,
   },
   historyCard: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: colors.surfaceNeutral,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 14,
     padding: 16,
     marginBottom: 12,
@@ -386,10 +389,10 @@ const styles = StyleSheet.create({
   historyTicketNumber: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#334155',
+    color: colors.textBody,
   },
   completedBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -397,10 +400,10 @@ const styles = StyleSheet.create({
   completedBadgeText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#475569',
+    color: colors.textSecondary,
   },
   cancelledBadge: {
-    backgroundColor: '#FEF2F2',
+    backgroundColor: colors.dangerSubtle,
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
@@ -408,17 +411,17 @@ const styles = StyleSheet.create({
   cancelledBadgeText: {
     fontSize: 10,
     fontWeight: 'bold',
-    color: '#DC2626',
+    color: colors.dangerStrong,
   },
   historyServiceName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#475569',
+    color: colors.textSecondary,
     marginBottom: 2,
   },
   historyDate: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: colors.textDisabled,
   },
   modalHeaderRow: {
     flexDirection: 'row',
@@ -432,20 +435,20 @@ const styles = StyleSheet.create({
   closeBtnText: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#64748B',
+    color: colors.textMuted,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
   },
   cardCenter: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 24,
     alignItems: 'center',
@@ -454,21 +457,21 @@ const styles = StyleSheet.create({
   ticketNumber: {
     fontSize: 38,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 4,
   },
   statusLabel: {
     fontSize: 14,
-    color: '#334155',
+    color: colors.textBody,
     marginBottom: 2,
   },
   statusValue: {
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
   },
   windowText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
   },
   qrCodeImage: {
     width: 150,
@@ -477,42 +480,42 @@ const styles = StyleSheet.create({
   },
   qrSubtext: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
   },
   remindersTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 10,
   },
   reminderItem: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.textBody,
     marginBottom: 4,
   },
   processingTime: {
     fontSize: 12,
     fontStyle: 'italic',
-    color: '#0284C7',
+    color: colors.info,
     marginTop: 14,
   },
   cancelButton: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     marginTop: 8,
   },
   cancelButtonPressed: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FCA5A5',
+    backgroundColor: colors.dangerSubtle,
+    borderColor: colors.dangerBorder,
   },
   cancelButtonText: {
-    color: '#DC2626',
+    color: colors.dangerStrong,
     fontSize: 15,
     fontWeight: 'bold',
   },
@@ -526,7 +529,7 @@ const styles = StyleSheet.create({
   modalCard: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
@@ -534,20 +537,20 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 8,
     textAlign: 'center',
   },
   modalSubtext: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 20,
   },
   modalCancelBtn: {
     width: '100%',
-    backgroundColor: '#EE5D5D',
+    backgroundColor: colors.dangerFill,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
@@ -560,13 +563,13 @@ const styles = StyleSheet.create({
   },
   modalKeepBtn: {
     width: '100%',
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',
   },
   modalKeepBtnText: {
-    color: '#334155',
+    color: colors.textBody,
     fontSize: 15,
     fontWeight: '600',
   },

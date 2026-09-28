@@ -1,19 +1,21 @@
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { Platform } from 'react-native';
 
 export default function TabLayout() {
+  const colors = useAppTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#003366',
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarActiveTintColor: colors.brandText,
+        tabBarInactiveTintColor: colors.textDisabled,
         tabBarLabelPosition: 'below-icon', // Sinisigurado na nasa BABA ng icon ang text
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#E2E8F0',
+          borderTopColor: colors.border,
           height: Platform.OS === 'ios' ? 88 : 65,
           paddingBottom: Platform.OS === 'ios' ? 28 : 8,
           paddingTop: 8,

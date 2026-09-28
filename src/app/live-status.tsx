@@ -1,8 +1,12 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function LiveQueueScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   const queueList = [
@@ -17,7 +21,7 @@ export default function LiveQueueScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Back Header */}
         <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()} activeOpacity={0.7}>
-          <Ionicons name="arrow-back" size={20} color="#003366" />
+          <Ionicons name="arrow-back" size={20} color={colors.brandText} />
           <Text style={styles.headerTitle}>Live Queue</Text>
         </TouchableOpacity>
 
@@ -61,10 +65,10 @@ export default function LiveQueueScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -79,13 +83,13 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     marginLeft: 8,
   },
 
   // Your Ticket Card
   yourTicketCard: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -93,21 +97,21 @@ const styles = StyleSheet.create({
   yourTicketLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#64748B',
+    color: colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: 6,
   },
   yourTicketNumber: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
   },
 
   // Now Serving Card
   nowServingCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -115,21 +119,21 @@ const styles = StyleSheet.create({
   nowServingLabel: {
     fontSize: 11,
     fontWeight: 'bold',
-    color: '#16A34A',
+    color: colors.success,
     letterSpacing: 0.8,
     marginBottom: 6,
   },
   nowServingNumber: {
     fontSize: 34,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
   },
 
   // Queue Progress Card
   progressCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -138,7 +142,7 @@ const styles = StyleSheet.create({
   progressTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 16,
   },
   queueListContainer: {
@@ -147,18 +151,18 @@ const styles = StyleSheet.create({
   queueItemText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.textMuted,
   },
   servingText: {
-    color: '#16A34A',
+    color: colors.success,
     fontWeight: 'bold',
   },
 
   // Est Time Card
   estTimeCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 14,
     paddingVertical: 16,
     paddingHorizontal: 20,
@@ -168,6 +172,6 @@ const styles = StyleSheet.create({
   estTimeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#475569',
+    color: colors.textSecondary,
   },
 });

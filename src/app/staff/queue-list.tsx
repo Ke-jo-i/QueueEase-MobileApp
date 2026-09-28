@@ -1,3 +1,5 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -10,6 +12,8 @@ const queueData = [
 ];
 
 export default function StaffQueueListScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'all' | 'priority'>('all');
 
@@ -81,7 +85,7 @@ export default function StaffQueueListScreen() {
           style={styles.navItem}
           onPress={() => router.replace('/staff/dashboard')}
         >
-          <Ionicons name="list-outline" size={22} color="#003366" />
+          <Ionicons name="list-outline" size={22} color={colors.brandText} />
           <Text style={[styles.navLabel, styles.activeNavLabel]}>Queue</Text>
         </TouchableOpacity>
 
@@ -89,7 +93,7 @@ export default function StaffQueueListScreen() {
           style={styles.navItem}
           onPress={() => router.push('/staff/analytics')}
         >
-          <Ionicons name="bar-chart-outline" size={22} color="#94A3B8" />
+          <Ionicons name="bar-chart-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Analytics</Text>
         </TouchableOpacity>
 
@@ -97,7 +101,7 @@ export default function StaffQueueListScreen() {
           style={styles.navItem}
           onPress={() => router.push('/staff/profile')}
         >
-          <Ionicons name="person-outline" size={22} color="#94A3B8" />
+          <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -105,10 +109,10 @@ export default function StaffQueueListScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   content: {
     flex: 1,
@@ -121,11 +125,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   tabContainer: {
@@ -137,15 +141,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
   },
   activeTabBtn: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
   },
   tabText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#64748B',
+    color: colors.textMuted,
   },
   activeTabText: {
     color: '#FFFFFF',
@@ -154,9 +158,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 14,
     padding: 18,
     marginBottom: 12,
@@ -167,13 +171,13 @@ const styles = StyleSheet.create({
   ticketNumber: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 4,
   },
   serviceName: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: colors.textMuted,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -181,28 +185,28 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   nextBadge: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSurface,
   },
   waitingBadge: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
   },
   statusText: {
     fontSize: 11,
     fontWeight: '800',
   },
   nextStatusText: {
-    color: '#166534',
+    color: colors.successText,
   },
   waitingStatusText: {
-    color: '#64748B',
+    color: colors.textMuted,
   },
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.surfaceMuted,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   navItem: {
     alignItems: 'center',
@@ -210,11 +214,11 @@ const styles = StyleSheet.create({
   navLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: colors.textDisabled,
     marginTop: 2,
   },
   activeNavLabel: {
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '800',
   },
 });

@@ -1,3 +1,5 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -15,6 +17,7 @@ import {
 } from 'react-native';
 
 export default function RegisterScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [fullName, setFullName] = useState('');
   const [studentId, setStudentId] = useState('');
@@ -57,7 +60,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Juan Dela Cruz"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={'#9CA3AF'}
                 value={fullName}
                 onChangeText={setFullName}
               />
@@ -69,7 +72,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. 2021-00123"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={'#9CA3AF'}
                 value={studentId}
                 onChangeText={setStudentId}
               />
@@ -81,7 +84,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. j.delacruz@university.edu.ph"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={'#9CA3AF'}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
@@ -95,7 +98,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={'#9CA3AF'}
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
@@ -108,7 +111,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor={'#9CA3AF'}
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -140,7 +143,7 @@ export default function RegisterScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.iconBadge}>
-              <Ionicons name="checkmark-circle" size={52} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={52} color={'#10B981'} />
             </View>
 
             <Text style={styles.modalTitle}>Account Created!</Text>
@@ -162,10 +165,10 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     paddingHorizontal: 28,
@@ -180,12 +183,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: '#6C7A89',
+    color: colors.textSubtle,
   },
   form: {
     width: '100%',
@@ -196,21 +199,21 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1A2A3A',
+    color: colors.textHeading,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1A2A3A',
+    color: colors.textHeading,
   },
   registerBtn: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
@@ -230,11 +233,11 @@ const styles = StyleSheet.create({
   },
   hasAccountText: {
     fontSize: 14,
-    color: '#6C7A89',
+    color: colors.textSubtle,
   },
   loginText: {
     fontSize: 14,
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: 'bold',
     textDecorationLine: 'underline', // Underlined link
   },
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 28,
     width: '100%',
@@ -259,7 +262,7 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: colors.successSubtle,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -267,19 +270,19 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.textStrong,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,
   },
   modalBtn: {
     width: '100%',
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: 'center',

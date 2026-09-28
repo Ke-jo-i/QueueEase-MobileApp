@@ -1,9 +1,12 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function AlertsScreen() {
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   // Active View State: 'list' | 'your-turn' | 'completed'
@@ -75,7 +78,7 @@ export default function AlertsScreen() {
             onPress={() => setCurrentView('completed')}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryBtnText}>I'M AT THE WINDOW</Text>
+            <Text style={styles.primaryBtnText}>I&apos;M AT THE WINDOW</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -91,7 +94,7 @@ export default function AlertsScreen() {
         <View style={[styles.content, { alignItems: 'center' }]}>
           {/* Green Check Icon */}
           <View style={styles.successIconCircle}>
-            <Ionicons name="checkmark" size={44} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={44} color={'#FFFFFF'} />
           </View>
 
           <Text style={styles.completedTitle}>Transaction Completed!</Text>
@@ -164,10 +167,10 @@ export default function AlertsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
   },
   // Notifications List Styles
   header: {
@@ -178,23 +181,23 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingBottom: 24,
   },
   card: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   unreadCard: {
-    backgroundColor: '#F1F5F9',
-    borderColor: '#CBD5E1',
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.borderStrong,
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -205,26 +208,26 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.danger,
     marginRight: 8,
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#334155',
+    color: colors.textBody,
   },
   unreadTitle: {
-    color: '#003366',
+    color: colors.brandText,
   },
   cardMessage: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     lineHeight: 18,
     marginBottom: 8,
   },
   timeText: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: colors.textDisabled,
   },
 
   // Full Views Content Box (Your Turn & Completed)
@@ -239,37 +242,37 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 20,
   },
   ticketCard: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: 16,
   },
   ticketLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#64748B',
+    color: colors.textMuted,
     letterSpacing: 0.5,
   },
   ticketNumber: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#003366',
+    color: colors.brandText,
     marginVertical: 8,
   },
   badge: {
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.infoSurface,
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 20,
@@ -277,52 +280,52 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   badgeText: {
-    color: '#0284C7',
+    color: colors.info,
     fontSize: 12,
     fontWeight: '800',
   },
   divider: {
     height: 1,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     marginVertical: 12,
   },
   serviceTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: colors.textStrong,
   },
   serviceSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   dateSub: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: colors.textDisabled,
     marginTop: 4,
   },
   reminderCard: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: colors.warningSurface,
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: colors.warningBorder,
     marginBottom: 24,
   },
   reminderTitle: {
     fontSize: 13,
     fontWeight: '800',
-    color: '#92400E',
+    color: colors.warningText,
     marginBottom: 4,
   },
   reminderText: {
     fontSize: 12,
-    color: '#B45309',
+    color: colors.warning,
     lineHeight: 16,
   },
   primaryBtn: {
     width: '100%',
-    backgroundColor: '#002855',
+    backgroundColor: colors.brandPressed,
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',
@@ -337,7 +340,7 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    backgroundColor: '#22C55E',
+    backgroundColor: colors.successFill,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -345,13 +348,13 @@ const styles = StyleSheet.create({
   completedTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     textAlign: 'center',
     marginBottom: 8,
   },
   completedSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,

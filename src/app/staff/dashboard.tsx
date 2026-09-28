@@ -1,3 +1,5 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -9,6 +11,8 @@ interface QueueItem {
 }
 
 export default function StaffDashboardScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   // Initial queue state
@@ -158,7 +162,7 @@ export default function StaffDashboardScreen() {
       {/* Standardized Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="list-outline" size={22} color="#003366" />
+          <Ionicons name="list-outline" size={22} color={colors.brandText} />
           <Text style={[styles.navLabel, styles.activeNavLabel]}>Queue</Text>
         </TouchableOpacity>
 
@@ -166,7 +170,7 @@ export default function StaffDashboardScreen() {
           style={styles.navItem}
           onPress={() => router.push('/staff/analytics')}
         >
-          <Ionicons name="bar-chart-outline" size={22} color="#94A3B8" />
+          <Ionicons name="bar-chart-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Analytics</Text>
         </TouchableOpacity>
 
@@ -174,7 +178,7 @@ export default function StaffDashboardScreen() {
           style={styles.navItem}
           onPress={() => router.push('/staff/profile')}
         >
-          <Ionicons name="person-outline" size={22} color="#94A3B8" />
+          <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
           <Text style={styles.navLabel}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -182,10 +186,10 @@ export default function StaffDashboardScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   content: {
     flex: 1,
@@ -199,15 +203,15 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   servingCard: {
-    backgroundColor: '#D9D9D9',
+    backgroundColor: colors.neutralMuted,
     borderRadius: 16,
     paddingVertical: 28,
     alignItems: 'center',
@@ -216,27 +220,27 @@ const styles = StyleSheet.create({
   servingLabel: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#15803D',
+    color: colors.successStrong,
     letterSpacing: 0.5,
     marginBottom: 8,
   },
   ticketNumber: {
     fontSize: 42,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 8,
   },
   serviceText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#475569',
+    color: colors.textSecondary,
   },
   actionContainer: {
     gap: 12,
     marginBottom: 28,
   },
   callNextBtn: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -248,38 +252,38 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   recallBtn: {
-    backgroundColor: '#FEF9C3',
+    backgroundColor: colors.warningSoft,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   recallBtnText: {
-    color: '#854D0E',
+    color: colors.warningStrong,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   doneBtn: {
-    backgroundColor: '#DCFCE7',
+    backgroundColor: colors.successSurface,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   doneBtnText: {
-    color: '#166534',
+    color: colors.successText,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   queueListBtn: {
     borderWidth: 1.5,
-    borderColor: '#003366',
+    borderColor: colors.brandText,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   queueListBtnText: {
-    color: '#003366',
+    color: colors.brandText,
     fontSize: 13,
     fontWeight: '700',
   },
@@ -287,9 +291,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: colors.surfaceMuted,
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   navItem: {
     alignItems: 'center',
@@ -297,11 +301,11 @@ const styles = StyleSheet.create({
   navLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#94A3B8',
+    color: colors.textDisabled,
     marginTop: 2,
   },
   activeNavLabel: {
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '800',
   },
 });

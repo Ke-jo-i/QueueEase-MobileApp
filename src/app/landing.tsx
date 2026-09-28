@@ -1,13 +1,26 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
+import { useSession } from '@/contexts/session';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 export default function LandingScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { signedOutRole, clearSignedOutRole } = useSession();
 
   const [isStudentHovered, setIsStudentHovered] = useState(false);
   const [isStaffHovered, setIsStaffHovered] = useState(false);
+
+  useEffect(() => {
+    if (signedOutRole) {
+      clearSignedOutRole();
+      router.push(signedOutRole === 'staff' ? '/staff/login' : '/login');
+    }
+  }, [clearSignedOutRole, router, signedOutRole]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -37,7 +50,7 @@ export default function LandingScreen() {
           onHoverOut={() => setIsStudentHovered(false)}
         >
           <View style={styles.iconBox}>
-            <Ionicons name="school-outline" size={26} color="#003366" />
+            <Ionicons name="school-outline" size={26} color={colors.brandText} />
           </View>
           <View style={styles.cardTextContainer}>
             <Text style={styles.cardTitle}>Student Portal</Text>
@@ -59,7 +72,7 @@ export default function LandingScreen() {
           onHoverOut={() => setIsStaffHovered(false)}
         >
           <View style={styles.iconBox}>
-            <Ionicons name="person-outline" size={26} color="#003366" />
+            <Ionicons name="person-outline" size={26} color={colors.brandText} />
           </View>
           <View style={styles.cardTextContainer}>
             <Text style={styles.cardTitle}>Staff Portal</Text>
@@ -71,10 +84,10 @@ export default function LandingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   content: {
     flex: 1,
@@ -92,7 +105,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
@@ -105,27 +118,27 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   title: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     textAlign: 'center',
     marginBottom: 6,
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 32,
   },
   portalCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
@@ -137,8 +150,8 @@ const styles = StyleSheet.create({
     }),
   },
   portalCardHovered: {
-    borderColor: '#003366',
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.brandText,
+    backgroundColor: colors.surfaceSubtle,
     shadowColor: '#003366',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -154,7 +167,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.infoSurface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -165,11 +178,11 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 2,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
   },
 });

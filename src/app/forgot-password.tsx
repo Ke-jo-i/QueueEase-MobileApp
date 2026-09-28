@@ -1,3 +1,5 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -13,6 +15,8 @@ import {
 } from 'react-native';
 
 export default function ForgotPasswordScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
 
   // Step state: 1 = Email Input, 2 = Check Email Success, 3 = Create New Password
@@ -26,10 +30,6 @@ export default function ForgotPasswordScreen() {
 
   const handleSendResetLink = () => {
     setStep(2); // Lumipat sa "Check Your Email" screen
-  };
-
-  const handleBackToLogin = () => {
-    router.replace('/login');
   };
 
   const handleResetPassword = () => {
@@ -60,7 +60,7 @@ export default function ForgotPasswordScreen() {
                 onPress={handleGoBack}
                 activeOpacity={0.7}
               >
-                <Ionicons name="chevron-back" size={24} color="#003366" />
+                <Ionicons name="chevron-back" size={24} color={colors.brandText} />
               </TouchableOpacity>
 
               <Text style={styles.title}>Reset Password</Text>
@@ -72,7 +72,7 @@ export default function ForgotPasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your Email"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.textDisabled}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -95,7 +95,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.centeredStep}>
               {/* Email Icon Box */}
               <View style={styles.iconContainer}>
-                <Ionicons name="mail-outline" size={32} color="#003366" />
+                <Ionicons name="mail-outline" size={32} color={colors.brandText} />
               </View>
 
               <Text style={styles.titleCenter}>Check Your Email</Text>
@@ -127,7 +127,7 @@ export default function ForgotPasswordScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Enter new password"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.textDisabled}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   secureTextEntry
@@ -141,7 +141,7 @@ export default function ForgotPasswordScreen() {
                   <TextInput
                     style={styles.passwordInput}
                     placeholder="Re-enter new password"
-                    placeholderTextColor="#94A3B8"
+                    placeholderTextColor={colors.textDisabled}
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showConfirmPassword}
@@ -153,7 +153,7 @@ export default function ForgotPasswordScreen() {
                     <Ionicons
                       name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
                       size={20}
-                      color="#94A3B8"
+                      color={colors.textDisabled}
                     />
                   </TouchableOpacity>
                 </View>
@@ -174,10 +174,10 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
   },
   keyboardView: {
     flex: 1,
@@ -198,12 +198,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#003366', // Exact dark blue base
+    color: colors.brandText, // Exact dark blue base
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     lineHeight: 18,
     marginBottom: 32,
   },
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 68,
     height: 68,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.infoSurface,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
@@ -225,13 +225,13 @@ const styles = StyleSheet.create({
   titleCenter: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 8,
     textAlign: 'center',
   },
   subtitleCenter: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     lineHeight: 19,
     textAlign: 'center',
     marginBottom: 32,
@@ -245,25 +245,25 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.textStrong,
   },
   passwordWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 10,
   },
   passwordInput: {
@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.textStrong,
   },
   eyeIcon: {
     paddingHorizontal: 14,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
   // Primary Button Fixed Color (#003366)
   primaryButton: {
     width: '100%',
-    backgroundColor: '#003366', // Dark Solid Blue
+    backgroundColor: colors.brand, // Dark Solid Blue
     borderRadius: 10,
     paddingVertical: 16,
     alignItems: 'center',

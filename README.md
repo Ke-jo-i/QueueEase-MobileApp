@@ -1,5 +1,24 @@
 # Welcome to your Expo app 👋
 
+## Checks
+
+```bash
+npm run lint
+npm run typecheck
+npx playwright install chromium
+npm run test:e2e
+```
+
+The browser tests cover staff/student logout, private URLs, and saved dark-mode preferences at a mobile viewport. On Windows PowerShell, use `npm.cmd` and `npx.cmd` if script execution is disabled. To test with an installed Microsoft Edge instead of downloading Chromium, set `$env:PLAYWRIGHT_CHANNEL='msedge'` before running the tests.
+
+Dark mode is available in both profile screens and is saved on the device. The default is the existing light theme. Native development builds must be rebuilt after installing the AsyncStorage dependency.
+
+Login is currently a prototype: it does not validate credentials against a server. Route guards use an in-memory student/staff session, cleared on logout and app restart. Before using real accounts or records, connect login to an authentication service and enforce permissions on the server.
+
+After logout, Back from either login screen returns to the portal selector so you can switch between student and staff. Private screens are removed from navigation history.
+
+On a phone, also check Android Back/iOS swipe-back after logout, both profile toggles, and appearance after restarting the app. Browser tests do not exercise native gestures or system bars.
+
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started

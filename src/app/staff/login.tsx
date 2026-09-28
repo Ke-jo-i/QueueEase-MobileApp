@@ -1,4 +1,7 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useSession } from '@/contexts/session';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,6 +18,9 @@ import {
 } from 'react-native';
 
 export default function StaffLoginScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  const { signIn } = useSession();
   const router = useRouter();
 
   const [staffId, setStaffId] = useState('');
@@ -22,8 +28,8 @@ export default function StaffLoginScreen() {
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   const handleLogin = () => {
-    // Papunta sa staff/dashboard.tsx
-    router.replace('/staff/dashboard');
+    signIn('staff');
+    router.push('/staff/dashboard');
   };
 
   return (
@@ -57,7 +63,7 @@ export default function StaffLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your Staff ID or Email"
-                placeholderTextColor="#A0AEC0"
+                placeholderTextColor={colors.placeholder}
                 value={staffId}
                 onChangeText={setStaffId}
                 autoCapitalize="none"
@@ -70,7 +76,7 @@ export default function StaffLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor="#A0AEC0"
+                placeholderTextColor={colors.placeholder}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -115,17 +121,17 @@ export default function StaffLoginScreen() {
 
                 <View style={styles.contactCard}>
                   <View style={styles.contactRow}>
-                    <Ionicons name="mail-outline" size={20} color="#003366" />
+                    <Ionicons name="mail-outline" size={20} color={colors.brandText} />
                     <Text style={styles.contactText}>support@queueease.ph</Text>
                   </View>
 
                   <View style={styles.contactRow}>
-                    <Ionicons name="call-outline" size={20} color="#003366" />
+                    <Ionicons name="call-outline" size={20} color={colors.brandText} />
                     <Text style={styles.contactText}>Local Ext: 402 (IT Dept)</Text>
                   </View>
 
                   <View style={styles.contactRow}>
-                    <Ionicons name="time-outline" size={20} color="#003366" />
+                    <Ionicons name="time-outline" size={20} color={colors.brandText} />
                     <Text style={styles.contactText}>8:00 AM - 5:00 PM</Text>
                   </View>
                 </View>
@@ -138,10 +144,10 @@ export default function StaffLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   keyboardView: {
     flex: 1,
@@ -156,7 +162,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#E0F2FE',
+    backgroundColor: colors.infoSurface,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -164,16 +170,16 @@ const styles = StyleSheet.create({
   logoLetter: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   appName: {
     fontSize: 26,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 10,
   },
   tagBadge: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     paddingHorizontal: 16,
     paddingVertical: 5,
     borderRadius: 20,
@@ -187,10 +193,10 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#EFF2F5',
+    borderColor: colors.borderSubtle,
     padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -201,13 +207,13 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.textStrong,
     textAlign: 'center',
     marginBottom: 4,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -217,19 +223,19 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 13,
-    color: '#0F172A',
+    color: colors.textStrong,
   },
   loginButton: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 10,
     paddingVertical: 15,
     alignItems: 'center',
@@ -247,12 +253,12 @@ const styles = StyleSheet.create({
   },
   helpText: {
     fontSize: 12,
-    color: '#003366',
+    color: colors.brandText,
   },
   helpLink: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#003366',
+    color: colors.brandText,
     textDecorationLine: 'underline',
   },
   modalOverlay: {
@@ -264,24 +270,24 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 18,
     padding: 24,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.textStrong,
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     lineHeight: 18,
     marginBottom: 20,
   },
   contactCard: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
     borderRadius: 12,
     padding: 16,
   },
@@ -293,7 +299,7 @@ const styles = StyleSheet.create({
   contactText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#1E293B',
+    color: colors.text,
     marginLeft: 12,
   },
 });

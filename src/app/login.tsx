@@ -1,4 +1,7 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useSession } from '@/contexts/session';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -14,7 +17,10 @@ import {
 } from 'react-native';
 
 export default function StudentLoginScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { signIn } = useSession();
 
   const [studentIdOrEmail, setStudentIdOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +28,8 @@ export default function StudentLoginScreen() {
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleLogin = () => {
-    router.replace('/(student)/home' as any);
+    signIn('student');
+    router.push('/(student)/home');
   };
 
   return (
@@ -49,7 +56,7 @@ export default function StudentLoginScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Enter your Student ID or Email"
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={colors.textDisabled}
                 value={studentIdOrEmail}
                 onChangeText={setStudentIdOrEmail}
                 autoCapitalize="none"
@@ -63,7 +70,7 @@ export default function StudentLoginScreen() {
                 <TextInput
                   style={styles.passwordInput}
                   placeholder="Enter your password"
-                  placeholderTextColor="#94A3B8"
+                  placeholderTextColor={colors.textDisabled}
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -75,7 +82,7 @@ export default function StudentLoginScreen() {
                   <Ionicons
                     name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                     size={20}
-                    color="#94A3B8"
+                    color={colors.textDisabled}
                   />
                 </TouchableOpacity>
               </View>
@@ -88,7 +95,7 @@ export default function StudentLoginScreen() {
                 onPress={() => setRememberMe(!rememberMe)}
               >
                 <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
-                  {rememberMe && <Ionicons name="checkmark" size={12} color="#FFFFFF" />}
+                  {rememberMe && <Ionicons name="checkmark" size={12} color={'#FFFFFF'} />}
                 </View>
                 <Text style={styles.rememberText}>Remember me</Text>
               </Pressable>
@@ -105,7 +112,7 @@ export default function StudentLoginScreen() {
 
             {/* Register Link */}
             <View style={styles.registerRow}>
-              <Text style={styles.noAccountText}>Don't have an account? </Text>
+              <Text style={styles.noAccountText}>Don&apos;t have an account? </Text>
               <TouchableOpacity onPress={() => router.push('/register' as any)}>
                 <Text style={styles.registerText}>Register</Text>
               </TouchableOpacity>
@@ -117,10 +124,10 @@ export default function StudentLoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   content: {
     flex: 1,
@@ -140,7 +147,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -148,18 +155,18 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   appName: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 4,
   },
   title: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#003366',
+    color: colors.brandText,
   },
   form: {
     width: '100%',
@@ -169,34 +176,34 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 13,
-    color: '#475569',
+    color: colors.textSecondary,
     marginBottom: 6,
     fontWeight: '500',
   },
   input: {
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1E293B',
-    backgroundColor: '#FFFFFF',
+    color: colors.text,
+    backgroundColor: colors.surface,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     borderRadius: 10,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 14,
-    color: '#1E293B',
+    color: colors.text,
   },
   eyeIcon: {
     paddingHorizontal: 12,
@@ -216,28 +223,28 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderWidth: 1.5,
-    borderColor: '#CBD5E1',
+    borderColor: colors.borderStrong,
     borderRadius: 4,
     marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#003366',
-    borderColor: '#003366',
+    backgroundColor: colors.brand,
+    borderColor: colors.brandText,
   },
   rememberText: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
   },
   forgotText: {
     fontSize: 12,
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '600',
     textDecorationLine: 'underline', // Underlined Forgot Password
   },
   loginBtn: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
@@ -254,11 +261,11 @@ const styles = StyleSheet.create({
   },
   noAccountText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
   },
   registerText: {
     fontSize: 13,
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '700',
     textDecorationLine: 'underline', // Underlined Register
   },

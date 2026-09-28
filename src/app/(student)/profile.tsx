@@ -1,5 +1,8 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useSession } from '@/contexts/session';
+import { DarkModeToggle } from '@/components/dark-mode-toggle';
 import { useState } from 'react';
 import {
   Modal,
@@ -14,7 +17,9 @@ import {
 } from 'react-native';
 
 export default function StudentProfileScreen() {
-  const router = useRouter();
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
+  const { signOut } = useSession();
 
   // Hover states
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
@@ -22,10 +27,8 @@ export default function StudentProfileScreen() {
   // Modal states
   const [activeModal, setActiveModal] = useState<'personal' | 'help' | null>(null);
 
-  // Handle Logout -> Redirect direkta sa Student Login
   const handleLogout = () => {
-    // Note: Palitan ang '/login' kung sakaling magkaiba ang route path o filename ng login page mo (e.g., '/student/login')
-    router.replace('/login' as any);
+    signOut();
   };
 
   return (
@@ -48,6 +51,7 @@ export default function StudentProfileScreen() {
 
         {/* Menu Buttons Group */}
         <View style={styles.menuGroup}>
+          <DarkModeToggle />
           {/* Personal Information Button */}
           <Pressable
             style={({ pressed }) => [
@@ -113,7 +117,7 @@ export default function StudentProfileScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Personal Information</Text>
               <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={22} color="#64748B" />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -154,7 +158,7 @@ export default function StudentProfileScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Help & Support</Text>
               <TouchableOpacity onPress={() => setActiveModal(null)}>
-                <Ionicons name="close" size={22} color="#64748B" />
+                <Ionicons name="close" size={22} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
 
@@ -164,12 +168,12 @@ export default function StudentProfileScreen() {
               </Text>
 
               <View style={styles.supportBox}>
-                <Ionicons name="mail-outline" size={18} color="#003366" />
+                <Ionicons name="mail-outline" size={18} color={colors.brandText} />
                 <Text style={styles.supportText}>support@university.edu.ph</Text>
               </View>
 
               <View style={styles.supportBox}>
-                <Ionicons name="call-outline" size={18} color="#003366" />
+                <Ionicons name="call-outline" size={18} color={colors.brandText} />
                 <Text style={styles.supportText}>+63 (084) 123-4567</Text>
               </View>
             </View>
@@ -184,10 +188,10 @@ export default function StudentProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   scrollContent: {
     padding: 24,
@@ -198,7 +202,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
     marginBottom: 20,
   },
 
@@ -206,18 +210,18 @@ const styles = StyleSheet.create({
   profileCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F5FA',
+    backgroundColor: colors.blueMuted,
     borderRadius: 16,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#0284C7',
+    borderColor: colors.info,
     marginBottom: 20,
   },
   avatar: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
@@ -233,17 +237,17 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.textStrong,
     marginBottom: 2,
   },
   userSubtext: {
     fontSize: 12,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 2,
   },
   studentId: {
     fontSize: 11,
-    color: '#003366',
+    color: colors.brandText,
     fontWeight: '700',
   },
 
@@ -252,12 +256,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   menuBtn: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 14,
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     ...Platform.select({
       web: {
         cursor: 'pointer',
@@ -266,8 +270,8 @@ const styles = StyleSheet.create({
     }),
   },
   menuBtnHovered: {
-    borderColor: '#003366',
-    backgroundColor: '#F8FAFC',
+    borderColor: colors.brandText,
+    backgroundColor: colors.surfaceSubtle,
     transform: [{ translateY: -1 }],
   },
   menuBtnPressed: {
@@ -276,20 +280,20 @@ const styles = StyleSheet.create({
   menuBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#0F172A',
+    color: colors.textStrong,
   },
   menuBtnTextHovered: {
-    color: '#003366',
+    color: colors.brandText,
   },
 
   /* Logout Button */
   logoutBtn: {
-    backgroundColor: '#FFF5F5',
+    backgroundColor: colors.dangerPale,
     borderRadius: 14,
     paddingVertical: 18,
     paddingHorizontal: 20,
     borderWidth: 1,
-    borderColor: '#FFE4E4',
+    borderColor: colors.dangerBorderSubtle,
     marginTop: 4,
     ...Platform.select({
       web: {
@@ -299,8 +303,8 @@ const styles = StyleSheet.create({
     }),
   },
   logoutBtnHovered: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#EF4444',
+    backgroundColor: colors.dangerSurface,
+    borderColor: colors.danger,
   },
   logoutBtnPressed: {
     opacity: 0.9,
@@ -308,7 +312,7 @@ const styles = StyleSheet.create({
   logoutBtnText: {
     fontSize: 15,
     fontWeight: '800',
-    color: '#EF4444',
+    color: colors.danger,
   },
 
   /* Modal Styling */
@@ -320,7 +324,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     width: '100%',
@@ -335,7 +339,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '800',
-    color: '#003366',
+    color: colors.brandText,
   },
   modalBody: {
     marginBottom: 20,
@@ -343,29 +347,29 @@ const styles = StyleSheet.create({
   infoRow: {
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: colors.surfaceMuted,
   },
   infoLabel: {
     fontSize: 11,
-    color: '#64748B',
+    color: colors.textMuted,
     fontWeight: '600',
     marginBottom: 2,
   },
   infoValue: {
     fontSize: 14,
-    color: '#0F172A',
+    color: colors.textStrong,
     fontWeight: '700',
   },
   helpText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 16,
     lineHeight: 18,
   },
   supportBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: colors.surfaceSubtle,
     padding: 12,
     borderRadius: 10,
     marginBottom: 8,
@@ -373,11 +377,11 @@ const styles = StyleSheet.create({
   },
   supportText: {
     fontSize: 13,
-    color: '#0F172A',
+    color: colors.textStrong,
     fontWeight: '600',
   },
   modalCloseBtn: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',

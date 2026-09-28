@@ -1,0 +1,13 @@
+import { useMemo } from 'react';
+import { AppColors, AppPalette } from '@/constants/app-colors';
+import { useAppearance } from '@/contexts/appearance';
+
+export function useAppTheme() {
+  const { colorScheme } = useAppearance();
+  return AppColors[colorScheme];
+}
+
+export function useThemedStyles<T>(createStyles: (colors: AppPalette) => T) {
+  const colors = useAppTheme();
+  return useMemo(() => createStyles(colors), [colors, createStyles]);
+}

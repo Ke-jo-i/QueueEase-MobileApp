@@ -1,3 +1,5 @@
+import { AppPalette } from '@/constants/app-colors';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -72,6 +74,8 @@ const SERVICE_DETAILS: Record<string, {
 };
 
 export default function ConfirmServiceScreen() {
+  const colors = useAppTheme();
+  const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const params = useLocalSearchParams();
   const serviceTitle = (params.serviceName as string) || 'Certificate of Enrollment';
@@ -88,7 +92,7 @@ export default function ConfirmServiceScreen() {
       <View style={styles.content}>
         {/* Back Button & Title */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#003366" />
+          <Ionicons name="chevron-back" size={24} color={colors.brandText} />
           <Text style={styles.headerTitle}>Confirm Service</Text>
         </TouchableOpacity>
 
@@ -125,10 +129,10 @@ export default function ConfirmServiceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   content: {
     flex: 1,
@@ -143,45 +147,45 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#003366',
+    color: colors.brandText,
     marginLeft: 4,
   },
   studentInfo: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginBottom: 20,
     marginLeft: 28,
   },
   serviceDetailCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
     marginBottom: 16,
   },
   serviceNameTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 8,
   },
   metaText: {
     fontSize: 13,
-    color: '#64748B',
+    color: colors.textMuted,
     marginTop: 2,
   },
   remindersCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: colors.border,
   },
   remindersTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: '#1E293B',
+    color: colors.text,
     marginBottom: 12,
   },
   bulletItem: {
@@ -190,12 +194,12 @@ const styles = StyleSheet.create({
   bulletText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: colors.textBody,
   },
   processingTime: {
     fontSize: 12,
     fontStyle: 'italic',
-    color: '#0284C7',
+    color: colors.info,
     marginTop: 16,
   },
   footer: {
@@ -203,7 +207,7 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   confirmButton: {
-    backgroundColor: '#003366',
+    backgroundColor: colors.brand,
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

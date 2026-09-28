@@ -1,13 +1,5 @@
 # Welcome to your Expo app 👋
 
-## Checks
-
-```bash
-npm run lint
-npm run typecheck
-npx playwright install chromium
-npm run test:e2e
-```
 
 The browser tests cover staff/student logout, private URLs, and saved dark-mode preferences at a mobile viewport. On Windows PowerShell, use `npm.cmd` and `npx.cmd` if script execution is disabled. To test with an installed Microsoft Edge instead of downloading Chromium, set `$env:PLAYWRIGHT_CHANNEL='msedge'` before running the tests.
 

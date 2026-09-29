@@ -1,54 +1,46 @@
-# Welcome to your Expo app 👋
+# QueueEase
 
-## Get started
+QueueEase is an Expo and React Native prototype for managing queues at the University of Mindanao Tagum Campus Registrar's Office. Students can request a service ticket and check its status. Staff can work from an assigned registrar window, call the next eligible ticket, complete it, and review queue history.
 
-1. Install dependencies
+## Run the app
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+Install Node.js and npm, then run:
 
 ```bash
-npm run reset-project
+npm ci
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Expo will show options for a phone, Android emulator, iOS simulator, or web browser. To launch the web version directly, run `npm run web`. Routes are in `src/app/`; queue and session state are in `src/contexts/`.
 
-### Other setup steps
+## Try the queue flow
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+1. Open **Student Portal** and log in with a student ID. The login screen currently accepts any ID; `2021-00123` is the demo ID when the field is left blank.
+2. On **Home**, choose a registrar service and tap **Get Queue Number**. The ticket appears on **Tickets**, and its number also appears on Home. The service determines the registrar window.
+3. Log out, open **Staff Portal**, and log in. In **Profile**, set **Window Assignment** to the window shown on the student ticket.
+4. In **Queue**, tap **Call Next** when the window is free. Staff must tap **Mark as Done** to complete the current ticket; the app does not automatically call another one.
+5. The completed ticket appears in staff **History**. Log out and sign in to Student Portal with the same ID to see it in the student's **Ticket History** and **Alerts**. A different student ID will not show that ticket.
 
-## Learn more
+A student can cancel a waiting ticket from **View QR Ticket**. Called tickets cannot be cancelled from that screen.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Checks and tools
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+| Tool | What it checks | Command |
+| --- | --- | --- |
+| ESLint | Code rules and common mistakes | `npm run lint` |
+| TypeScript | Type errors without generating files | `npm run typecheck` |
+| Playwright | Browser flows at a mobile-sized viewport | `npm run test:e2e` |
+| Expo Doctor | Expo package and project configuration compatibility | `npx expo-doctor` |
 
-## Join the community
+`eslint.config.js`, `tsconfig.json`, and `playwright.config.ts` configure these checks. `package-lock.json` pins installed dependency versions. Change those files when the checks or dependencies actually need to change.
 
-Join our community of developers creating universal apps.
+For the first Playwright run, install its Chromium browser with `npx playwright install chromium`. The test command starts the Expo web server on port 8081 automatically. On Windows PowerShell, if script execution is disabled, use `npm.cmd` and `npx.cmd` in place of `npm` and `npx`. To use an installed Microsoft Edge instead of Playwright's Chromium, set `$env:PLAYWRIGHT_CHANNEL='msedge'` before running the tests.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The automated tests cover ticket booking, cancellation, staff completion, student history, portal switching, logout access, and dark mode. They run in a browser; follow the [manual test plan](docs/manual-test-plan.md) to check native back gestures, safe areas, and the phone layout.
+
+## Current prototype limits
+
+- Login does not verify credentials against a server. The entered student ID only scopes tickets within this running app; it is not secure account authentication.
+- Tickets and staff assignments are kept in memory. They can survive switching portals on the same running app, but disappear after an app restart or browser reload and do not sync between devices.
+- Alerts reflect local ticket changes. There are no push notifications or live updates from other devices yet.
+- Service-to-window routing uses the current local mapping in `src/constants/service-windows.ts`. The final system still needs agreed registrar window rules and a shared database.

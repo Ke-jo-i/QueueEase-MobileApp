@@ -160,6 +160,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     paddingHorizontal: 16,
     marginBottom: 12,
     justifyContent: 'center',
+    alignItems: 'stretch',
     cursor: 'pointer',
   },
 
@@ -178,6 +179,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.text,
+    textAlign: 'left',
   },
 
   serviceNameHovered: {

@@ -226,5 +226,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

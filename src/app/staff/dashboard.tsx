@@ -233,6 +233,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   recallBtn: {
     backgroundColor: colors.warningSoft,
@@ -245,6 +246,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   doneBtn: {
     backgroundColor: colors.successSurface,
@@ -257,6 +259,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
+    textAlign: 'center',
   },
   queueListBtn: {
     borderWidth: 1.5,
@@ -269,6 +272,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.brandText,
     fontSize: 13,
     fontWeight: '700',
+    textAlign: 'center',
   },
   bottomNav: {
     flexDirection: 'row',

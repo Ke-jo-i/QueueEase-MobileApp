@@ -166,15 +166,18 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   cardTextContainer: {
     flex: 1,
+    justifyContent: 'center',
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '800',
     color: colors.brandText,
     marginBottom: 2,
+    textAlign: 'left',
   },
   cardSubtitle: {
     fontSize: 12,
     color: colors.textMuted,
+    textAlign: 'left',
   },
 });

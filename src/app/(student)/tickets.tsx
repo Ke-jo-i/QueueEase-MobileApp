@@ -337,6 +337,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    textAlign: 'center',
   },
   pressedEffect: {
     opacity: 0.6,
@@ -493,6 +494,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.dangerStrong,
     fontSize: 15,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -535,6 +537,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   modalKeepBtn: {
     width: '100%',
@@ -547,5 +550,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.textBody,
     fontSize: 15,
     fontWeight: '600',
+    textAlign: 'center',
   },
 });

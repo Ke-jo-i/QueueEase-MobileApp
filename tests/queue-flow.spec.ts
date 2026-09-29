@@ -56,6 +56,7 @@ test('student ticket status agrees across Home, Tickets, and Alerts', async ({ p
   await page.getByRole('tab', { name: /Tickets/ }).click();
   await page.getByRole('button', { name: 'View QR Ticket' }).click();
   await page.getByText('Cancel Queue Ticket', { exact: true }).click();
+  await page.getByPlaceholder('Reason for cancellation').fill('No longer need this service');
   await page.getByText('Yes, Cancel Ticket', { exact: true }).click();
   await expect(page.getByTestId('student-tickets').getByText('NOW IN QUEUE', { exact: true })).not.toBeVisible();
   await page.getByRole('tab', { name: /Home/ }).click();

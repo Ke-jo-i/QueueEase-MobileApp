@@ -5,9 +5,12 @@ export type Ticket = {
   number: string;
   service: string;
   window: string;
-  status: 'WAITING' | 'SERVING' | 'COMPLETED' | 'CANCELLED';
+  status: 'WAITING' | 'SERVING' | 'HELD' | 'COMPLETED' | 'CANCELLED' | 'SKIPPED' | 'NO_SHOW';
   ownerId?: string;
   date?: string;
+  reason?: string;
+  recallCount?: number;
+  lastAction?: string;
 };
 
 type HistoryTicket = Ticket & { date: string };
@@ -16,14 +19,20 @@ type QueueState = {
   studentTicket: Ticket | null;
   studentHistory: HistoryTicket[];
   bookTicket: (service: string, window: string) => boolean;
-  cancelTicket: () => void;
+  cancelTicket: (reason: string) => boolean;
   assignedWindow: string;
   setAssignedWindow: (window: string) => void;
   waiting: Ticket[];
   currentServing: Ticket | null;
   staffHistory: HistoryTicket[];
   callNext: () => Ticket | null;
+  recallCurrent: () => boolean;
   completeCurrent: () => void;
+  holdCurrent: (reason: string) => boolean;
+  skipCurrent: (reason: string) => boolean;
+  noShowCurrent: (reason: string) => boolean;
+  transferCurrent: (window: string) => boolean;
+  reopenTicket: (ticketNumber: string) => boolean;
 };
 
 const QueueContext = createContext<QueueState | null>(null);
@@ -36,7 +45,11 @@ const initialTickets: Ticket[] = [
 ];
 
 function isHistoryTicket(ticket: Ticket): ticket is HistoryTicket {
-  return (ticket.status === 'COMPLETED' || ticket.status === 'CANCELLED') && !!ticket.date;
+  return ['HELD', 'COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'].includes(ticket.status) && !!ticket.date;
+}
+
+function timestamp() {
+  return new Date().toISOString();
 }
 
 export function QueueProvider({ children }: PropsWithChildren) {
@@ -49,11 +62,11 @@ export function QueueProvider({ children }: PropsWithChildren) {
     ? tickets.find((ticket) => ticket.ownerId === studentId && (ticket.status === 'WAITING' || ticket.status === 'SERVING')) ?? null
     : null;
   const studentHistory = studentId
-    ? tickets.filter((ticket): ticket is HistoryTicket => ticket.ownerId === studentId && isHistoryTicket(ticket)).reverse()
+    ? tickets.filter((ticket): ticket is HistoryTicket => ticket.ownerId === studentId && ['COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'].includes(ticket.status) && !!ticket.date).reverse()
     : [];
   const waiting = tickets.filter((ticket) => ticket.status === 'WAITING');
   const currentServing = tickets.find((ticket) => ticket.status === 'SERVING' && ticket.window === assignedWindow) ?? null;
-  const staffHistory = tickets.filter(isHistoryTicket).filter((ticket) => ticket.status === 'COMPLETED').reverse();
+  const staffHistory = tickets.filter(isHistoryTicket).reverse();
 
   const value: QueueState = {
     studentTicket,
@@ -67,11 +80,13 @@ export function QueueProvider({ children }: PropsWithChildren) {
       setNextNumber((number) => number + 1);
       return true;
     },
-    cancelTicket: () => {
-      if (!studentTicket || studentTicket.status !== 'WAITING') return;
+    cancelTicket: (reason) => {
+      const trimmedReason = reason.trim();
+      if (!studentTicket || studentTicket.status !== 'WAITING' || !trimmedReason) return false;
       setTickets((items) => items.map((ticket) => ticket.number === studentTicket.number
-        ? { ...ticket, status: 'CANCELLED', date: 'Today' }
+        ? { ...ticket, status: 'CANCELLED', date: timestamp(), reason: trimmedReason, lastAction: 'CANCELLED' }
         : ticket));
+      return true;
     },
     assignedWindow,
     setAssignedWindow,
@@ -83,15 +98,61 @@ export function QueueProvider({ children }: PropsWithChildren) {
       const next = waiting.find((ticket) => ticket.window === assignedWindow);
       if (!next) return null;
       setTickets((items) => items.map((ticket) => ticket.number === next.number
-        ? { ...ticket, status: 'SERVING' }
+        ? { ...ticket, status: 'SERVING', lastAction: 'CALLED' }
         : ticket));
       return next;
+    },
+    recallCurrent: () => {
+      if (!currentServing) return false;
+      setTickets((items) => items.map((ticket) => ticket.number === currentServing.number
+        ? { ...ticket, recallCount: (ticket.recallCount ?? 0) + 1, lastAction: 'RECALLED' }
+        : ticket));
+      return true;
     },
     completeCurrent: () => {
       if (!currentServing) return;
       setTickets((items) => items.map((ticket) => ticket.number === currentServing.number
-        ? { ...ticket, status: 'COMPLETED', date: 'Today' }
+        ? { ...ticket, status: 'COMPLETED', date: timestamp(), lastAction: 'COMPLETED' }
         : ticket));
+    },
+    holdCurrent: (reason) => {
+      const trimmedReason = reason.trim();
+      if (!currentServing || !trimmedReason) return false;
+      setTickets((items) => items.map((ticket) => ticket.number === currentServing.number
+        ? { ...ticket, status: 'HELD', date: timestamp(), reason: trimmedReason, lastAction: 'HELD' }
+        : ticket));
+      return true;
+    },
+    skipCurrent: (reason) => {
+      const trimmedReason = reason.trim();
+      if (!currentServing || !trimmedReason) return false;
+      setTickets((items) => items.map((ticket) => ticket.number === currentServing.number
+        ? { ...ticket, status: 'SKIPPED', date: timestamp(), reason: trimmedReason, lastAction: 'SKIPPED' }
+        : ticket));
+      return true;
+    },
+    noShowCurrent: (reason) => {
+      const trimmedReason = reason.trim();
+      if (!currentServing || !trimmedReason) return false;
+      setTickets((items) => items.map((ticket) => ticket.number === currentServing.number
+        ? { ...ticket, status: 'NO_SHOW', date: timestamp(), reason: trimmedReason, lastAction: 'NO_SHOW' }
+        : ticket));
+      return true;
+    },
+    transferCurrent: (window) => {
+      if (!currentServing || !window || window === currentServing.window) return false;
+      setTickets((items) => items.map((ticket) => ticket.number === currentServing.number
+        ? { ...ticket, status: 'WAITING', window, lastAction: `TRANSFERRED TO ${window}` }
+        : ticket));
+      return true;
+    },
+    reopenTicket: (ticketNumber) => {
+      const ticket = tickets.find((item) => item.number === ticketNumber);
+      if (!ticket || !['HELD', 'SKIPPED', 'NO_SHOW', 'CANCELLED'].includes(ticket.status)) return false;
+      setTickets((items) => items.map((item) => item.number === ticketNumber
+        ? { ...item, status: 'WAITING', date: undefined, reason: undefined, lastAction: 'REOPENED' }
+        : item));
+      return true;
     },
   };
 

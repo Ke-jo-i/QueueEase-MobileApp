@@ -4,7 +4,7 @@ import { useQueue } from '@/contexts/queue';
 import { useSession } from '@/contexts/session';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const SERVICE_REMINDERS: Record<string, {
   reminders: string[];
@@ -60,22 +60,31 @@ const SERVICE_REMINDERS: Record<string, {
   },
 };
 
+function formatTicketDate(value: string) {
+  return new Date(value).toLocaleString([], {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
 export default function MyTicketsScreen() {
   const styles = useThemedStyles(createStyles);
   const { studentTicket, studentHistory, cancelTicket } = useQueue();
   const { studentId } = useSession();
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
 
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
   const details = SERVICE_REMINDERS[activeService] || SERVICE_REMINDERS['Certificate of Enrollment'];
 
   // Handle Ticket Cancellation Logic
   const handleConfirmCancel = () => {
+    if (!cancelReason.trim()) return;
+    if (!cancelTicket(cancelReason)) return;
     setShowCancelModal(false);
     setShowQrModal(false);
-
-    cancelTicket();
+    setCancelReason('');
   };
 
   return (
@@ -136,7 +145,7 @@ export default function MyTicketsScreen() {
                 </View>
               </View>
               <Text style={styles.historyServiceName}>{ticket.service}</Text>
-              <Text style={styles.historyDate}>{ticket.date}</Text>
+              <Text style={styles.historyDate}>{formatTicketDate(ticket.date)}</Text>
             </View>
           ))}
         </View>
@@ -225,11 +234,20 @@ export default function MyTicketsScreen() {
             <Text style={styles.modalSubtext}>
               Are you sure you want to cancel your ticket ({studentTicket?.number})? This action cannot be undone.
             </Text>
+            <TextInput
+              style={styles.reasonInput}
+              placeholder="Reason for cancellation"
+              placeholderTextColor={styles.historyDate.color}
+              value={cancelReason}
+              onChangeText={setCancelReason}
+              multiline
+            />
 
             <TouchableOpacity
-              style={styles.modalCancelBtn}
+              style={[styles.modalCancelBtn, !cancelReason.trim() && styles.disabledButton]}
               activeOpacity={0.8}
               onPress={handleConfirmCancel}
+              disabled={!cancelReason.trim()}
             >
               <Text style={styles.modalCancelBtnText}>Yes, Cancel Ticket</Text>
             </TouchableOpacity>
@@ -524,6 +542,20 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 20,
+  },
+  reasonInput: {
+    width: '100%',
+    minHeight: 72,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    padding: 12,
+    color: colors.text,
+    marginBottom: 12,
+    textAlignVertical: 'top',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
   modalCancelBtn: {
     width: '100%',

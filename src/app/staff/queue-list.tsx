@@ -5,15 +5,19 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useQueue } from '@/contexts/queue';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function StaffQueueListScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'all' | 'priority'>('all');
+  const [serviceFilter, setServiceFilter] = useState('All Services');
   const { waiting, assignedWindow } = useQueue();
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
+  const services = ['All Services', ...Array.from(new Set(windowWaiting.map((ticket) => ticket.service)))];
+  const filteredTickets = serviceFilter === 'All Services'
+    ? windowWaiting
+    : windowWaiting.filter((ticket) => ticket.service === serviceFilter);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -24,30 +28,23 @@ export default function StaffQueueListScreen() {
           <Text style={styles.subtitle}>{windowWaiting.length} Customers Waiting · {assignedWindow}</Text>
         </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'all' && styles.activeTabBtn]}
-            onPress={() => setActiveTab('all')}
-          >
-            <Text style={[styles.tabText, activeTab === 'all' && styles.activeTabText]}>
-              All ({windowWaiting.length})
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tabBtn, activeTab === 'priority' && styles.activeTabBtn]}
-            onPress={() => setActiveTab('priority')}
-          >
-            <Text style={[styles.tabText, activeTab === 'priority' && styles.activeTabText]}>
-              Priority (0)
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
+          {services.map((service) => (
+            <TouchableOpacity
+              key={service}
+              style={[styles.tabBtn, serviceFilter === service && styles.activeTabBtn]}
+              onPress={() => setServiceFilter(service)}
+            >
+              <Text style={[styles.tabText, serviceFilter === service && styles.activeTabText]}>
+                {service === 'All Services' ? `All (${windowWaiting.length})` : service}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
 
         {/* Queue Items List */}
         <FlatList
-          data={activeTab === 'all' ? windowWaiting : []}
+          data={filteredTickets}
           keyExtractor={(item) => item.number}
           showsVerticalScrollIndicator={false}
           renderItem={({ item }) => (
@@ -60,16 +57,16 @@ export default function StaffQueueListScreen() {
               <View
                 style={[
                   styles.statusBadge,
-                  windowWaiting[0]?.number === item.number ? styles.nextBadge : styles.waitingBadge,
+                  filteredTickets[0]?.number === item.number ? styles.nextBadge : styles.waitingBadge,
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
-                    windowWaiting[0]?.number === item.number ? styles.nextStatusText : styles.waitingStatusText,
+                    filteredTickets[0]?.number === item.number ? styles.nextStatusText : styles.waitingStatusText,
                   ]}
                 >
-                  {windowWaiting[0]?.number === item.number ? 'NEXT' : 'WAITING'}
+                  {filteredTickets[0]?.number === item.number ? 'NEXT' : 'WAITING'}
                 </Text>
               </View>
             </View>

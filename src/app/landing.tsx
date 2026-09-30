@@ -144,7 +144,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   portalCardHovered: {
     borderColor: colors.brandText,
     backgroundColor: colors.surfaceSubtle,
-    shadowColor: '#003366',
+    shadowColor: colors.brand,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,

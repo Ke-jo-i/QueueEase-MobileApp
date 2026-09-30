@@ -16,9 +16,11 @@ export default function StaffHistoryScreen() {
   const [windowFilter, setWindowFilter] = useState('All Windows');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const windows = ['All Windows', ...Array.from(new Set(staffHistory.map((ticket) => ticket.window)))];
   const statuses = ['All Statuses', 'COMPLETED', 'HELD', 'SKIPPED', 'NO_SHOW', 'CANCELLED'];
   const normalizedSearch = searchTerm.trim().toLowerCase();
+  const activeFilterCount = Number(dateFilter !== 'All Dates') + Number(windowFilter !== 'All Windows') + Number(statusFilter !== 'All Statuses');
   const filteredHistory = staffHistory.filter((ticket) => (
     (dateFilter === 'All Dates' || new Date(ticket.date).toDateString() === new Date().toDateString())
     && (windowFilter === 'All Windows' || ticket.window === windowFilter)
@@ -61,18 +63,13 @@ export default function StaffHistoryScreen() {
             <Text style={styles.countLabel}>shown</Text>
           </View>
         </View>
-        <View style={styles.filterPanel}>
-          <View style={styles.filterPanelHeader}>
-            <Text style={styles.filterPanelTitle}>Filter records</Text>
-            <TouchableOpacity onPress={clearFilters}>
-              <Text style={styles.clearFiltersText}>Clear filters</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Ionicons name="search-outline" size={17} color={colors.textMuted} />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search ticket number or student ID"
+              placeholder="Ticket # or ID"
+              accessibilityLabel="Search ticket number or student ID"
               placeholderTextColor={colors.textDisabled}
               value={searchTerm}
               onChangeText={setSearchTerm}
@@ -83,6 +80,26 @@ export default function StaffHistoryScreen() {
                 <Ionicons name="close-circle" size={17} color={colors.textMuted} />
               </TouchableOpacity>
             )}
+          </View>
+          <TouchableOpacity
+            style={[styles.filterTrigger, activeFilterCount > 0 && styles.filterTriggerActive]}
+            onPress={() => setFiltersOpen((open) => !open)}
+            accessibilityRole="button"
+            accessibilityLabel="Filters"
+            accessibilityState={{ expanded: filtersOpen }}
+          >
+            <Ionicons name="options-outline" size={18} color={activeFilterCount > 0 ? colors.brandText : colors.textBody} />
+            <Text style={[styles.filterTriggerText, activeFilterCount > 0 && styles.filterTriggerTextActive]}>
+              Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        {filtersOpen && <View style={styles.filterPanel}>
+          <View style={styles.filterPanelHeader}>
+            <Text style={styles.filterPanelTitle}>Filter records</Text>
+            <TouchableOpacity onPress={clearFilters}>
+              <Text style={styles.clearFiltersText}>Clear filters</Text>
+            </TouchableOpacity>
           </View>
           <Text style={styles.filterLabel}>Date</Text>
           <View style={styles.filterRow}>
@@ -108,9 +125,9 @@ export default function StaffHistoryScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>
+        </View>}
         {filteredHistory.length === 0 ? (
-          <Text style={styles.empty}>No tickets match the selected filters.</Text>
+          <Text style={styles.empty}>{staffHistory.length === 0 ? 'No queue activity yet.' : 'No tickets match the selected filters.'}</Text>
         ) : filteredHistory.map((ticket) => (
           <View key={ticket.number} style={styles.card}>
             <View style={styles.cardHeader}>
@@ -169,11 +186,16 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   countBadge: { minWidth: 58, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: colors.blueSoft },
   countText: { color: colors.brandText, fontSize: 18, fontWeight: '800' },
   countLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
+  filterTrigger: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 9, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surface },
+  filterTriggerActive: { borderColor: colors.brandText, backgroundColor: colors.blueSoft },
+  filterTriggerText: { color: colors.textBody, fontSize: 12, fontWeight: '700' },
+  filterTriggerTextActive: { color: colors.brandText },
   filterPanel: { padding: 14, borderRadius: 14, marginBottom: 18, backgroundColor: colors.surfaceSubtle, borderWidth: 1, borderColor: colors.borderSubtle },
   filterPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   filterPanelTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   clearFiltersText: { color: colors.brandText, fontSize: 11, fontWeight: '800' },
-  searchBox: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 9, paddingHorizontal: 12, marginTop: 12, backgroundColor: colors.surface },
+  searchBox: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 9, paddingHorizontal: 12, backgroundColor: colors.surface },
   searchInput: { flex: 1, color: colors.text, fontSize: 13, paddingVertical: 10 },
   filterLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '800', marginBottom: 6, marginTop: 8, textTransform: 'uppercase' },
   filterRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },

@@ -78,3 +78,39 @@ for (const role of ['staff', 'student'] as const) {
     await expect(title).toHaveCSS('color', 'rgb(0, 51, 102)');
   });
 }
+
+test('a selected palette applies across portals and survives reload', async ({ page }) => {
+  await signIn(page, 'student');
+  await page.getByRole('tab', { name: /Profile/ }).click();
+  await page.getByRole('button', { name: 'Color Theme' }).click();
+  await page.getByRole('radio', { name: 'Sage theme' }).click();
+  await expect(page.getByText('Student Profile', { exact: true })).toHaveCSS('color', 'rgb(53, 87, 66)');
+  await page.getByText('Log Out', { exact: true }).click();
+  await page.reload();
+  await expect(page.getByText('QueueEase', { exact: true })).toHaveCSS('color', 'rgb(53, 87, 66)');
+  await page.getByText('Staff Portal', { exact: true }).click();
+  await page.getByText('LOG IN AS STAFF', { exact: true }).click();
+  await page.getByText('Profile', { exact: true }).click();
+  await expect(page.getByText('Sage', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Color Theme' }).click();
+  await expect(page.getByRole('radio', { name: 'Sage theme' })).toHaveAttribute('aria-checked', 'true');
+});
+
+test('student profile photo can be saved and removed locally', async ({ page }) => {
+  await signIn(page, 'student');
+  await page.getByRole('tab', { name: /Profile/ }).click();
+  const avatar = page.getByRole('button', { name: 'Change profile photo' });
+  await avatar.click();
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByText('Choose from photos', { exact: true }).click();
+  await (await chooser).setFiles('assets/images/icon.png');
+  await expect(avatar.locator('img')).toBeVisible();
+
+  await page.getByText('Log Out', { exact: true }).click();
+  await signIn(page, 'student');
+  await page.getByRole('tab', { name: /Profile/ }).click();
+  await expect(page.getByRole('button', { name: 'Change profile photo' }).locator('img')).toBeVisible();
+  await page.getByRole('button', { name: 'Change profile photo' }).click();
+  await page.getByText('Remove photo', { exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Change profile photo' }).locator('img')).toHaveCount(0);
+});

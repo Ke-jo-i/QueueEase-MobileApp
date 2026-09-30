@@ -3,6 +3,8 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/contexts/session';
 import { DarkModeToggle } from '@/components/dark-mode-toggle';
+import { ThemePicker } from '@/components/theme-picker';
+import { ProfilePhoto } from '@/components/profile-photo';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -39,9 +41,7 @@ export default function StudentProfileScreen() {
 
         {/* Profile Card Horizontal Layout */}
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>JD</Text>
-          </View>
+          <ProfilePhoto storageId={`student:${studentId ?? 'guest'}`} initials="JD" size={56} variant="student" />
           <View style={styles.profileDetails}>
             <Text style={styles.userName}>Juan Dela Cruz</Text>
             <Text style={styles.userSubtext}>BS Information Technology • Year 3</Text>
@@ -52,6 +52,7 @@ export default function StudentProfileScreen() {
         {/* Menu Buttons Group */}
         <View style={styles.menuGroup}>
           <DarkModeToggle />
+          <ThemePicker />
           {/* Personal Information Button */}
           <Pressable
             style={({ pressed }) => [
@@ -216,20 +217,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.info,
     marginBottom: 20,
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
   },
   profileDetails: {
     flex: 1,

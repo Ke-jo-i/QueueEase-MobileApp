@@ -16,7 +16,7 @@ Expo will show options for a phone, Android emulator, iOS simulator, or web brow
 ## Try the queue flow
 
 1. Open **Student Portal** and log in with a student ID. The login screen currently accepts any ID; `2021-00123` is the demo ID when the field is left blank.
-2. On **Home**, choose a registrar service and tap **Get Queue Number**. The ticket appears on **Tickets**, and its number also appears on Home. The service determines the registrar window.
+2. On **Home**, choose a registrar service and tap **Get Queue Number**. The ticket appears on **Tickets**, and its number also appears on Home. The prototype's local service mapping determines the window.
 3. Log out, open **Staff Portal**, and log in. In **Profile**, set **Window Assignment** to the window shown on the student ticket.
 4. In **Queue**, tap **Call Next** when the window is free. Staff must tap **Mark as Done** to complete the current ticket; the app does not automatically call another one.
 5. The completed ticket appears in staff **History**. Log out and sign in to Student Portal with the same ID to see it in the student's **Ticket History** and **Alerts**. A different student ID will not show that ticket.
@@ -44,3 +44,6 @@ The automated tests cover ticket booking, cancellation, staff completion, studen
 - Tickets and staff assignments are kept in memory. They can survive switching portals on the same running app, but disappear after an app restart or browser reload and do not sync between devices.
 - Alerts reflect local ticket changes. There are no push notifications or live updates from other devices yet.
 - Service-to-window routing uses the current local mapping in `src/constants/service-windows.ts`. The final system still needs agreed registrar window rules and a shared database.
+- The six service categories follow the approved project proposal. [UM's published Records Center page](https://umindanao.edu.ph/services/records) lists credentials and request steps for its Davao campuses, but does not confirm the Tagum service menu or this prototype's window assignments. Staff should verify local requirements before treating them as official.
+- The QR image currently encodes only the ticket number. There is no staff scanner or cross-device ticket verification; both require the planned shared database. Staff still use **Call Next** to advance the queue.
+- Profile photos and appearance settings are saved on the current device only. They do not sync to other devices.

@@ -1,5 +1,5 @@
 import { AppPalette } from '@/constants/app-colors';
-import { useThemedStyles } from '@/hooks/use-app-theme';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 
 export default function RegisterScreen() {
+  const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [fullName, setFullName] = useState('');
@@ -60,7 +61,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. Juan Dela Cruz"
-                placeholderTextColor={'#9CA3AF'}
+                placeholderTextColor={colors.placeholder}
                 value={fullName}
                 onChangeText={setFullName}
               />
@@ -72,7 +73,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. 2021-00123"
-                placeholderTextColor={'#9CA3AF'}
+                placeholderTextColor={colors.placeholder}
                 value={studentId}
                 onChangeText={setStudentId}
               />
@@ -84,7 +85,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="e.g. j.delacruz@university.edu.ph"
-                placeholderTextColor={'#9CA3AF'}
+                placeholderTextColor={colors.placeholder}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={email}
@@ -98,7 +99,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor={'#9CA3AF'}
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry
                 value={password}
                 onChangeText={setPassword}
@@ -111,7 +112,7 @@ export default function RegisterScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor={'#9CA3AF'}
+                placeholderTextColor={colors.placeholder}
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}

@@ -2,63 +2,10 @@ import { AppPalette } from '@/constants/app-colors';
 import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
 import { useSession } from '@/contexts/session';
+import { registrarReminders } from '@/constants/registrar-services';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-
-const SERVICE_REMINDERS: Record<string, {
-  reminders: string[];
-  processingTime: string;
-}> = {
-  'Certificate of Enrollment': {
-    reminders: [
-      'Show valid Student ID at Window 3',
-      'Bring printed Assessment Form',
-      'Strictly no proxy allowed',
-    ],
-    processingTime: 'Est. Processing: 1-2 Working Days',
-  },
-  'Certificate of Grades': {
-    reminders: [
-      'Ensure all grades are submitted',
-      'Present clearance from previous semester',
-      'Pay fee at Cashier if requesting official copy',
-    ],
-    processingTime: 'Est. Processing: Same Day',
-  },
-  'Academic Records Request': {
-    reminders: [
-      'Submit 2x2 ID photos with white background',
-      'Clearance from Library and Accounting required',
-      'Bring valid Student ID',
-    ],
-    processingTime: 'Est. Processing: 3-5 Working Days',
-  },
-  'Enrollment Concern': {
-    reminders: [
-      'Prepare list of affected subject codes',
-      'Bring signed endorsement from Department Head',
-      'Show valid Student ID',
-    ],
-    processingTime: 'Est. Processing: Immediate upon review',
-  },
-  'Student Record Update': {
-    reminders: [
-      'Bring original and photocopy of PSA Birth Certificate',
-      'Submit formal letter request addressed to Registrar',
-      'Affidavit of Discrepancy required for major changes',
-    ],
-    processingTime: 'Est. Processing: 2-3 Working Days',
-  },
-  'Other Registrar Concern': {
-    reminders: [
-      'Prepare a clear explanation of your concern',
-      'Bring any relevant documents',
-      'Proceed to Information Window',
-    ],
-    processingTime: 'Est. Processing: Varies per request',
-  },
-};
 
 function formatTicketDate(value: string) {
   return new Date(value).toLocaleString([], {
@@ -76,7 +23,6 @@ export default function MyTicketsScreen() {
   const [cancelReason, setCancelReason] = useState('');
 
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
-  const details = SERVICE_REMINDERS[activeService] || SERVICE_REMINDERS['Certificate of Enrollment'];
 
   // Handle Ticket Cancellation Logic
   const handleConfirmCancel = () => {
@@ -188,7 +134,7 @@ export default function MyTicketsScreen() {
                 style={styles.qrCodeImage}
               />
               <Text style={styles.qrSubtext}>
-                Present this QR code when called at {studentTicket?.window.split(' - ')[0]}
+                QR preview only. Staff will call your number at {studentTicket?.window.split(' - ')[0]}.
               </Text>
             </View>
 
@@ -196,13 +142,13 @@ export default function MyTicketsScreen() {
             <View style={styles.card}>
               <Text style={styles.remindersTitle}>Important Reminders</Text>
 
-              {details.reminders.map((reminder, idx) => (
-                <Text key={idx} style={styles.reminderItem}>
+              {registrarReminders.map((reminder) => (
+                <Text key={reminder} style={styles.reminderItem}>
                   • {reminder}
                 </Text>
               ))}
 
-              <Text style={styles.processingTime}>{details.processingTime}</Text>
+              <Text style={styles.processingTime}>Staff will confirm the document release time.</Text>
             </View>
 
             {/* Cancel Queue Ticket Button */}

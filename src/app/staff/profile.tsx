@@ -3,6 +3,8 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSession } from '@/contexts/session';
 import { DarkModeToggle } from '@/components/dark-mode-toggle';
+import { ThemePicker } from '@/components/theme-picker';
+import { ProfilePhoto } from '@/components/profile-photo';
 import { useQueue } from '@/contexts/queue';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -75,9 +77,7 @@ export default function ProfileScreen() {
 
         {/* User Info Header */}
         <View style={styles.profileCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>ST</Text>
-          </View>
+          <ProfilePhoto storageId="staff" initials="ST" size={52} variant="staff" />
           <View style={styles.profileTextContainer}>
             <Text style={styles.userName}>Juan Dela Cruz</Text>
             <Text style={styles.userRole}>{assignedWindow}</Text>
@@ -87,6 +87,7 @@ export default function ProfileScreen() {
         {/* Settings List */}
         <View style={styles.settingsGroup}>
           <DarkModeToggle />
+          <ThemePicker />
           
           {/* 1. WINDOW ASSIGNMENT */}
           <TouchableOpacity
@@ -288,20 +289,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     marginBottom: 24,
-  },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.brandText,
   },
   profileTextContainer: {
     flex: 1,

@@ -28,7 +28,7 @@ export default function StaffQueueListScreen() {
           <Text style={styles.subtitle}>{windowWaiting.length} Customers Waiting · {assignedWindow}</Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
+        <ScrollView horizontal style={styles.filterScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
           {services.map((service) => (
             <TouchableOpacity
               key={service}
@@ -57,16 +57,16 @@ export default function StaffQueueListScreen() {
               <View
                 style={[
                   styles.statusBadge,
-                  filteredTickets[0]?.number === item.number ? styles.nextBadge : styles.waitingBadge,
+                  windowWaiting[0]?.number === item.number ? styles.nextBadge : styles.waitingBadge,
                 ]}
               >
                 <Text
                   style={[
                     styles.statusText,
-                    filteredTickets[0]?.number === item.number ? styles.nextStatusText : styles.waitingStatusText,
+                    windowWaiting[0]?.number === item.number ? styles.nextStatusText : styles.waitingStatusText,
                   ]}
                 >
-                  {filteredTickets[0]?.number === item.number ? 'NEXT' : 'WAITING'}
+                  {windowWaiting[0]?.number === item.number ? 'NEXT' : 'WAITING'}
                 </Text>
               </View>
             </View>
@@ -127,10 +127,15 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.textMuted,
     marginTop: 2,
   },
+  filterScroll: {
+    flexGrow: 0,
+    maxHeight: 44,
+    marginBottom: 20,
+  },
   tabContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 10,
-    marginBottom: 20,
   },
   tabBtn: {
     paddingHorizontal: 16,

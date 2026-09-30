@@ -23,6 +23,8 @@ Use a fresh app launch for each scenario. The app begins with a few demo staff t
 
 - Log out from both portals. Each logout should go straight to **Select Your Portal**. Android Back, iOS swipe-back, and browser Back should not restore a private screen.
 - On a phone with a notch or status bar, inspect Home, Tickets, Alerts, Profile, the QR ticket, and staff screens. Headers and controls should stay inside the safe area, and bottom navigation should remain reachable.
-- Toggle dark mode in each Profile screen. Check text and buttons for readability, then restart the app and confirm the appearance preference remains selected.
+- Toggle dark mode in each Profile screen, then try Classic Blue, Sage, Soft Clay, and Lavender. Check text and buttons for readability in both modes. Restart the app and confirm the selected mode and color theme remain selected.
+- In each Profile screen, open **Color Theme** and select a palette. The choices should close after selection. Choose and remove a profile photo, then restart the app to check local persistence.
+- Open the staff waiting queue at phone width. Service filters should remain short horizontal pills above the ticket list.
 
 Browser automation covers the queue and session flows, but it does not verify native gestures or physical device layout. Queue data is in memory, so restart the app only between scenarios, not during the student-to-staff handoff.

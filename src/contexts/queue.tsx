@@ -56,7 +56,7 @@ export function QueueProvider({ children }: PropsWithChildren) {
   const { studentId } = useSession();
   const [tickets, setTickets] = useState(initialTickets);
   const [nextNumber, setNextNumber] = useState(106);
-  const [assignedWindow, setAssignedWindow] = useState('Window 3 - Registrar');
+  const [assignedWindow, setAssignedWindow] = useState('Window 1 - Registrar');
 
   const studentTicket = studentId
     ? tickets.find((ticket) => ticket.ownerId === studentId && (ticket.status === 'WAITING' || ticket.status === 'SERVING')) ?? null

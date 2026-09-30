@@ -3,6 +3,7 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
+import { registrarServices } from '@/constants/registrar-services';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,15 +12,6 @@ export default function HomeScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const { studentTicket } = useQueue();
-
-  const registrarServices = [
-    'Certificate of Enrollment',
-    'Certificate of Grades',
-    'Academic Records Request',
-    'Enrollment Concern',
-    'Student Record Update',
-    'Other Registrar Concern',
-  ];
 
   const handleSelectService = (serviceName: string) => {
     router.push({

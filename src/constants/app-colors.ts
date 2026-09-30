@@ -99,4 +99,90 @@ const dark: AppPalette = {
   neutralMuted: '#475569',
 };
 
-export const AppColors = { light, dark };
+export const ThemeOptions = [
+  { id: 'classic', label: 'Classic Blue', swatch: '#003366' },
+  { id: 'sage', label: 'Sage', swatch: '#496B58' },
+  { id: 'clay', label: 'Soft Clay', swatch: '#8A5B49' },
+  { id: 'lavender', label: 'Lavender', swatch: '#705A7D' },
+] as const;
+
+export type ThemeName = (typeof ThemeOptions)[number]['id'];
+
+const sageLight: AppPalette = {
+  ...light,
+  surface: '#FFFEFA', surfaceSubtle: '#F5F8F2', surfaceMuted: '#EAF0E8', surfaceNeutral: '#FAFBF7',
+  brand: '#496B58', brandPressed: '#385641', brandText: '#355742',
+  textStrong: '#20352B', text: '#263B30', textHeading: '#294234', textBody: '#3E5145', textSecondary: '#516456',
+  textMuted: '#667769', textSubtle: '#718073', textDisabled: '#93A596', placeholder: '#91A494',
+  border: '#DCE6D9', borderStrong: '#BDCEBE', borderSubtle: '#EBF0E8',
+  blueLight: '#C4DEC5', info: '#517965', infoSurface: '#E7F1E6', blueSurface: '#E3EEE1',
+  blueSubtle: '#F0F6EC', blueMuted: '#EAF2E8', bluePale: '#EDF5E9', blueSoft: '#F1F7EF',
+  neutralFill: '#CBD8CB', neutralMuted: '#D5DED3',
+};
+
+const sageDark: AppPalette = {
+  ...dark,
+  surface: '#19251E', surfaceSubtle: '#141F19', surfaceMuted: '#2A3A2E', surfaceNeutral: '#213025',
+  brand: '#496B58', brandPressed: '#385641', brandText: '#B6D8B8',
+  textStrong: '#F2F7EF', text: '#E5EDE2', textHeading: '#EDF5E9', textBody: '#D0DFCE',
+  textSecondary: '#C1D1BE', textMuted: '#A7B9A5', textSubtle: '#A7B9A5', textDisabled: '#8EA48E',
+  placeholder: '#98AD98', border: '#3C5140',
+  borderStrong: '#57705A', borderSubtle: '#304334', blueLight: '#A7CEA9', info: '#ACD5B6',
+  infoSurface: '#294334', blueSurface: '#2A4232', blueSubtle: '#223A2B', blueMuted: '#263C2D',
+  bluePale: '#263E2C', blueSoft: '#263D2C', neutralFill: '#3B5140', neutralMuted: '#4E6551',
+};
+
+const clayLight: AppPalette = {
+  ...light,
+  surface: '#FFFDF9', surfaceSubtle: '#FAF5EF', surfaceMuted: '#F3E9DE', surfaceNeutral: '#FCF8F3',
+  brand: '#8A5B49', brandPressed: '#704736', brandText: '#754937',
+  textStrong: '#3C2B25', text: '#47342B', textHeading: '#473126', textBody: '#5A4539',
+  textSecondary: '#695449', textMuted: '#806B60', textSubtle: '#89776B', textDisabled: '#AE998B',
+  placeholder: '#AB9587', border: '#EBDCD1',
+  borderStrong: '#D4BDAC', borderSubtle: '#F2EAE1', blueLight: '#F1CCB2', info: '#9A674F',
+  infoSurface: '#F8E8DB', blueSurface: '#F4E3D6', blueSubtle: '#FCF0E7', blueMuted: '#F7EBE1',
+  bluePale: '#FAEEE3', blueSoft: '#FCF2E9', neutralFill: '#DDD0C5', neutralMuted: '#E5D8CE',
+};
+
+const clayDark: AppPalette = {
+  ...dark,
+  surface: '#2A211D', surfaceSubtle: '#211B18', surfaceMuted: '#403029', surfaceNeutral: '#332720',
+  brand: '#8A5B49', brandPressed: '#704736', brandText: '#EAC3A7',
+  textStrong: '#FFF4EB', text: '#F3E6DB', textHeading: '#F9EDE3', textBody: '#E7D3C4',
+  textSecondary: '#D7C1B1', textMuted: '#C2AA9B', textSubtle: '#C2AA9B', textDisabled: '#A98D7E',
+  placeholder: '#B1998A', border: '#594338',
+  borderStrong: '#755748', borderSubtle: '#44342B', blueLight: '#EAC2A9', info: '#E9B99C',
+  infoSurface: '#4D362A', blueSurface: '#4D372A', blueSubtle: '#3D2C25', blueMuted: '#433028',
+  bluePale: '#463026', blueSoft: '#453128', neutralFill: '#594338', neutralMuted: '#705344',
+};
+
+const lavenderLight: AppPalette = {
+  ...light,
+  surface: '#FFFCFF', surfaceSubtle: '#F8F4FA', surfaceMuted: '#EFE8F2', surfaceNeutral: '#FCF9FC',
+  brand: '#705A7D', brandPressed: '#594468', brandText: '#594365',
+  textStrong: '#332C39', text: '#3C3243', textHeading: '#3D3047', textBody: '#514357',
+  textSecondary: '#625267', textMuted: '#77687D', textSubtle: '#837387', textDisabled: '#A99AAD',
+  placeholder: '#A797AC', border: '#E8DDEB',
+  borderStrong: '#CFBDD3', borderSubtle: '#F1EAF2', blueLight: '#E3CBE8', info: '#82698D',
+  infoSurface: '#F1E5F2', blueSurface: '#EDDFEF', blueSubtle: '#F8EEF8', blueMuted: '#F3EAF4',
+  bluePale: '#F6ECF6', blueSoft: '#F9F0F9', neutralFill: '#DACDDD', neutralMuted: '#E4D8E7',
+};
+
+const lavenderDark: AppPalette = {
+  ...dark,
+  surface: '#241E29', surfaceSubtle: '#1C1821', surfaceMuted: '#382C3E', surfaceNeutral: '#2D2332',
+  brand: '#705A7D', brandPressed: '#594468', brandText: '#DFC5E5',
+  textStrong: '#FBF2FC', text: '#F0E5F2', textHeading: '#F7EBF8', textBody: '#DFCDE3',
+  textSecondary: '#D1BCD5', textMuted: '#B9A5BE', textSubtle: '#B9A5BE', textDisabled: '#9F89A5',
+  placeholder: '#AA95B0', border: '#514058',
+  borderStrong: '#6B5472', borderSubtle: '#3C3043', blueLight: '#DBBCE0', info: '#D8B5DE',
+  infoSurface: '#443049', blueSurface: '#44324B', blueSubtle: '#37283E', blueMuted: '#3A2A41',
+  bluePale: '#3C2B42', blueSoft: '#3B2A42', neutralFill: '#503F57', neutralMuted: '#66506E',
+};
+
+export const AppColors: Record<ThemeName, { light: AppPalette; dark: AppPalette }> = {
+  classic: { light, dark },
+  sage: { light: sageLight, dark: sageDark },
+  clay: { light: clayLight, dark: clayDark },
+  lavender: { light: lavenderLight, dark: lavenderDark },
+};

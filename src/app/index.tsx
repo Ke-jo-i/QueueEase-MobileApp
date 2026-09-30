@@ -165,7 +165,8 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   welcomeSubtitle: {
     fontSize: 14,
-    color: '#E0F2FE',
+    color: '#FFFFFF',
+    opacity: 0.85,
     textAlign: 'center',
     marginBottom: 60,
   },

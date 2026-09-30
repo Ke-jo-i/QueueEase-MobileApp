@@ -22,7 +22,17 @@ function RootNavigator() {
   const colors = useAppTheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={{
+      ...(colorScheme === 'dark' ? DarkTheme : DefaultTheme),
+      colors: {
+        ...(colorScheme === 'dark' ? DarkTheme.colors : DefaultTheme.colors),
+        primary: colors.brandText,
+        background: colors.surface,
+        card: colors.surface,
+        text: colors.text,
+        border: colors.border,
+      },
+    }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}>
         <Stack.Protected guard={role === null}>

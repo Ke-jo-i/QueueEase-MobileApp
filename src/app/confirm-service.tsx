@@ -5,21 +5,22 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
 import { useSession } from '@/contexts/session';
 import { getServiceWindow } from '@/constants/service-windows';
-import { registrarReminders } from '@/constants/registrar-services';
+import { registrarReminders, serviceDescriptions } from '@/constants/registrar-services';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ConfirmServiceScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { bookTicket } = useQueue();
+  const { bookTicket, studentTicket } = useQueue();
   const { studentId } = useSession();
   const params = useLocalSearchParams();
   const serviceTitle = (params.serviceName as string) || 'Certificate of Enrollment';
 
   const handleGetQueue = () => {
-    if (!bookTicket(serviceTitle, getServiceWindow(serviceTitle))) {
+    if (studentTicket) { router.navigate('/tickets'); return; }
+    if (!bookTicket(serviceTitle)) {
       Alert.alert('Active ticket', 'Cancel your current ticket before getting another one.');
       return;
     }
@@ -28,7 +29,7 @@ export default function ConfirmServiceScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Back Button & Title */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.brandText} />
@@ -40,6 +41,7 @@ export default function ConfirmServiceScreen() {
         {/* Selected Service Detail Card */}
         <View style={styles.serviceDetailCard}>
           <Text style={styles.serviceNameTitle}>{serviceTitle}</Text>
+          <Text style={styles.metaText}>{serviceDescriptions[serviceTitle]}</Text>
           <Text style={styles.metaText}>Queue window: {getServiceWindow(serviceTitle)}</Text>
         </View>
 
@@ -59,10 +61,10 @@ export default function ConfirmServiceScreen() {
         {/* Get Queue Number Button */}
         <View style={styles.footer}>
           <TouchableOpacity style={styles.confirmButton} onPress={handleGetQueue} activeOpacity={0.8}>
-            <Text style={styles.confirmButtonText}>Get Queue Number</Text>
+            <Text style={styles.confirmButtonText}>{studentTicket ? 'View active ticket' : 'Get Queue Number'}</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -73,7 +75,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
   },
@@ -142,6 +144,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   footer: {
     marginTop: 'auto',
+    paddingTop: 20,
     paddingBottom: 24,
   },
   confirmButton: {

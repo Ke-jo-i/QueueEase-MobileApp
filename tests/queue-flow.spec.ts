@@ -67,7 +67,7 @@ test('student ticket status agrees across Home, Tickets, and Alerts', async ({ p
   await page.getByRole('tab', { name: /Home/ }).click();
   await expect(page.getByTestId('student-home').getByText('R - 106', { exact: true }).filter({ visible: true }).first()).toBeVisible();
   await page.getByRole('tab', { name: /Alerts/ }).click();
-  await expect(page.getByTestId('student-alerts').getByText(/R - 106 for Certificate of Grades is waiting in line/).filter({ visible: true }).first()).toBeVisible();
+  await expect(page.getByTestId('student-alerts').getByText(/R - 106 for Certificate of Grades joined the waiting line/).filter({ visible: true }).first()).toBeVisible();
   await page.getByRole('tab', { name: /Tickets/ }).click();
   await page.getByRole('button', { name: 'View QR Ticket' }).click();
   await page.getByText('Cancel Queue Ticket', { exact: true }).click();

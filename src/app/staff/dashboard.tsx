@@ -3,9 +3,10 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
+import { registrarWindows } from '@/constants/service-windows';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 function showMessage(title: string, message: string) {
   if (Platform.OS === 'web') globalThis.alert(`${title}\n${message}`);
@@ -86,6 +87,7 @@ export default function StaffDashboardScreen() {
     setReason('');
     setSelectedReason('');
     setReasonMenuOpen(false);
+    if (nextAction === 'transfer') setTransferWindow(registrarWindows.find((window) => window !== assignedWindow)!);
     setAction(nextAction);
   };
 
@@ -149,7 +151,7 @@ export default function StaffDashboardScreen() {
 
   return (
     <SafeAreaView style={styles.container} testID="staff-dashboard">
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.content}>
         {/* Header Title */}
         <View style={styles.header}>
           <Text style={styles.headerSubtitle}>{assignedWindow}</Text>
@@ -217,8 +219,9 @@ export default function StaffDashboardScreen() {
           <Text style={styles.queueListBtnText}>
             View Waiting Queue List ({windowWaiting.length})
           </Text>
+          {windowWaiting[0] && <Text style={styles.nextTicket}>Up next: {windowWaiting[0].number} · {windowWaiting[0].service}</Text>}
         </TouchableOpacity>
-      </View>
+      </ScrollView>
 
       <Modal visible={action !== null} transparent animationType="fade" onRequestClose={() => setAction(null)}>
         <View style={styles.modalOverlay}>
@@ -234,7 +237,7 @@ export default function StaffDashboardScreen() {
             </View>
             {action === 'transfer' ? (
               <View style={styles.transferOptions}>
-                {['Window 1 - Registrar', 'Window 2 - Registrar', 'Window 3 - Registrar', 'Window 4 - Registrar'].map((window) => (
+                {registrarWindows.filter((window) => window !== assignedWindow).map((window) => (
                   <TouchableOpacity key={window} style={[styles.transferOption, transferWindow === window && styles.transferOptionSelected]} onPress={() => setTransferWindow(window)}>
                     <Text style={styles.transferOptionText}>{window}</Text>
                   </TouchableOpacity>
@@ -338,10 +341,12 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     backgroundColor: colors.surface,
   },
   content: {
-    flex: 1,
+    flexGrow: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
+    paddingBottom: 24,
   },
+  nextTicket: { color: colors.textMuted, fontSize: 11, lineHeight: 17, marginTop: 5, paddingHorizontal: 12, textAlign: 'center' },
   header: {
     alignItems: 'center',
     marginBottom: 24,

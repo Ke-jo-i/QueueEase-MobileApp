@@ -1,3 +1,5 @@
+export const registrarWindows = ['Window 1 - Registrar', 'Window 2 - Registrar', 'Window 3 - Registrar', 'Window 4 - Registrar'];
+
 const serviceWindows: Record<string, string> = {
   'Certificate of Enrollment': 'Window 3 - Registrar',
   'Certificate of Grades': 'Window 2 - Registrar',

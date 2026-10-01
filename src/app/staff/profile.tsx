@@ -6,6 +6,7 @@ import { DarkModeToggle } from '@/components/dark-mode-toggle';
 import { ThemePicker } from '@/components/theme-picker';
 import { ProfilePhoto } from '@/components/profile-photo';
 import { useQueue } from '@/contexts/queue';
+import { registrarWindows } from '@/constants/service-windows';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,14 +40,6 @@ export default function ProfileScreen() {
 
   // 3. System Notifications Toggle
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-
-  // Registrar Windows List
-  const registrarWindows = [
-    'Window 1 - Registrar',
-    'Window 2 - Registrar',
-    'Window 3 - Registrar',
-    'Window 4 - Registrar',
-  ];
 
   // Handle Password Update
   const handleChangePassword = () => {

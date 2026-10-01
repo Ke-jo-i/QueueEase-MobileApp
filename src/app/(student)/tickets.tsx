@@ -3,6 +3,8 @@ import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
 import { useSession } from '@/contexts/session';
 import { registrarReminders } from '@/constants/registrar-services';
+import { ticketStatusLabels } from '@/constants/queue-labels';
+import { TicketActivity } from '@/components/ticket-activity';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -21,6 +23,7 @@ export default function MyTicketsScreen() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
 
@@ -45,19 +48,20 @@ export default function MyTicketsScreen() {
         {/* NOW IN QUEUE Section (Ise-show lamang kapag may active ticket) */}
         {studentTicket && (
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>NOW IN QUEUE</Text>
+            <Text style={styles.sectionLabel}>{studentTicket.status === 'HELD' ? 'ON HOLD' : 'NOW IN QUEUE'}</Text>
 
             {/* Active Ticket Card */}
             <View style={styles.activeCard}>
               <View style={styles.activeHeader}>
                 <Text style={styles.activeTicketNumber}>{studentTicket.number}</Text>
                 <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>{studentTicket.status === 'SERVING' ? 'SERVING' : 'ACTIVE'}</Text>
+                  <Text style={styles.activeBadgeText}>{studentTicket.status === 'HELD' ? 'HELD' : studentTicket.status === 'SERVING' ? 'SERVING' : 'ACTIVE'}</Text>
                 </View>
               </View>
 
               <Text style={styles.activeServiceName}>{activeService}</Text>
               <Text style={styles.activeWindowText}>{studentTicket.window}</Text>
+              {studentTicket.status === 'HELD' && <Text style={styles.activeWindowText}>{studentTicket.reason} · Speak with staff when ready.</Text>}
 
               {/* View QR Ticket Action */}
               <Pressable
@@ -81,7 +85,7 @@ export default function MyTicketsScreen() {
 
           {studentHistory.length === 0 && <Text style={styles.historyDate}>No past tickets yet.</Text>}
           {studentHistory.map((ticket) => (
-            <View key={ticket.number} style={styles.historyCard}>
+            <View key={ticket.id} style={styles.historyCard}>
               <View style={styles.historyHeader}>
                 <Text style={styles.historyTicketNumber}>{ticket.number}</Text>
                 <View style={ticket.status === 'COMPLETED' ? styles.completedBadge : styles.cancelledBadge}>
@@ -92,6 +96,10 @@ export default function MyTicketsScreen() {
               </View>
               <Text style={styles.historyServiceName}>{ticket.service}</Text>
               <Text style={styles.historyDate}>{formatTicketDate(ticket.date)}</Text>
+              <TouchableOpacity style={styles.activityButton} accessibilityRole="button" accessibilityLabel={`Activity for ${ticket.number}`} accessibilityState={{ expanded: expandedHistory === ticket.id }} onPress={() => setExpandedHistory(expandedHistory === ticket.id ? null : ticket.id)}>
+                <Text style={styles.activityButtonText}>{expandedHistory === ticket.id ? 'Hide activity' : 'View activity'}</Text>
+              </TouchableOpacity>
+              {expandedHistory === ticket.id && <TicketActivity ticket={ticket} />}
             </View>
           ))}
         </View>
@@ -120,7 +128,7 @@ export default function MyTicketsScreen() {
             <View style={styles.card}>
               <Text style={styles.ticketNumber}>{studentTicket?.number}</Text>
               <Text style={styles.statusLabel}>
-                Status: <Text style={styles.statusValue}>{studentTicket?.status === 'SERVING' ? 'Now Serving' : 'Waiting in Line'}</Text>
+                Status: <Text style={styles.statusValue}>{studentTicket ? ticketStatusLabels[studentTicket.status] : ''}</Text>
               </Text>
               <Text style={styles.windowText}>{studentTicket?.window}</Text>
             </View>
@@ -213,6 +221,8 @@ export default function MyTicketsScreen() {
 }
 
 const createStyles = (colors: AppPalette) => StyleSheet.create({
+  activityButton: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.surfaceMuted, marginTop: 12 },
+  activityButtonText: { color: colors.brandText, fontSize: 12, fontWeight: '700' },
   container: {
     flex: 1,
     backgroundColor: colors.surface,

@@ -3,7 +3,8 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
-import { registrarServices } from '@/constants/registrar-services';
+import { registrarServices, serviceDescriptions } from '@/constants/registrar-services';
+import { ticketStatusLabels } from '@/constants/queue-labels';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -11,7 +12,7 @@ export default function HomeScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { studentTicket } = useQueue();
+  const { studentTicket, studentProgress } = useQueue();
 
   const handleSelectService = (serviceName: string) => {
     router.push({
@@ -25,7 +26,10 @@ export default function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.brandTitle}>QueueEase</Text>
+          <View>
+            <Text style={styles.brandTitle}>QueueEase</Text>
+            <Text style={styles.campusLabel}>Registrar · UM Tagum</Text>
+          </View>
           <TouchableOpacity style={styles.profileIconBtn} onPress={() => router.push('/profile')}>
             <Ionicons name="person-outline" size={22} color={colors.brandText} />
           </TouchableOpacity>
@@ -36,9 +40,22 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>Good day!</Text>
 
           <View style={styles.queueBanner}>
-            <Text style={styles.queueBannerLabel}>Current Queue</Text>
+            <Text style={styles.queueBannerLabel}>{studentTicket ? ticketStatusLabels[studentTicket.status] : 'Ready when you are'}</Text>
             <Text style={styles.queueBannerTitle}>{studentTicket ? studentTicket.number : 'No ticket yet'}</Text>
             {studentTicket && <Text style={styles.queueBannerSub}>{studentTicket.service}</Text>}
+            {studentTicket && <>
+              <View style={styles.progressRow}>
+                <Text style={styles.progressText}>{studentTicket.window.replace(' - Registrar', '')}</Text>
+                <Text style={styles.progressText}>{studentProgress?.peopleAhead !== null && studentProgress?.peopleAhead !== undefined
+                  ? `${studentProgress.peopleAhead} ${studentProgress.peopleAhead === 1 ? 'person' : 'people'} ahead`
+                  : studentTicket.status === 'HELD' ? 'Check staff instructions' : 'Please proceed to the window'}</Text>
+              </View>
+              <TouchableOpacity style={styles.progressButton} accessibilityRole="button" onPress={() => router.push('/live-status')}>
+                <Text style={styles.progressButtonText}>View queue progress</Text>
+                <Ionicons name="arrow-forward" size={16} color={colors.brandText} />
+              </TouchableOpacity>
+            </>}
+            {!studentTicket && <Text style={styles.queueBannerSub}>Choose a service below to join the queue.</Text>}
           </View>
         </View>
 
@@ -46,9 +63,11 @@ export default function HomeScreen() {
         <View style={styles.servicesSection}>
           <Text style={styles.sectionTitle}>Registrar Services</Text>
 
-          {registrarServices.map((service, index) => (
+          {registrarServices.map((service) => (
             <Pressable
-              key={index}
+              key={service}
+              accessibilityRole="button"
+              accessibilityLabel={service}
               onPress={() => handleSelectService(service)}
               style={({ hovered, pressed }) => [
                 styles.serviceCard,
@@ -56,8 +75,8 @@ export default function HomeScreen() {
                 pressed && styles.serviceCardPressed, // Kulay kapag talagang pino-press/kiniclick
               ]}
             >
-              {({ hovered }) => (
-                <Text
+              {({ hovered }) => (<>
+                <View style={styles.serviceInfo}><Text
                   style={[
                     styles.serviceName,
                     hovered && styles.serviceNameHovered,
@@ -65,7 +84,9 @@ export default function HomeScreen() {
                 >
                   {service}
                 </Text>
-              )}
+                <Text style={styles.serviceDescription}>{serviceDescriptions[service]}</Text></View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </>)}
             </Pressable>
           ))}
         </View>
@@ -95,6 +116,13 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontWeight: 'bold',
     color: colors.brandText,
   },
+  campusLabel: { fontSize: 12, color: colors.textMuted, marginTop: 3 },
+  progressRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
+  progressText: { fontSize: 12, color: colors.brandText, fontWeight: '700' },
+  progressButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.border, marginTop: 14, paddingTop: 14, minHeight: 44 },
+  progressButtonText: { color: colors.brandText, fontSize: 13, fontWeight: '700' },
+  serviceInfo: { flex: 1 },
+  serviceDescription: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 5 },
   profileIconBtn: {
     width: 40,
     height: 40,
@@ -151,8 +179,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 16,
     marginBottom: 12,
-    justifyContent: 'center',
-    alignItems: 'stretch',
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center',
     cursor: 'pointer',
   },
 

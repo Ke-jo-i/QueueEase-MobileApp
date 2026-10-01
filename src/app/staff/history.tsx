@@ -1,6 +1,7 @@
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
+import { TicketActivity } from '@/components/ticket-activity';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ export default function StaffHistoryScreen() {
   const [statusFilter, setStatusFilter] = useState('All Statuses');
   const [searchTerm, setSearchTerm] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
   const windows = ['All Windows', ...Array.from(new Set(staffHistory.map((ticket) => ticket.window)))];
   const statuses = ['All Statuses', 'COMPLETED', 'HELD', 'SKIPPED', 'NO_SHOW', 'CANCELLED'];
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -150,6 +152,10 @@ export default function StaffHistoryScreen() {
               </View>
             </View>
             {ticket.reason && <Text style={styles.reason}>{ticket.reason}</Text>}
+            <TouchableOpacity style={styles.activityButton} accessibilityRole="button" accessibilityLabel={`Activity for ${ticket.number}`} accessibilityState={{ expanded: expandedHistory === ticket.id }} onPress={() => setExpandedHistory(expandedHistory === ticket.id ? null : ticket.id)}>
+              <Text style={styles.activityButtonText}>{expandedHistory === ticket.id ? 'Hide activity' : 'View activity'}</Text>
+            </TouchableOpacity>
+            {expandedHistory === ticket.id && <TicketActivity ticket={ticket} />}
             {ticket.status !== 'COMPLETED' && (
               <TouchableOpacity style={styles.reopenButton} onPress={() => reopenTicket(ticket.number)}>
                 <Ionicons name="refresh-outline" size={16} color={colors.warningStrong} />
@@ -178,6 +184,8 @@ export default function StaffHistoryScreen() {
 }
 
 const createStyles = (colors: AppPalette) => StyleSheet.create({
+  activityButton: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: colors.surfaceMuted, borderRadius: 8, marginTop: 12 },
+  activityButtonText: { color: colors.brandText, fontSize: 12, fontWeight: '700' },
   container: { flex: 1, backgroundColor: colors.surface },
   content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
   pageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },

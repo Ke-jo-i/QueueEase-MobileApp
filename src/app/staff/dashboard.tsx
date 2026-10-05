@@ -1,12 +1,15 @@
+import { StaffNav } from '@/components/staff-nav';
+import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
 import { registrarWindows } from '@/constants/service-windows';
+import { ActionButton, Notice } from '@/components/form';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 function showMessage(title: string, message: string) {
   if (Platform.OS === 'web') globalThis.alert(`${title}\n${message}`);
@@ -23,6 +26,7 @@ export default function StaffDashboardScreen() {
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
   const [action, setAction] = useState<'hold' | 'skip' | 'noShow' | 'transfer' | null>(null);
+  const [actionTicketId, setActionTicketId] = useState('');
   const [reason, setReason] = useState('');
   const [selectedReason, setSelectedReason] = useState('');
   const [reasonMenuOpen, setReasonMenuOpen] = useState(false);
@@ -39,11 +43,13 @@ export default function StaffDashboardScreen() {
     skipCurrent,
     noShowCurrent,
     transferCurrent,
+    busy,
+    connected,
   } = useQueue();
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
 
   // Handler para sa Call Next
-  const handleCallNext = () => {
+  const handleCallNext = async () => {
     if (currentServing) {
       showMessage('Finish Current Ticket', 'Mark the current ticket as done before calling the next one.');
       return;
@@ -56,17 +62,13 @@ export default function StaffDashboardScreen() {
       return;
     }
 
-    const nextTicket = callNext();
+    const nextTicket = await callNext();
     if (!nextTicket) return;
 
-    showMessage(
-      'Calling Next Ticket',
-      `Now serving Ticket ${nextTicket.number} for ${nextTicket.service}.`
-    );
   };
 
   // Handler para sa Recall
-  const handleRecall = () => {
+  const handleRecall = async () => {
     if (!currentServing) {
       showMessage(
         'No Active Ticket',
@@ -75,8 +77,7 @@ export default function StaffDashboardScreen() {
       return;
     }
 
-    recallCurrent();
-    showMessage('Ticket Recalled', `Re-calling Ticket ${currentServing.number} for ${currentServing.service}.`);
+    if (!await recallCurrent()) return;
   };
 
   const openAction = (nextAction: 'hold' | 'skip' | 'noShow' | 'transfer') => {
@@ -85,26 +86,26 @@ export default function StaffDashboardScreen() {
       return;
     }
     setReason('');
+    setActionTicketId(currentServing.id);
     setSelectedReason('');
     setReasonMenuOpen(false);
     if (nextAction === 'transfer') setTransferWindow(registrarWindows.find((window) => window !== assignedWindow)!);
     setAction(nextAction);
   };
 
-  const submitAction = () => {
-    if (!currentServing) return;
+  const submitAction = async () => {
+    if (!currentServing || currentServing.id !== actionTicketId) return;
     if (action === 'transfer') {
-      if (transferCurrent(transferWindow)) showMessage('Ticket Transferred', `${currentServing.number} is waiting at ${transferWindow}.`);
+      if (!await transferCurrent(transferWindow)) return;
     } else if (action === 'hold' || action === 'skip') {
       const actionReason = selectedReason === 'Other' ? reason.trim() : selectedReason;
       if (!actionReason) {
         showMessage('Reason Required', 'Choose a reason before continuing.');
         return;
       }
-      if (action === 'hold') holdCurrent(actionReason);
-      else skipCurrent(actionReason);
+      if (action === 'hold' ? !await holdCurrent(actionReason) : !await skipCurrent(actionReason)) return;
     } else if (action === 'noShow') {
-      noShowCurrent('Student did not respond to call');
+      if (!await noShowCurrent('Student did not respond to call')) return;
     }
     setAction(null);
     setReason('');
@@ -112,11 +113,8 @@ export default function StaffDashboardScreen() {
     setReasonMenuOpen(false);
   };
 
-  const hasValidReason = action === 'hold' || action === 'skip'
-    ? !!selectedReason && (selectedReason !== 'Other' || !!reason.trim())
-    : action === 'noShow'
-      ? true
-      : true;
+  const hasValidReason = currentServing?.id === actionTicketId && (!(action === 'hold' || action === 'skip')
+    || (!!selectedReason && (selectedReason !== 'Other' || !!reason.trim())));
 
   // Handler para sa Mark as Done
   const handleMarkAsDone = () => {
@@ -150,12 +148,14 @@ export default function StaffDashboardScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} testID="staff-dashboard">
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="staff-dashboard">
       <ScrollView contentContainerStyle={styles.content}>
         {/* Header Title */}
         <View style={styles.header}>
-          <Text style={styles.headerSubtitle}>{assignedWindow}</Text>
+          <Text style={styles.headerSubtitle}>{assignedWindow || 'Choose an available window in Profile'}</Text>
         </View>
+        {!assignedWindow && <Notice text="All windows may already be assigned. Ask the administrator to review staff assignments." />}
+        {currentServing && <View style={{ marginBottom: 14 }}><ActionButton label={currentServing.events.slice(currentServing.events.map((event) => event.type).lastIndexOf('CALLED')).some((event) => event.type === 'CHECKED_IN') ? 'Arrival confirmed' : 'Scan / verify ticket'} disabled={busy || !connected} secondary onPress={() => router.push('/staff/scan')} /></View>}
 
         {/* Currently Serving Display Box */}
         <View style={styles.servingCard}>
@@ -171,7 +171,8 @@ export default function StaffDashboardScreen() {
         {/* Action Buttons */}
         <View style={styles.actionContainer}>
           <TouchableOpacity
-            style={styles.callNextBtn}
+            disabled={busy || !connected || !!currentServing || windowWaiting.length === 0 || !assignedWindow}
+            style={[styles.callNextBtn, (busy || !connected || !!currentServing || windowWaiting.length === 0) && { opacity: 0.45 }]}
             activeOpacity={0.8}
             onPress={handleCallNext}
           >
@@ -179,14 +180,15 @@ export default function StaffDashboardScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.recallBtn}
+            disabled={busy || !connected || !currentServing}
+            style={[styles.recallBtn, (busy || !connected || !currentServing) && { opacity: 0.45 }]}
             activeOpacity={0.8}
             onPress={handleRecall}
           >
             <Text style={styles.recallBtnText}>RECALL</Text>
           </TouchableOpacity>
 
-          <View style={styles.secondaryActionRow}>
+          <View pointerEvents={busy || !connected || !currentServing ? 'none' : 'auto'} style={[styles.secondaryActionRow, (busy || !connected || !currentServing) && { opacity: 0.45 }]}>
             <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => openAction('hold')}>
               <Text style={styles.secondaryActionText}>HOLD</Text>
             </TouchableOpacity>
@@ -202,7 +204,8 @@ export default function StaffDashboardScreen() {
           </View>
 
           <TouchableOpacity
-            style={styles.doneBtn}
+            disabled={busy || !connected || !currentServing}
+            style={[styles.doneBtn, (busy || !connected || !currentServing) && { opacity: 0.45 }]}
             activeOpacity={0.8}
             onPress={handleMarkAsDone}
           >
@@ -226,6 +229,7 @@ export default function StaffDashboardScreen() {
       <Modal visible={action !== null} transparent animationType="fade" onRequestClose={() => setAction(null)}>
         <View style={styles.modalOverlay}>
           {action && <View style={styles.modalCard}>
+            {currentServing?.id !== actionTicketId && <Notice text="This ticket changed while the dialog was open. Close it and review the current queue before taking another action." error />}
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
                 <Text style={styles.modalEyebrow}>TICKET {currentServing?.number}</Text>
@@ -300,7 +304,7 @@ export default function StaffDashboardScreen() {
               <TouchableOpacity style={styles.modalCancelButton} onPress={() => setAction(null)}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalConfirmButton, !hasValidReason && styles.modalConfirmDisabled]} onPress={submitAction} disabled={!hasValidReason}>
+              <TouchableOpacity style={[styles.modalConfirmButton, (!hasValidReason || busy) && styles.modalConfirmDisabled]} onPress={submitAction} disabled={!hasValidReason || busy}>
                 <Text style={styles.modalConfirmText}>Confirm</Text>
               </TouchableOpacity>
             </View>
@@ -309,28 +313,7 @@ export default function StaffDashboardScreen() {
       </Modal>
 
       {/* Standardized Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="list-outline" size={22} color={colors.brandText} />
-          <Text style={[styles.navLabel, styles.activeNavLabel]}>Queue</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.replace('/staff/history')}
-        >
-          <Ionicons name="time-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>History</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.replace('/staff/profile')}
-        >
-          <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <StaffNav active="Queue" />
     </SafeAreaView>
   );
 }
@@ -357,8 +340,11 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     marginTop: 2,
   },
   servingCard: {
-    backgroundColor: colors.neutralMuted,
-    borderRadius: 16,
+    backgroundColor: colors.infoSurface,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 18,
     paddingVertical: 28,
     alignItems: 'center',
     marginBottom: 24,
@@ -366,8 +352,8 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   servingLabel: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.successStrong,
-    letterSpacing: 0.5,
+    color: colors.textMuted,
+    letterSpacing: 1.2,
     marginBottom: 8,
   },
   ticketNumber: {
@@ -380,6 +366,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: colors.textSecondary,
+    textAlign: 'center',
   },
   actionContainer: {
     gap: 12,
@@ -418,26 +405,28 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     textAlign: 'center',
   },
   recallBtn: {
-    backgroundColor: colors.warningSoft,
+    backgroundColor: colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   recallBtnText: {
-    color: colors.warningStrong,
+    color: colors.brandText,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,
     textAlign: 'center',
   },
   doneBtn: {
-    backgroundColor: colors.successSurface,
+    backgroundColor: colors.brand,
     borderRadius: 10,
     paddingVertical: 14,
     alignItems: 'center',
   },
   doneBtnText: {
-    color: colors.successText,
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.5,

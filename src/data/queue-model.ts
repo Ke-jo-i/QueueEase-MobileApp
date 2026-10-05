@@ -2,7 +2,7 @@ import { registrarServices } from '../constants/registrar-services';
 import { getServiceWindow, registrarWindows } from '../constants/service-windows';
 
 export type TicketStatus = 'WAITING' | 'SERVING' | 'HELD' | 'COMPLETED' | 'CANCELLED' | 'SKIPPED' | 'NO_SHOW';
-export type TicketEventType = 'CREATED' | 'CALLED' | 'RECALLED' | 'TRANSFERRED' | 'REOPENED' | Exclude<TicketStatus, 'WAITING' | 'SERVING'>;
+export type TicketEventType = 'CREATED' | 'CALLED' | 'RECALLED' | 'CHECKED_IN' | 'TRANSFERRED' | 'REOPENED' | Exclude<TicketStatus, 'WAITING' | 'SERVING'>;
 export type TicketEvent = { id: string; type: TicketEventType; at: string; window: string; reason?: string };
 export type Ticket = {
   id: string;
@@ -25,7 +25,7 @@ export type QueueCommand =
   | { type: 'CANCEL'; ownerId: string; reason: string }
   | { type: 'ASSIGN'; window: string }
   | { type: 'CALL_NEXT'; window: string }
-  | { type: 'ACT'; window: string; action: 'RECALLED' | 'COMPLETED' | 'HELD' | 'SKIPPED' | 'NO_SHOW'; reason?: string }
+  | { type: 'ACT'; window: string; action: 'RECALLED' | 'CHECKED_IN' | 'COMPLETED' | 'HELD' | 'SKIPPED' | 'NO_SHOW'; reason?: string }
   | { type: 'TRANSFER'; window: string; targetWindow: string }
   | { type: 'REOPEN'; number: string };
 export type QueueResult = { ok: true; state: QueueSnapshot; ticket?: Ticket } | { ok: false; message: string };
@@ -132,7 +132,8 @@ export function applyQueueCommand(state: QueueSnapshot, command: QueueCommand, a
       requeue = true;
     } else {
       type = command.action;
-      status = command.action === 'RECALLED' ? 'SERVING' : command.action;
+      status = command.action === 'RECALLED' || command.action === 'CHECKED_IN' ? 'SERVING' : command.action;
+      if (command.action === 'CHECKED_IN' && ticket.events.slice(ticket.events.map((event) => event.type).lastIndexOf('CALLED')).some((event) => event.type === 'CHECKED_IN')) return reject('Arrival is already confirmed at this window.');
       reason = command.reason?.trim() || undefined;
       if (['HELD', 'SKIPPED', 'NO_SHOW'].includes(status) && !reason) return reject('Please provide a reason.');
     }
@@ -150,9 +151,9 @@ export function applyQueueCommand(state: QueueSnapshot, command: QueueCommand, a
 }
 
 const statuses: TicketStatus[] = ['WAITING', 'SERVING', 'HELD', 'COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'];
-const eventTypes: TicketEventType[] = ['CREATED', 'CALLED', 'RECALLED', 'TRANSFERRED', 'REOPENED', 'HELD', 'COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'];
+const eventTypes: TicketEventType[] = ['CREATED', 'CALLED', 'RECALLED', 'CHECKED_IN', 'TRANSFERRED', 'REOPENED', 'HELD', 'COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'];
 const eventStatus: Record<TicketEventType, TicketStatus> = {
-  CREATED: 'WAITING', CALLED: 'SERVING', RECALLED: 'SERVING', TRANSFERRED: 'WAITING', REOPENED: 'WAITING',
+  CREATED: 'WAITING', CALLED: 'SERVING', RECALLED: 'SERVING', CHECKED_IN: 'SERVING', TRANSFERRED: 'WAITING', REOPENED: 'WAITING',
   HELD: 'HELD', COMPLETED: 'COMPLETED', CANCELLED: 'CANCELLED', SKIPPED: 'SKIPPED', NO_SHOW: 'NO_SHOW',
 };
 function record(value: unknown): value is Record<string, unknown> { return typeof value === 'object' && value !== null; }

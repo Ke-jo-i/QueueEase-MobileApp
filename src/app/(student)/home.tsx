@@ -1,18 +1,22 @@
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
-import { registrarServices, serviceDescriptions } from '@/constants/registrar-services';
+import { serviceDescriptions } from '@/constants/registrar-services';
+import { Notice } from '@/components/form';
+import { useSession } from '@/contexts/session';
 import { ticketStatusLabels } from '@/constants/queue-labels';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function HomeScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { studentTicket, studentProgress } = useQueue();
+  const { studentTicket, studentProgress, services, acceptingTickets, ready, connected } = useQueue();
+  const { user } = useSession();
 
   const handleSelectService = (serviceName: string) => {
     router.push({
@@ -37,11 +41,11 @@ export default function HomeScreen() {
 
         {/* Greeting & Active Queue Banner */}
         <View style={styles.welcomeSection}>
-          <Text style={styles.greeting}>Good day!</Text>
+          <Text style={styles.greeting}>Good day, {user?.name.split(' ')[0]}.</Text>
 
-          <View style={styles.queueBanner}>
-            <Text style={styles.queueBannerLabel}>{studentTicket ? ticketStatusLabels[studentTicket.status] : 'Ready when you are'}</Text>
-            <Text style={styles.queueBannerTitle}>{studentTicket ? studentTicket.number : 'No ticket yet'}</Text>
+          <Reveal style={styles.queueBanner}>
+            <Text style={styles.queueBannerLabel}>{!ready ? 'Connecting' : studentTicket ? ticketStatusLabels[studentTicket.status] : 'Ready when you are'}</Text>
+            <Text style={styles.queueBannerTitle}>{!ready ? 'Loading your queue…' : studentTicket ? studentTicket.number : 'No ticket yet'}</Text>
             {studentTicket && <Text style={styles.queueBannerSub}>{studentTicket.service}</Text>}
             {studentTicket && <>
               <View style={styles.progressRow}>
@@ -56,21 +60,24 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </>}
             {!studentTicket && <Text style={styles.queueBannerSub}>Choose a service below to join the queue.</Text>}
-          </View>
+          </Reveal>
         </View>
 
         {/* All Registrar Services List with Hover Effect */}
         <View style={styles.servicesSection}>
           <Text style={styles.sectionTitle}>Registrar Services</Text>
 
-          {registrarServices.map((service) => (
+          {ready && !acceptingTickets && <Notice text="New tickets are paused. Existing tickets remain in the queue. Please check again later." />}
+          {services.map(({ name: service, enabled }) => (
             <Pressable
               key={service}
               accessibilityRole="button"
               accessibilityLabel={service}
+              disabled={!connected || !enabled || !acceptingTickets}
               onPress={() => handleSelectService(service)}
               style={({ hovered, pressed }) => [
                 styles.serviceCard,
+                (!enabled || !acceptingTickets) && { opacity: 0.45 },
                 hovered && styles.serviceCardHovered, // Kulay kapag itinaas lang ang mouse cursor
                 pressed && styles.serviceCardPressed, // Kulay kapag talagang pino-press/kiniclick
               ]}
@@ -84,7 +91,7 @@ export default function HomeScreen() {
                 >
                   {service}
                 </Text>
-                <Text style={styles.serviceDescription}>{serviceDescriptions[service]}</Text></View>
+                <Text style={styles.serviceDescription}>{enabled ? serviceDescriptions[service] : 'Temporarily unavailable'}</Text></View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </>)}
             </Pressable>

@@ -5,12 +5,14 @@ import { SessionProvider, useSession } from '@/contexts/session';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { QueueProvider } from '@/contexts/queue';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useReducedMotion } from 'react-native-reanimated';
+import { TurnAlertsProvider } from '@/contexts/turn-alerts';
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <AppearanceProvider>
-        <SessionProvider><QueueProvider><RootNavigator /></QueueProvider></SessionProvider>
+        <SessionProvider><TurnAlertsProvider><QueueProvider><RootNavigator /></QueueProvider></TurnAlertsProvider></SessionProvider>
       </AppearanceProvider>
     </SafeAreaProvider>
   );
@@ -20,6 +22,7 @@ function RootNavigator() {
   const { role } = useSession();
   const { colorScheme } = useAppearance();
   const colors = useAppTheme();
+  const reducedMotion = useReducedMotion();
 
   return (
     <ThemeProvider value={{
@@ -34,16 +37,16 @@ function RootNavigator() {
       },
     }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.surface } }}>
+      <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? 'none' : 'fade_from_bottom', animationDuration: 220, contentStyle: { backgroundColor: colors.surface } }}>
         <Stack.Protected guard={role === null}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
           <Stack.Screen name="register" />
           <Stack.Screen name="forgot-password" />
           <Stack.Screen name="staff/login" />
-          <Stack.Screen name="explore" />
         </Stack.Protected>
         <Stack.Screen name="landing" />
+        <Stack.Protected guard={role === 'admin'}><Stack.Screen name="admin" /></Stack.Protected>
         <Stack.Protected guard={role === 'student'}>
           <Stack.Screen name="(student)" />
           <Stack.Screen name="confirm-service" />
@@ -54,6 +57,7 @@ function RootNavigator() {
           <Stack.Screen name="staff/queue-list" />
           <Stack.Screen name="staff/history" />
           <Stack.Screen name="staff/profile" />
+          <Stack.Screen name="staff/scan" />
         </Stack.Protected>
       </Stack>
     </ThemeProvider>

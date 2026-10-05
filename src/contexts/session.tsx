@@ -1,42 +1,38 @@
-import { createContext, PropsWithChildren, useContext, useState } from 'react';
+import { ApiError, request } from '@/data/api';
+import { createContext, PropsWithChildren, useCallback, useContext, useRef, useState } from 'react';
 
-type Role = 'student' | 'staff';
+export type Role = 'student' | 'staff' | 'admin';
+export type User = { id: string; login: string; name: string; email: string; role: Role; window: string | null };
 type Session = {
-  role: Role | null;
-  studentId: string | null;
-  signedOutRole: Role | null;
-  signIn: (role: Role, studentId?: string) => void;
-  signOut: () => void;
+  role: Role | null; studentId: string | null; signedOutRole: Role | null;
+  user: User | null; token: string | null;
+  signIn: (portal: 'student' | 'staff', login: string, password: string) => Promise<User>;
+  signOut: () => Promise<void>;
+  expire: () => void;
 };
-
 const SessionContext = createContext<Session | null>(null);
 
 export function SessionProvider({ children }: PropsWithChildren) {
-  const [role, setRole] = useState<Role | null>(null);
-  const [studentId, setStudentId] = useState<string | null>(null);
+  const [auth, setAuth] = useState<{ token: string; user: User } | null>(null);
   const [signedOutRole, setSignedOutRole] = useState<Role | null>(null);
-
-  return (
-    <SessionContext.Provider value={{
-      role,
-      studentId,
-      signedOutRole,
-      signIn: (nextRole, nextStudentId) => {
-        setSignedOutRole(null);
-        setStudentId(nextRole === 'student' ? (nextStudentId?.trim().toLowerCase() || '2021-00123') : null);
-        setRole(nextRole);
-      },
-      signOut: () => {
-        setSignedOutRole(role);
-        setStudentId(null);
-        setRole(null);
-      },
-    }}>
-      {children}
-    </SessionContext.Provider>
-  );
+  const generation = useRef(0);
+  const clear = useCallback(() => { generation.current++; setSignedOutRole(auth?.user.role ?? null); setAuth(null); }, [auth]);
+  return <SessionContext.Provider value={{
+    role: auth?.user.role ?? null, studentId: auth?.user.role === 'student' ? auth.user.login : null,
+    user: auth?.user ?? null, token: auth?.token ?? null, signedOutRole,
+    signIn: async (portal, login, password) => {
+      const version = ++generation.current;
+      const result = await request<{ token: string; user: User }>('/auth/login', null, { portal, login, password });
+      if (version !== generation.current) throw new ApiError('Sign-in was cancelled.');
+      setSignedOutRole(null); setAuth(result); return result.user;
+    },
+    signOut: async () => {
+      clear();
+      if (auth) await request('/auth/logout', auth.token, {}).catch(() => {});
+    },
+    expire: clear,
+  }}>{children}</SessionContext.Provider>;
 }
-
 export function useSession() {
   const session = useContext(SessionContext);
   if (!session) throw new Error('useSession must be used within SessionProvider');

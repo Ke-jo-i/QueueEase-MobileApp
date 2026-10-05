@@ -7,6 +7,7 @@ export const ticketStatusLabels: Record<TicketStatus, string> = {
 
 export const ticketEventLabels: Record<TicketEventType, string> = {
   CREATED: 'Ticket created', CALLED: 'Number called', RECALLED: 'Number called again',
+  CHECKED_IN: 'Arrival confirmed',
   HELD: 'Ticket on hold', TRANSFERRED: 'Window changed', REOPENED: 'Returned to queue',
   COMPLETED: 'Ticket completed', CANCELLED: 'Ticket cancelled', SKIPPED: 'Ticket skipped', NO_SHOW: 'Marked as no-show',
 };

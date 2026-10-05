@@ -1,53 +1,76 @@
 # QueueEase
 
-QueueEase is an Expo and React Native prototype for managing queues at the University of Mindanao Tagum Campus Registrar's Office. Students can request a service ticket and check its status. Staff can work from an assigned registrar window, call the next eligible ticket, complete it, and review queue history.
+An Expo / React Native registrar queue application with a shared Node.js API and SQLite database. Students book and track tickets; staff call and serve them; administrators manage access, services and queue availability. The six service categories follow the approved UM Tagum proposal.
 
-## Run the app
+## Run on your laptop and phones
 
-Install Node.js and npm, then run:
+Use Node.js **24.14 or newer** and npm. From the project folder:
 
-```bash
+```powershell
 npm ci
+npm run server:setup
+npm run server
+```
+
+First-time setup creates an empty queue and three accounts with randomly generated passwords. Open **`.local/demo-accounts.txt`** locally to see the student, staff and administrator credentials. Setup never overwrites existing accounts or queue records. `.local/`, credentials, SQLite files and backups are ignored by Git.
+
+Keep that terminal open. In a second terminal:
+
+```powershell
 npm start
 ```
 
-Expo will show options for a phone, Android emulator, iOS simulator, or web browser. To launch the web version directly, run `npm run web`. Routes are in `src/app/`; queue and session state are in `src/contexts/`.
+Connect the laptop and phones to the same private Wi-Fi or hotspot. Open the Expo QR with Expo Go. The app normally discovers the API on the Expo host at port **4100**. The API terminal prints your laptop's LAN address. If needed, set it explicitly before starting Expo:
 
-## Try the queue flow
+```powershell
+$env:EXPO_PUBLIC_API_URL='http://YOUR-LAPTOP-IP:4100'
+npm start
+```
 
-1. Open **Student Portal** and log in with a student ID. The login screen currently accepts any ID; `2021-00123` is the demo ID when the field is left blank.
-2. On **Home**, choose a registrar service and tap **Get Queue Number**. The ticket appears on **Tickets**, and its number also appears on Home. The prototype's local service mapping determines the window.
-3. Log out, open **Staff Portal**, and log in. In **Profile**, set **Window Assignment** to the window shown on the student ticket.
-4. In **Queue**, tap **Call Next** when the window is free. Staff must tap **Mark as Done** to complete the current ticket; the app does not automatically call another one.
-5. The completed ticket appears in staff **History**. Log out and sign in to Student Portal with the same ID to see it in the student's **Ticket History** and **Alerts**. A different student ID will not show that ticket.
+The URL is public configuration, never a password or token. Allow Node through Windows Firewall on the private network if prompted. Check `http://YOUR-LAPTOP-IP:4100/health` from the phone browser; it should return `ok: true`. A network that isolates clients will prevent phone-to-laptop access; use your own hotspot instead. Keep the laptop awake. Expo tunnel does not tunnel this separate API.
 
-A student can cancel a waiting ticket from **View QR Ticket**. Called tickets cannot be cancelled from that screen.
+For a browser, run `npm run web` while the API is running. The default browser API address uses the page's hostname and port 4100. Sessions are held in memory: a reload requires signing in again, but database records remain.
 
-Home now shows the number of people ahead at the student's assigned window. **View queue progress** shows the currently served number, the student's status, and the ticket activity trail. Held tickets stay active until staff returns them to the waiting line. Transferred and reopened tickets join the end of the destination line.
+If PowerShell blocks npm scripts, use `npm.cmd` / `npx.cmd` instead of `npm` / `npx`.
 
-Queue records, activity, ticket numbering, and the staff window assignment are saved on the current device. Restarting the app signs the user out but keeps these records. The sample tickets are created only when no saved queue exists. Completed tickets offer **View activity** in both portals.
+## Demonstrate the complete flow
 
-## Checks and tools
+1. Sign into Student Portal with the generated student account, or register a new synthetic student.
+2. Request **Academic Records Request**. It initially routes to Window 1. Show the ticket, QR and live status.
+3. On another device/session, sign into Staff Portal. New staff receive the first unassigned window, beginning at Window 1. Profile permits changing to an available window.
+4. Press **Call Next**. The student's app updates within the polling interval while connected.
+5. Use **Scan / verify ticket**, confirm the called student's number and arrival, then serve the student.
+6. Press **Mark as Done**. Both accounts retain the ticket in history. Calling another student remains a separate action.
+7. Sign into Staff Portal using the administrator account to pause bookings, configure services, create/disable staff accounts, reset passwords and inspect records.
 
-| Tool | What it checks | Command |
-| --- | --- | --- |
-| ESLint | Code rules and common mistakes | `npm run lint` |
-| TypeScript | Type errors without generating files | `npm run typecheck` |
-| Playwright | Browser flows at a mobile-sized viewport | `npm run test:e2e` |
-| Expo Doctor | Expo package and project configuration compatibility | `npx expo-doctor` |
+Held tickets remain active. Transfers and reopened exception tickets join the line's tail. Students can cancel waiting tickets. The QR identifies a ticket; staff still verify student identity. It does not allow queue jumping or automatic completion.
 
-`eslint.config.js`, `tsconfig.json`, and `playwright.config.ts` configure these checks. `package-lock.json` pins installed dependency versions. Change those files when the checks or dependencies actually need to change.
+## Data and recovery
 
-For the first Playwright run, install its Chromium browser with `npx playwright install chromium`. The test command starts the Expo web server on port 8081 automatically. On Windows PowerShell, if script execution is disabled, use `npm.cmd` and `npx.cmd` in place of `npm` and `npx`. To use an installed Microsoft Edge instead of Playwright's Chromium, set `$env:PLAYWRIGHT_CHANNEL='msedge'` before running the tests.
+- Shared data: `.local/queueease.sqlite`, managed by the API. See [schema](server/schema.sql).
+- Device preferences: appearance, profile photo and local-alert preference.
+- Back up with `npm run server:backup`. This uses SQLite's backup API and is safe while the server is running. Backups are in `.local/backups/`.
+- To inspect a backup safely, stop the API and set `QUEUE_DB_PATH` to that backup's full path before starting it. Preserve the original database. Do not delete a database to resolve login problems.
+- Forgot a password: an administrator verifies the person's identity and resets it from Accounts. Users can change their own password in Profile. No recovery email is falsely reported as sent.
+- The prior device-local prototype queue is left untouched in AsyncStorage; it is not imported into authenticated accounts. New shared queues start empty.
 
-The automated tests cover ticket booking, cancellation, staff completion, student history, queue ordering, persistence, storage failures, portal switching, logout access, and appearance. They run in a browser; follow the [manual test plan](docs/manual-test-plan.md) to check native back gestures, safe areas, and the phone layout. Set `PLAYWRIGHT_PORT` to run the tests on another port if 8081 is already in use.
+## Checks
 
-## Current prototype limits
+```powershell
+npm run typecheck
+npm run lint
+npm run test:server
+npm run test:native
+npx playwright install chromium
+npm run test:e2e
+```
 
-- Login does not verify credentials against a server. The entered student ID only scopes tickets within this running app; it is not secure account authentication.
-- Queue records use local AsyncStorage, not a shared database. Records do not sync between devices or simultaneously open browser tabs. The final system still needs a shared backend for that.
-- Alerts reflect local ticket changes. There are no push notifications or live updates from other devices yet.
-- Service-to-window routing uses the current local mapping in `src/constants/service-windows.ts`. The final system still needs agreed registrar window rules and a shared database.
-- The six service categories follow the approved project proposal. [UM's published Records Center page](https://umindanao.edu.ph/services/records) lists credentials and request steps for its Davao campuses, but does not confirm the Tagum service menu or this prototype's window assignments. Staff should verify local requirements before treating them as official.
-- The QR image currently encodes only the ticket number. There is no staff scanner or cross-device ticket verification; both require the planned shared database. Staff still use **Call Next** to advance the queue.
-- Profile photos and appearance settings are saved on the current device only. They do not sync to other devices.
+Playwright starts Expo web on port 8081 by default and uses isolated in-memory test APIs with synthetic credentials. Tests do not change the demonstration database. Set `PLAYWRIGHT_PORT` to another port if necessary. Set `PLAYWRIGHT_CHANNEL=msedge` to use installed Edge. Native-camera, notification, Back and animation checks are in the [defense rehearsal guide](docs/defense-guide.md).
+
+## Deployment scope
+
+This setup supports a supervised private-network demonstration with synthetic data. It is not an authorized public university deployment. Public use still requires HTTPS hosting, institutional account verification, a retention/privacy policy, load testing, dependency review and broader phone testing.
+
+Queue updates use polling roughly every two seconds while the app is active. Optional turn alerts appear as in-app pop-ups in Expo Go. Installed development/release builds use local device notifications with permission. Both require an open, connected app; closed-app remote push is not implemented. Reanimated motion respects Reduce Motion. Photos do not sync between devices. Ticket numbering is continuous, without a midnight reset. Service/window assignments are project settings, not verified UM Tagum office policy.
+
+Useful handoff files: [defense guide](docs/defense-guide.md), [paper working draft](docs/final-paper-working-draft.md), [database schema](server/schema.sql).

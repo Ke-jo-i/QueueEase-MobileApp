@@ -13,7 +13,7 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.brandText,
         tabBarInactiveTintColor: colors.textDisabled,
-        tabBarLabelPosition: 'below-icon', // Sinisigurado na nasa BABA ng icon ang text
+        tabBarLabelPosition: 'below-icon', 
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopWidth: 1,

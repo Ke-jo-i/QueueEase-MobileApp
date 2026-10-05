@@ -1,16 +1,14 @@
+import { StaffNav } from '@/components/staff-nav';
+import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
-import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useState } from 'react';
 import { useQueue } from '@/contexts/queue';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FlatList, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function StaffQueueListScreen() {
-  const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const router = useRouter();
   const [serviceFilter, setServiceFilter] = useState('All Services');
   const { waiting, assignedWindow } = useQueue();
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
@@ -20,7 +18,7 @@ export default function StaffQueueListScreen() {
     : windowWaiting.filter((ticket) => ticket.service === serviceFilter);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
         {/* Header Title */}
         <View style={styles.header}>
@@ -44,6 +42,7 @@ export default function StaffQueueListScreen() {
 
         {/* Queue Items List */}
         <FlatList
+          ListEmptyComponent={<Text style={{ color: styles.subtitle.color, textAlign: 'center', padding: 24 }}>No students waiting at this window.</Text>}
           data={filteredTickets}
           keyExtractor={(item) => item.number}
           showsVerticalScrollIndicator={false}
@@ -75,31 +74,7 @@ export default function StaffQueueListScreen() {
       </View>
 
       {/* Bottom Navigation */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.replace('/staff/dashboard')}
-        >
-          <Ionicons name="list-outline" size={22} color={colors.brandText} />
-          <Text style={[styles.navLabel, styles.activeNavLabel]}>Queue</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.replace('/staff/history')}
-        >
-          <Ionicons name="time-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>History</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.navItem}
-          onPress={() => router.replace('/staff/profile')}
-        >
-          <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <StaffNav active="Queue" />
     </SafeAreaView>
   );
 }

@@ -1,29 +1,26 @@
+import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
 import { useSession } from '@/contexts/session';
-import { getServiceWindow } from '@/constants/service-windows';
 import { registrarReminders, serviceDescriptions } from '@/constants/registrar-services';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function ConfirmServiceScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
-  const { bookTicket, studentTicket } = useQueue();
+  const { bookTicket, studentTicket, busy, connected, services, acceptingTickets } = useQueue();
   const { studentId } = useSession();
   const params = useLocalSearchParams();
   const serviceTitle = (params.serviceName as string) || 'Certificate of Enrollment';
 
-  const handleGetQueue = () => {
+  const handleGetQueue = async () => {
     if (studentTicket) { router.navigate('/tickets'); return; }
-    if (!bookTicket(serviceTitle)) {
-      Alert.alert('Active ticket', 'Cancel your current ticket before getting another one.');
-      return;
-    }
+    if (!await bookTicket(serviceTitle)) return;
     router.navigate('/tickets');
   };
 
@@ -42,7 +39,7 @@ export default function ConfirmServiceScreen() {
         <View style={styles.serviceDetailCard}>
           <Text style={styles.serviceNameTitle}>{serviceTitle}</Text>
           <Text style={styles.metaText}>{serviceDescriptions[serviceTitle]}</Text>
-          <Text style={styles.metaText}>Queue window: {getServiceWindow(serviceTitle)}</Text>
+          <Text style={styles.metaText}>Queue window: {services.find((service) => service.name === serviceTitle)?.window ?? 'Connecting…'}</Text>
         </View>
 
         {/* Important Reminders Box (Dynamic na nagbabago) */}
@@ -60,8 +57,8 @@ export default function ConfirmServiceScreen() {
 
         {/* Get Queue Number Button */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.confirmButton} onPress={handleGetQueue} activeOpacity={0.8}>
-            <Text style={styles.confirmButtonText}>{studentTicket ? 'View active ticket' : 'Get Queue Number'}</Text>
+          <TouchableOpacity disabled={busy || !connected || (!studentTicket && !acceptingTickets)} style={[styles.confirmButton, (busy || !connected || !acceptingTickets) && { opacity: 0.5 }]} onPress={handleGetQueue} activeOpacity={0.8}>
+            <Text style={styles.confirmButtonText}>{busy ? 'Creating ticket…' : studentTicket ? 'View active ticket' : !acceptingTickets ? 'New tickets paused' : 'Get Queue Number'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

@@ -5,6 +5,7 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PLAYWR
 
 export default defineConfig({
   testDir: './tests',
+  testIgnore: '**/native/**',
   workers: 1,
   timeout: 60_000,
   use: {
@@ -14,8 +15,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: `npm run web -- --port ${port}`,
-    url: `http://localhost:${port}`,
+    command: `npm run web -- --port ${port} --max-workers 2`,
+    url: `http://localhost:${port}/status`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },

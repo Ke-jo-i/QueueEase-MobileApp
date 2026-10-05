@@ -25,6 +25,8 @@
     },
     "plugins": [
       "expo-router",
+      ["expo-camera", { "cameraPermission": "Allow QueueEase staff to scan queue tickets.", "recordAudioAndroid": false }],
+      "expo-notifications",
       [
         "expo-image-picker",
         {

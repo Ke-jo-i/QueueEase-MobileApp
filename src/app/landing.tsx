@@ -1,183 +1,32 @@
-import { AppPalette } from '@/constants/app-colors';
-import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useAppTheme } from '@/hooks/use-app-theme';
+import { MotionButton, Reveal } from '@/components/motion';
 
 export default function LandingScreen() {
-  const colors = useAppTheme();
-  const styles = useThemedStyles(createStyles);
-  const router = useRouter();
-
-  const [isStudentHovered, setIsStudentHovered] = useState(false);
-  const [isStaffHovered, setIsStaffHovered] = useState(false);
-
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        {/* Logo Section sa Taas */}
-        <View style={styles.logoContainer}>
-          <View style={styles.logoBadge}>
-            <Text style={styles.logoText}>Q</Text>
-          </View>
-          <Text style={styles.appName}>QueueEase</Text>
-        </View>
-
-        <Text style={styles.title}>Select Your Portal</Text>
-        <Text style={styles.subtitle}>Choose how you want to continue</Text>
-
-        {/* Student Portal Option */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.portalCard,
-            isStudentHovered && styles.portalCardHovered,
-            pressed && styles.portalCardPressed,
-          ]}
-          onPress={() => {
-            router.push('/login' as any);
-          }}
-          onHoverIn={() => setIsStudentHovered(true)}
-          onHoverOut={() => setIsStudentHovered(false)}
-        >
-          <View style={styles.iconBox}>
-            <Ionicons name="school-outline" size={26} color={colors.brandText} />
-          </View>
-          <View style={styles.cardTextContainer}>
-            <Text style={styles.cardTitle}>Student Portal</Text>
-            <Text style={styles.cardSubtitle}>Get queue ticket & track status</Text>
-          </View>
-        </Pressable>
-
-        {/* Staff Portal Option */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.portalCard,
-            isStaffHovered && styles.portalCardHovered,
-            pressed && styles.portalCardPressed,
-          ]}
-          onPress={() => {
-            router.push('/staff/login' as any);
-          }}
-          onHoverIn={() => setIsStaffHovered(true)}
-          onHoverOut={() => setIsStaffHovered(false)}
-        >
-          <View style={styles.iconBox}>
-            <Ionicons name="person-outline" size={26} color={colors.brandText} />
-          </View>
-          <View style={styles.cardTextContainer}>
-            <Text style={styles.cardTitle}>Staff Portal</Text>
-            <Text style={styles.cardSubtitle}>Manage queue & serve customers</Text>
-          </View>
-        </Pressable>
+  const colors = useAppTheme(); const router = useRouter();
+  return <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }}>
+    <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 28, gap: 28, maxWidth: 500, width: '100%', alignSelf: 'center' }}>
+      <Reveal style={{ gap: 12 }}>
+        <View style={{ width: 62, height: 62, borderRadius: 20, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><Text style={{ fontSize: 34, color: '#fff', fontWeight: '800' }}>Q</Text></View>
+        <Text style={{ color: colors.brandText, fontSize: 14, fontWeight: '800', letterSpacing: 1.5 }}>QUEUEEASE</Text>
+        <Text style={{ fontSize: 36, lineHeight: 42, fontWeight: '800', color: colors.text }}>Your time matters.</Text>
+        <Text style={{ fontSize: 16, lineHeight: 24, color: colors.textMuted }}>A clearer way to queue at the registrar.{ '\n' }University of Mindanao · Tagum Campus</Text>
+      </Reveal>
+      <View style={{ gap: 12 }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textMuted }}>Select Your Portal</Text>
+        {([
+          ['Student Portal', 'Get a ticket and follow your turn', 'school-outline', '/login'],
+          ['Staff Portal', 'Serve students and manage the queue', 'people-outline', '/staff/login'],
+        ] as const).map(([title, subtitle, icon, route]) => <MotionButton key={route} onPress={() => router.push(route)} style={{ padding: 20, borderRadius: 18, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: colors.surfaceSubtle }}>
+          <View style={{ padding: 12, borderRadius: 14, backgroundColor: colors.infoSurface }}><Ionicons name={icon} size={24} color={colors.brandText} /></View>
+          <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 17, fontWeight: '700', color: colors.text }}>{title}</Text><Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>{subtitle}</Text></View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </MotionButton>)}
       </View>
-    </SafeAreaView>
-  );
+      <Text style={{ color: colors.textDisabled, fontSize: 12, lineHeight: 18 }}>Choose a service. Keep track of your place. Come to the window when called.</Text>
+    </ScrollView>
+  </SafeAreaView>;
 }
-
-const createStyles = (colors: AppPalette) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.surface,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    maxWidth: 440,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoBadge: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.brand,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  logoText: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  appName: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.brandText,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: colors.brandText,
-    textAlign: 'center',
-    marginBottom: 6,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  portalCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    ...Platform.select({
-      web: {
-        cursor: 'pointer',
-        transition: 'all 0.2s ease-in-out',
-      },
-    }),
-  },
-  portalCardHovered: {
-    borderColor: colors.brandText,
-    backgroundColor: colors.surfaceSubtle,
-    shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    transform: [{ translateY: -2 }],
-  },
-  portalCardPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: colors.infoSurface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  cardTextContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.brandText,
-    marginBottom: 2,
-    textAlign: 'left',
-  },
-  cardSubtitle: {
-    fontSize: 12,
-    color: colors.textMuted,
-    textAlign: 'left',
-  },
-});

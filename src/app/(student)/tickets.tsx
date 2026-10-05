@@ -1,3 +1,4 @@
+import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
@@ -7,7 +8,8 @@ import { ticketStatusLabels } from '@/constants/queue-labels';
 import { TicketActivity } from '@/components/ticket-activity';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
-import { Image, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
 
 function formatTicketDate(value: string) {
   return new Date(value).toLocaleString([], {
@@ -28,9 +30,9 @@ export default function MyTicketsScreen() {
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
 
   // Handle Ticket Cancellation Logic
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!cancelReason.trim()) return;
-    if (!cancelTicket(cancelReason)) return;
+    if (!await cancelTicket(cancelReason)) return;
     setShowCancelModal(false);
     setShowQrModal(false);
     setCancelReason('');
@@ -119,7 +121,7 @@ export default function MyTicketsScreen() {
                 <Text style={styles.title}>Queue Ticket</Text>
                 <Text style={styles.studentInfo}>Student: {studentId} (Tagum Campus)</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowQrModal(false)} style={styles.closeBtn}>
+              <TouchableOpacity accessibilityLabel="Close ticket" onPress={() => setShowQrModal(false)} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
@@ -135,14 +137,9 @@ export default function MyTicketsScreen() {
 
             {/* QR Code Card */}
             <View style={styles.cardCenter}>
-              <Image
-                source={{
-                  uri: `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(studentTicket?.number ?? '')}`,
-                }}
-                style={styles.qrCodeImage}
-              />
+              {studentTicket && <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}><QRCode value={`queueease:v1:${studentTicket.id}`} size={160} /></View>}
               <Text style={styles.qrSubtext}>
-                QR preview only. Staff will call your number at {studentTicket?.window.split(' - ')[0]}.
+                Show this ticket when called at {studentTicket?.window.split(' - ')[0]}. Staff can scan it to confirm your arrival. Scanning does not skip the line.
               </Text>
             </View>
 

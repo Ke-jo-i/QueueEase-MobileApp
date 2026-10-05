@@ -1,18 +1,18 @@
+import { StaffNav } from '@/components/staff-nav';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
 import { TicketActivity } from '@/components/ticket-activity';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
 
 export default function StaffHistoryScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
-  const router = useRouter();
-  const { staffHistory, reopenTicket } = useQueue();
+  const { staffHistory, reopenTicket, assignedWindow, busy, connected } = useQueue();
   const [dateFilter, setDateFilter] = useState<'All Dates' | 'Today'>('All Dates');
   const [windowFilter, setWindowFilter] = useState('All Windows');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
@@ -96,7 +96,7 @@ export default function StaffHistoryScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        {filtersOpen && <View style={styles.filterPanel}>
+        {filtersOpen && <Reveal style={styles.filterPanel}>
           <View style={styles.filterPanelHeader}>
             <Text style={styles.filterPanelTitle}>Filter records</Text>
             <TouchableOpacity onPress={clearFilters}>
@@ -127,7 +127,7 @@ export default function StaffHistoryScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </View>}
+        </Reveal>}
         {filteredHistory.length === 0 ? (
           <Text style={styles.empty}>{staffHistory.length === 0 ? 'No queue activity yet.' : 'No tickets match the selected filters.'}</Text>
         ) : filteredHistory.map((ticket) => (
@@ -157,7 +157,7 @@ export default function StaffHistoryScreen() {
             </TouchableOpacity>
             {expandedHistory === ticket.id && <TicketActivity ticket={ticket} />}
             {ticket.status !== 'COMPLETED' && (
-              <TouchableOpacity style={styles.reopenButton} onPress={() => reopenTicket(ticket.number)}>
+              <TouchableOpacity disabled={busy || !connected || ticket.window !== assignedWindow} style={[styles.reopenButton, ticket.window !== assignedWindow && { opacity: 0.4 }]} onPress={() => reopenTicket(ticket.number)}>
                 <Ionicons name="refresh-outline" size={16} color={colors.warningStrong} />
                 <Text style={styles.reopenText}>Reopen ticket</Text>
               </TouchableOpacity>
@@ -165,20 +165,7 @@ export default function StaffHistoryScreen() {
           </View>
         ))}
       </ScrollView>
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/staff/dashboard')}>
-          <Ionicons name="list-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Queue</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="time" size={22} color={colors.brandText} />
-          <Text style={[styles.navLabel, styles.activeNavLabel]}>History</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={() => router.replace('/staff/profile')}>
-          <Ionicons name="person-outline" size={22} color={colors.textDisabled} />
-          <Text style={styles.navLabel}>Profile</Text>
-        </TouchableOpacity>
-      </View>
+      <StaffNav active="History" />
     </SafeAreaView>
   );
 }

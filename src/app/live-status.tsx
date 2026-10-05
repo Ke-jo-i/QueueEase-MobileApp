@@ -1,3 +1,4 @@
+import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { TicketActivity } from '@/components/ticket-activity';
 import { ticketStatusLabels } from '@/constants/queue-labels';
@@ -6,7 +7,7 @@ import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 export default function LiveQueueScreen() {
   const colors = useAppTheme();

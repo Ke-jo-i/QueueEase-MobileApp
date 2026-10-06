@@ -15,6 +15,7 @@ import { StaffNav } from './staff-nav';
 import { useTurnAlerts } from '@/contexts/turn-alerts';
 import { turnAlertDelivery } from '@/data/notifications';
 import { KeyboardScrollView } from './keyboard-scroll-view';
+import { StudentProfileTitle } from './student-profile-title';
 
 export function AccountProfile() {
   const colors = useAppTheme(); const { user, role, token, signOut, expire } = useSession();
@@ -33,7 +34,7 @@ export function AccountProfile() {
   };
   return <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['top', 'left', 'right']}>
     <KeyboardScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
-      <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>{role === 'staff' ? 'Profile & Settings' : 'Student Profile'}</Text>
+      {role === 'student' ? <StudentProfileTitle /> : <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>Profile & Settings</Text>}
       <Reveal style={{ flexDirection: 'row', gap: 14, padding: 20, borderRadius: 18, backgroundColor: colors.infoSurface, alignItems: 'center' }}>
         <ProfilePhoto storageId={`${role}:${user?.id}`} initials={user?.name.split(' ').map((part) => part[0]).slice(0, 2).join('') ?? 'Q'} size={56} variant={role === 'staff' ? 'staff' : 'student'} />
         <View style={{ flex: 1, gap: 4 }}><Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{user?.name}</Text>

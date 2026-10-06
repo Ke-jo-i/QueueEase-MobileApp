@@ -1,12 +1,15 @@
 import { Store } from './store';
 import { createApi } from './http';
+import type { DemoAccount } from './demo-login';
 
 const store = new Store(':memory:');
 const password = 'e2e-test-password-123';
+const demoAccounts: DemoAccount[] = [];
 for (const [role, login] of [['student', 'student1'], ['staff', 'staff1'], ['admin', 'admin']] as const) {
   await store.createAccount({ login, name: `${role} Test`, email: `${login}@example.test`, password }, role);
+  demoAccounts.push({ role, login, password });
 }
-const server = createApi(store);
+const server = createApi(store, demoAccounts);
 server.listen(0, '127.0.0.1', () => {
   const address = server.address();
   if (address && typeof address !== 'string') console.log(`TEST_PORT=${address.port}`);

@@ -7,6 +7,7 @@ type Session = {
   role: Role | null; studentId: string | null; signedOutRole: Role | null;
   user: User | null; token: string | null;
   signIn: (portal: 'student' | 'staff', login: string, password: string) => Promise<User>;
+  quickSignIn: (role: Role) => Promise<User>;
   signOut: () => Promise<void>;
   expire: () => void;
 };
@@ -17,14 +18,19 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const [signedOutRole, setSignedOutRole] = useState<Role | null>(null);
   const generation = useRef(0);
   const clear = useCallback(() => { generation.current++; setSignedOutRole(auth?.user.role ?? null); setAuth(null); }, [auth]);
+  const authenticate = async (path: string, input: Record<string, unknown>) => {
+    const version = ++generation.current;
+    const result = await request<{ token: string; user: User }>(path, null, input);
+    if (version !== generation.current) throw new ApiError('Sign-in was cancelled.');
+    setSignedOutRole(null); setAuth(result); return result.user;
+  };
   return <SessionContext.Provider value={{
     role: auth?.user.role ?? null, studentId: auth?.user.role === 'student' ? auth.user.login : null,
     user: auth?.user ?? null, token: auth?.token ?? null, signedOutRole,
-    signIn: async (portal, login, password) => {
-      const version = ++generation.current;
-      const result = await request<{ token: string; user: User }>('/auth/login', null, { portal, login, password });
-      if (version !== generation.current) throw new ApiError('Sign-in was cancelled.');
-      setSignedOutRole(null); setAuth(result); return result.user;
+    signIn: (portal, login, password) => authenticate('/auth/login', { portal, login, password }),
+    quickSignIn: async (role) => {
+      if (!__DEV__) throw new ApiError('Quick login is available only while testing.');
+      return authenticate('/auth/demo-login', { role });
     },
     signOut: async () => {
       clear();

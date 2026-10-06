@@ -54,6 +54,12 @@ Held tickets remain active. Transfers and reopened exception tickets join the li
 - Forgot a password: an administrator verifies the person's identity and resets it from Accounts. Users can change their own password in Profile. No recovery email is falsely reported as sent.
 - The prior device-local prototype queue is left untouched in AsyncStorage; it is not imported into authenticated accounts. New shared queues start empty.
 
+## Quick login for testing
+
+In Expo Go or development mode, tap **Quick login as Student** in Student Portal, or **Quick login as Staff** / **Quick login as Admin** in Staff Portal. Leave the ID and password fields empty: the buttons sign in immediately to the existing demonstration accounts through the API.
+
+The local server reads the credentials created by `npm run server:setup` from ignored `.local/demo-accounts.txt`; no client credential configuration is required and passwords are not bundled into the app. Restart `npm run server` after updating the server code. Changed passwords and disabled accounts still prevent sign-in. Use these accounts only for the private-network demonstration. Release builds hide the buttons; `NODE_ENV=production` or `QUEUE_DEMO_LOGIN=0` disables the server endpoint.
+
 ## Checks
 
 ```powershell

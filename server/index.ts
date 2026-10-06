@@ -3,14 +3,18 @@ import { dirname, resolve } from 'node:path';
 import { networkInterfaces } from 'node:os';
 import { Store } from './store';
 import { createApi } from './http';
+import { loadDemoAccounts } from './demo-login';
 
 const path = resolve(process.env.QUEUE_DB_PATH ?? '.local/queueease.sqlite');
 mkdirSync(dirname(path), { recursive: true });
 const store = new Store(path);
 const port = Number(process.env.QUEUE_PORT ?? 4100);
-const server = createApi(store);
+const demoAccounts = process.env.NODE_ENV !== 'production' && process.env.QUEUE_DEMO_LOGIN !== '0'
+  ? loadDemoAccounts(resolve(dirname(path), 'demo-accounts.txt')) : [];
+const server = createApi(store, demoAccounts);
 server.listen(port, '0.0.0.0', () => {
   console.log(`QueueEase API: http://localhost:${port}`);
+  if (demoAccounts.length) console.log('Demo quick login is enabled for the local test accounts.');
   for (const entries of Object.values(networkInterfaces())) for (const address of entries ?? []) {
     if (address.family === 'IPv4' && !address.internal) console.log(`Phone connection: http://${address.address}:${port}`);
   }

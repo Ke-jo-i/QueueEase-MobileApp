@@ -1,5 +1,6 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import { Store, RequestError, check } from './store';
+import type { DemoAccount } from './demo-login';
 
 async function body(request: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
@@ -17,7 +18,7 @@ async function body(request: IncomingMessage): Promise<Record<string, unknown>> 
   return value;
 }
 
-export function createApi(store: Store) {
+export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = []) {
   const attempts = new Map<string, { count: number; expires: number }>();
   return createServer(async (req, res) => {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -40,14 +41,27 @@ export function createApi(store: Store) {
       check(req.method === 'GET' || req.method === 'POST', 'Method not allowed.', 405);
       const input = req.method === 'POST' ? await body(req) : {};
       let result: unknown;
-      if (['/auth/login', '/auth/register'].includes(path) && req.method === 'POST') {
+      if (['/auth/login', '/auth/register', '/auth/demo-login'].includes(path) && req.method === 'POST') {
         const now = Date.now();
         for (const [key, value] of attempts) if (value.expires <= now) attempts.delete(key);
         const key = req.socket.remoteAddress ?? 'unknown';
         const attempt = attempts.get(key) ?? { count: 0, expires: now + 15 * 60 * 1000 };
         check(attempt.count < 40, 'Too many attempts. Please try again in 15 minutes.', 429);
         attempt.count++; attempts.set(key, attempt);
-        result = path === '/auth/login' ? await store.login(input) : await store.createAccount(input);
+        if (path === '/auth/demo-login') {
+          check(process.env.NODE_ENV !== 'production' && demoAccounts.length > 0, 'Quick login is disabled on this server. Use your ID and password.', 403);
+          check(input.role === 'student' || input.role === 'staff' || input.role === 'admin', 'Choose a valid demo account.');
+          const account = demoAccounts.find((item) => item.role === input.role);
+          check(account, 'That demo account is unavailable. Use your ID and password.', 403);
+          const row = store.db.prepare('SELECT role FROM accounts WHERE login=?').get(account.login);
+          check(row?.role === account.role, 'That demo account is unavailable. Use your ID and password.', 403);
+          const session = await store.login({ portal: account.role === 'student' ? 'student' : 'staff', login: account.login, password: account.password });
+          if (session.user.role !== account.role) {
+            store.logout(session.token);
+            throw new RequestError(403, 'That demo account is unavailable. Use your ID and password.');
+          }
+          result = session;
+        } else result = path === '/auth/login' ? await store.login(input) : await store.createAccount(input);
       } else {
         const token = req.headers.authorization?.replace(/^Bearer /, '') ?? '';
         const user = store.authenticate(token);

@@ -4,7 +4,7 @@ import { request } from '@/data/api';
 import { registrarWindows } from '@/constants/service-windows';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useState } from 'react';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DarkModeToggle } from './dark-mode-toggle';
 import { ThemePicker } from './theme-picker';
@@ -14,6 +14,7 @@ import { Reveal } from './motion';
 import { StaffNav } from './staff-nav';
 import { useTurnAlerts } from '@/contexts/turn-alerts';
 import { turnAlertDelivery } from '@/data/notifications';
+import { KeyboardScrollView } from './keyboard-scroll-view';
 
 export function AccountProfile() {
   const colors = useAppTheme(); const { user, role, token, signOut, expire } = useSession();
@@ -31,7 +32,7 @@ export function AccountProfile() {
     finally { setSaving(false); }
   };
   return <SafeAreaView style={{ flex: 1, backgroundColor: colors.surface }} edges={['top', 'left', 'right']}>
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 24, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
+    <KeyboardScrollView contentContainerStyle={{ padding: 24, paddingBottom: 40, gap: 20, width: '100%', maxWidth: 540, alignSelf: 'center' }}>
       <Text style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>{role === 'staff' ? 'Profile & Settings' : 'Student Profile'}</Text>
       <Reveal style={{ flexDirection: 'row', gap: 14, padding: 20, borderRadius: 18, backgroundColor: colors.infoSurface, alignItems: 'center' }}>
         <ProfilePhoto storageId={`${role}:${user?.id}`} initials={user?.name.split(' ').map((part) => part[0]).slice(0, 2).join('') ?? 'Q'} size={56} variant={role === 'staff' ? 'staff' : 'student'} />
@@ -41,7 +42,7 @@ export function AccountProfile() {
       <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}><DarkModeToggle /><ThemePicker /></View>
       {role === 'student' && Platform.OS !== 'web' && <View style={{ gap: 8 }}>
         <ActionButton label={alerts.enabled ? 'Turn alerts: on' : 'Enable turn alerts'} secondary onPress={() => { void alerts.toggle().then((enabled) => { if (!enabled && !alerts.enabled) setMessage('Notification permission was not granted. You can still check Alerts in the app.'); }).catch(() => setMessage('Could not update notification settings.')); }} />
-        <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18 }}>{turnAlertDelivery === 'in-app' ? 'Shows a pop-up inside the app when your turn is near or called.' : 'Shows a device notification when your turn is near or called.'} Keep QueueEase open and connected to receive updates. Alerts are not delivered while the app is closed.</Text>
+        <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18 }}>{turnAlertDelivery === 'in-app' ? 'Shows a pop-up inside the app when your turn is near or called.' : 'Shows a device notification when your turn is near or called.'} Keep Queue Ease open and connected to receive updates. Alerts are not delivered while the app is closed.</Text>
       </View>}
       {role === 'staff' && <><ActionButton label="Window Assignment" secondary onPress={() => toggle('window')} />
         {section === 'window' && <Reveal style={{ gap: 8 }}><Text style={{ color: colors.textMuted }}>Select Registrar Window. Occupied windows cannot be taken.</Text>
@@ -61,7 +62,7 @@ export function AccountProfile() {
       {section === 'help' && <Reveal><Notice text="Choose a service to get one active ticket. Watch Live Status or Alerts for your turn, then go to the assigned window. A queue ticket reserves your place in line; it does not mean your document is ready. For account recovery, ask the project administrator. For document requirements, speak with registrar staff." /></Reveal>}
       <Notice text={message} error />
       <ActionButton label="Log Out" onPress={() => { void signOut().catch((error: Error) => setMessage(error.message)); }} />
-    </ScrollView>
+    </KeyboardScrollView>
     {role === 'staff' && <StaffNav active="Profile" />}
   </SafeAreaView>;
 }

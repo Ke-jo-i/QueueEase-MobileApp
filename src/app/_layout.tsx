@@ -7,6 +7,9 @@ import { QueueProvider } from '@/contexts/queue';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 import { TurnAlertsProvider } from '@/contexts/turn-alerts';
+import { useEffect } from 'react';
+import { View } from 'react-native';
+import { setBackgroundColorAsync } from 'expo-system-ui';
 
 export default function RootLayout() {
   return (
@@ -24,6 +27,10 @@ function RootNavigator() {
   const colors = useAppTheme();
   const reducedMotion = useReducedMotion();
 
+  useEffect(() => {
+    void setBackgroundColorAsync(colors.surface).catch(() => {});
+  }, [colors.surface]);
+
   return (
     <ThemeProvider value={{
       ...(colorScheme === 'dark' ? DarkTheme : DefaultTheme),
@@ -37,7 +44,8 @@ function RootNavigator() {
       },
     }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? 'none' : 'fade_from_bottom', animationDuration: 220, contentStyle: { backgroundColor: colors.surface } }}>
+      <View style={{ flex: 1, backgroundColor: colors.surface }}>
+      <Stack screenOptions={{ headerShown: false, animation: reducedMotion ? 'none' : 'slide_from_right', contentStyle: { backgroundColor: colors.surface } }}>
         <Stack.Protected guard={role === null}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
@@ -45,7 +53,7 @@ function RootNavigator() {
           <Stack.Screen name="forgot-password" />
           <Stack.Screen name="staff/login" />
         </Stack.Protected>
-        <Stack.Screen name="landing" />
+        <Stack.Screen name="landing" options={{ animationTypeForReplace: 'pop' }} />
         <Stack.Protected guard={role === 'admin'}><Stack.Screen name="admin" /></Stack.Protected>
         <Stack.Protected guard={role === 'student'}>
           <Stack.Screen name="(student)" />
@@ -60,6 +68,7 @@ function RootNavigator() {
           <Stack.Screen name="staff/scan" />
         </Stack.Protected>
       </Stack>
+      </View>
     </ThemeProvider>
   );
 }

@@ -31,7 +31,7 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.brandTitle}>QueueEase</Text>
+            <Text style={styles.brandTitle}>Queue Ease</Text>
             <Text style={styles.campusLabel}>Registrar · UM Tagum</Text>
           </View>
           <TouchableOpacity style={styles.profileIconBtn} onPress={() => router.push('/profile')}>

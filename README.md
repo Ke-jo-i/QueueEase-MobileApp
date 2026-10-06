@@ -1,4 +1,4 @@
-# QueueEase
+# Queue Ease
 
 An Expo / React Native registrar queue application with a shared Node.js API and SQLite database. Students book and track tickets; staff call and serve them; administrators manage access, services and queue availability. The six service categories follow the approved UM Tagum proposal.
 

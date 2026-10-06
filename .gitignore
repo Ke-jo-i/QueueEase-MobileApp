@@ -51,9 +51,5 @@ example
 *.sqlite-wal
 
 # md files
-docs/data-storage.md
-docs/defense-guide.md
-docs/final-paper-working-draft.md
-docs/manual-test-plan.md
-docs/verification-report.md
+docs/
 

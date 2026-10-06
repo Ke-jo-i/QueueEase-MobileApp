@@ -23,6 +23,6 @@ export async function request<T>(path: string, token?: string | null, body?: obj
     return value as T;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    throw new ApiError('Cannot reach QueueEase. Check your connection and that the queue server is running.');
+    throw new ApiError('Cannot reach Queue Ease. Check your connection and that the queue server is running.');
   } finally { clearTimeout(timeout); }
 }

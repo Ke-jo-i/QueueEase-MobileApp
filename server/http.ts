@@ -1,6 +1,7 @@
 import { createServer, type IncomingMessage } from 'node:http';
 import { Store, RequestError, check } from './store';
 import type { DemoAccount } from './demo-login';
+import { serveWeb } from './web-files';
 
 async function body(request: IncomingMessage): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
@@ -18,13 +19,22 @@ async function body(request: IncomingMessage): Promise<Record<string, unknown>> 
   return value;
 }
 
-export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = []) {
+export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = [], webDirectory?: string) {
   const attempts = new Map<string, { count: number; expires: number }>();
   return createServer(async (req, res) => {
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
     try {
+      if (webDirectory) {
+        const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+        if (path.startsWith('/api/')) req.url = (req.url ?? '').slice(4);
+        else if (!(path === '/health' || path.startsWith('/auth/') || path === '/queue' || path.startsWith('/queue/') ||
+          (path === '/admin' && (!['GET', 'HEAD'].includes(req.method ?? '') || req.headers.authorization)))) {
+          serveWeb(req, res, webDirectory);
+          return;
+        }
+      }
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
       if (req.headers.origin) {
         const origin = new URL(req.headers.origin);
         const host = new URL(`http://${req.headers.host}`).hostname;

@@ -9,7 +9,7 @@ for (const [role, login] of [['student', 'student1'], ['staff', 'staff1'], ['adm
   await store.createAccount({ login, name: `${role} Test`, email: `${login}@example.test`, password }, role);
   demoAccounts.push({ role, login, password });
 }
-const server = createApi(store, demoAccounts);
+const server = createApi(store, process.env.QUEUE_DEMO_LOGIN === '0' ? [] : demoAccounts, process.env.QUEUE_WEB_DIR);
 server.listen(0, '127.0.0.1', () => {
   const address = server.address();
   if (address && typeof address !== 'string') console.log(`TEST_PORT=${address.port}`);

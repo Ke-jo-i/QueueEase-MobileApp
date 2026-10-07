@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 const configured = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, '');
 const expoHost = Constants.expoConfig?.hostUri?.split(':')[0];
 export const apiUrl = configured || (Platform.OS === 'web'
-  ? `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4100`
+  ? __DEV__ ? `http://${typeof window !== 'undefined' ? window.location.hostname : 'localhost'}:4100` : '/api'
   : expoHost ? `http://${expoHost}:4100` : '');
 
 export class ApiError extends Error { constructor(message: string, public status = 0) { super(message); } }

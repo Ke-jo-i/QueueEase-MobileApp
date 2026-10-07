@@ -1,10 +1,10 @@
 # Queue Ease
 
-An Expo / React Native registrar queue application with a shared Node.js API and SQLite database. Students book and track tickets; staff call and serve them; administrators manage access, services and queue availability. The six service categories follow the approved UM Tagum proposal.
+A registrar queue app for the UM Tagum project, available on **Android/iOS through Expo** and as a **website**. Both versions share the Node.js API and SQLite database. Students book and track tickets, staff call and serve students, and administrators manage accounts, services and queue availability.
 
-## Run on your laptop and phones
+## Start the mobile app
 
-Use Node.js **24.14 or newer** and npm. From the project folder:
+Install **Node.js 24.14 or newer**, npm and Expo Go on the phone. From the project folder, run:
 
 ```powershell
 npm ci
@@ -12,55 +12,100 @@ npm run server:setup
 npm run server
 ```
 
-First-time setup creates an empty queue and three accounts with randomly generated passwords. Open **`.local/demo-accounts.txt`** locally to see the student, staff and administrator credentials. Setup never overwrites existing accounts or queue records. `.local/`, credentials, SQLite files and backups are ignored by Git.
-
 Keep that terminal open. In a second terminal:
 
 ```powershell
 npm start
 ```
 
-Connect the laptop and phones to the same private Wi-Fi or hotspot. Open the Expo QR with Expo Go. The app normally discovers the API on the Expo host at port **4100**. The API terminal prints your laptop's LAN address. If needed, set it explicitly before starting Expo:
+Connect the laptop and phones to the same Wi-Fi or hotspot, then scan the Expo QR with Expo Go. The API runs on **port 4100**; its terminal prints the laptop's LAN address. The app normally discovers it automatically. If it says “Cannot reach Queue Ease,” check `http://YOUR-LAPTOP-IP:4100/health` in the phone browser and set the address explicitly before restarting Expo:
 
 ```powershell
 $env:EXPO_PUBLIC_API_URL='http://YOUR-LAPTOP-IP:4100'
-npm start
+npm start -- --clear
 ```
 
-The URL is public configuration, never a password or token. Allow Node through Windows Firewall on the private network if prompted. Check `http://YOUR-LAPTOP-IP:4100/health` from the phone browser; it should return `ok: true`. A network that isolates clients will prevent phone-to-laptop access; use your own hotspot instead. Keep the laptop awake. Expo tunnel does not tunnel this separate API.
+Allow Node through Windows Firewall on the private network and keep the laptop awake. If the Wi-Fi isolates devices, use your own hotspot. If PowerShell blocks npm, use `npm.cmd` instead.
 
-For a browser, run `npm run web` while the API is running. The default browser API address uses the page's hostname and port 4100. Sessions are held in memory: a reload requires signing in again, but database records remain.
+## Demo accounts
 
-If PowerShell blocks npm scripts, use `npm.cmd` / `npx.cmd` instead of `npm` / `npx`.
+Fresh setup creates these accounts with **random passwords**:
 
-## Demonstrate the complete flow
+| Role | ID | Email |
+| --- | --- | --- |
+| Student | `2026-00001` | `2026-00001@queueease.test` |
+| Staff | `staff1` | `staff1@queueease.test` |
+| Administrator | `admin` | `admin@queueease.test` |
 
-1. Sign into Student Portal with the generated student account, or register a new synthetic student.
-2. Request **Academic Records Request**. It initially routes to Window 1. Show the ticket, QR and live status.
-3. On another device/session, sign into Staff Portal. New staff receive the first unassigned window, beginning at Window 1. Profile permits changing to an available window.
-4. Press **Call Next**. The student's app updates within the polling interval while connected.
-5. Use **Scan / verify ticket**, confirm the called student's number and arrival, then serve the student.
-6. Press **Mark as Done**. Both accounts retain the ticket in history. Calling another student remains a separate action.
-7. Sign into Staff Portal using the administrator account to pause bookings, configure services, create/disable staff accounts, reset passwords and inspect records.
+Read the passwords in **`.local/demo-accounts.txt`** on your laptop. There is no universal default password. Setup preserves existing accounts and records. Credentials and database files are ignored by Git.
 
-Held tickets remain active. Transfers and reopened exception tickets join the line's tail. Students can cancel waiting tickets. The QR identifies a ticket; staff still verify student identity. It does not allow queue jumping or automatic completion.
+Use Student Portal for students and Staff Portal for staff **and administrators**. In development, the **Quick login as…** buttons sign in directly without filling the form; the API must be running.
 
-## Data and recovery
+### Hide or retire demo accounts for presentation
 
-- Shared data: `.local/queueease.sqlite`, managed by the API. See [schema](server/schema.sql).
-- Device preferences: appearance, profile photo and local-alert preference.
-- Back up with `npm run server:backup`. This uses SQLite's backup API and is safe while the server is running. Backups are in `.local/backups/`.
-- To inspect a backup safely, stop the API and set `QUEUE_DB_PATH` to that backup's full path before starting it. Preserve the original database. Do not delete a database to resolve login problems.
-- Forgot a password: an administrator verifies the person's identity and resets it from Accounts. Users can change their own password in Profile. No recovery email is falsely reported as sent.
-- The prior device-local prototype queue is left untouched in AsyncStorage; it is not imported into authenticated accounts. New shared queues start empty.
+To hide quick-login buttons while keeping normal sign-in, stop and restart the API with:
 
-## Quick login for testing
+```powershell
+$env:QUEUE_DEMO_LOGIN='0'
+npm run server
+```
 
-In Expo Go or development mode, tap **Quick login as Student** in Student Portal, or **Quick login as Staff** / **Quick login as Admin** in Staff Portal. Leave the ID and password fields empty: the buttons sign in immediately to the existing demonstration accounts through the API.
+In the Expo terminal, restart with:
 
-The local server reads the credentials created by `npm run server:setup` from ignored `.local/demo-accounts.txt`; no client credential configuration is required and passwords are not bundled into the app. Restart `npm run server` after updating the server code. Changed passwords and disabled accounts still prevent sign-in. Use these accounts only for the private-network demonstration. Release builds hide the buttons; `NODE_ENV=production` or `QUEUE_DEMO_LOGIN=0` disables the server endpoint.
+```powershell
+$env:EXPO_PUBLIC_DEMO_LOGIN='0'
+npm start -- --clear
+```
 
-## Checks
+These settings disable the shortcut, **not the accounts**. To retire the demo student/staff accounts, first register your presentation student and create a staff account under **Administration → Accounts**, then disable the old demo accounts there. Keep an administrator account available. Do not delete the database: that also removes ticket history.
+
+To restore development shortcuts, remove these two environment variables from their respective terminals with `Remove-Item Env:QUEUE_DEMO_LOGIN` and `Remove-Item Env:EXPO_PUBLIC_DEMO_LOGIN`, then restart both processes.
+
+## Website version
+
+For development, keep the API running and run `npm run web` in another terminal.
+
+For a standalone website without Expo Go:
+
+```powershell
+npm run build:web
+npm run serve:web
+```
+
+**Stop any existing `npm run server` first:** `serve:web` runs the website and API together on port **4100**, using the same database. Open `http://localhost:4100` on the laptop or `http://YOUR-LAPTOP-IP:4100` on another device. Run `build:web` again after app changes. Quick-login shortcuts are automatically disabled in this version; use account IDs/emails and passwords.
+
+Staff can verify arrival by entering the ticket number in the browser; camera QR scanning is available in the mobile app. Reloading either version requires signing in again, while ticket records remain in the database.
+
+## Expo tunnel fallback
+
+If the phone cannot reach the Expo development server, install its tunnel helper once:
+
+```powershell
+npm install -g @expo/ngrok
+```
+
+Keep the API running. Replace `npm start` with:
+
+```powershell
+$env:EXPO_PUBLIC_API_URL='http://YOUR-LAPTOP-IP:4100'
+npm run start:tunnel
+```
+
+**Expo's tunnel carries the app bundle, not the queue API.** The phone still needs access to port 4100. Both devices need internet for the Expo tunnel. See [Expo tunnel instructions](https://docs.expo.dev/more/expo-cli/#tunneling).
+
+If phone-to-laptop access also fails, an optional temporary API tunnel is available after [installing Cloudflare's `cloudflared`](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/): disable server quick login with `QUEUE_DEMO_LOGIN=0`, then run this in another terminal:
+
+```powershell
+cloudflared tunnel --url http://localhost:4100
+```
+
+Copy the printed `https://…trycloudflare.com` address into `EXPO_PUBLIC_API_URL` in the Expo terminal, then restart `npm run start:tunnel`. The temporary address changes on restart. Use synthetic demonstration data: this exposes the API publicly. When running `serve:web`, the same tunnel also provides an HTTPS website address.
+
+## Rehearse and back up
+
+Student: request **Academic Records Request** → show ticket/QR. Staff at Window 1: **Call Next** → **Scan / verify ticket** → confirm arrival → **Mark as Done**. Check history in both accounts. Calling the next student is a separate staff action; QR verification does not skip the line.
+
+Data lives in `.local/queueease.sqlite`; see the [database schema](server/schema.sql). Run `npm run server:backup` to save a backup under `.local/backups/`, even while the server is running. Administrators can reset forgotten passwords from Accounts.
 
 ```powershell
 npm run typecheck
@@ -69,14 +114,11 @@ npm run test:server
 npm run test:native
 npx playwright install chromium
 npm run test:e2e
+npm run test:web
 ```
 
-Playwright starts Expo web on port 8081 by default and uses isolated in-memory test APIs with synthetic credentials. Tests do not change the demonstration database. Set `PLAYWRIGHT_PORT` to another port if necessary. Set `PLAYWRIGHT_CHANNEL=msedge` to use installed Edge. Native-camera, notification, Back and animation checks are in the [defense rehearsal guide](docs/defense-guide.md).
+Browser tests use isolated databases. `test:web` builds and checks the standalone website without Expo. Set `PLAYWRIGHT_PORT` if port 8081 is occupied, or `PLAYWRIGHT_CHANNEL=msedge` to use installed Edge. Queue updates require a connected app; closed-app remote push is not implemented. Service/window assignments are project settings, not verified university office policy.
 
-## Deployment scope
+## Expo and Android development
 
-This setup supports a supervised private-network demonstration with synthetic data. It is not an authorized public university deployment. Public use still requires HTTPS hosting, institutional account verification, a retention/privacy policy, load testing, dependency review and broader phone testing.
-
-Queue updates use polling roughly every two seconds while the app is active. Optional turn alerts appear as in-app pop-ups in Expo Go. Installed development/release builds use local device notifications with permission. Both require an open, connected app; closed-app remote push is not implemented. Reanimated motion respects Reduce Motion. Photos do not sync between devices. Ticket numbering is continuous, without a midnight reset. Service/window assignments are project settings, not verified UM Tagum office policy.
-
-Useful handoff files: [defense guide](docs/defense-guide.md), [paper working draft](docs/final-paper-working-draft.md), [database schema](server/schema.sql).
+Expo builds on React Native to develop native Android/iOS apps. **Expo Go is a preview app**, not your own installable APK. Android Studio supplies the IDE/emulator, and the Android SDK/JDK supply the build tools. With those installed, `npx expo run:android` builds and runs locally; [EAS Build](https://docs.expo.dev/build-reference/android-builds/) offers a cloud build alternative. See [Expo's local build guide](https://docs.expo.dev/guides/local-app-overview/). The website is an extra target; confirm whether the course specifically requires an APK or Java/Kotlin implementation.

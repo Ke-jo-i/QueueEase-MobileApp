@@ -1,5 +1,6 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
 import { Stack } from 'expo-router/js-stack';
+import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { AppearanceProvider, useAppearance } from '@/contexts/appearance';
 import { SessionProvider, useSession } from '@/contexts/session';
@@ -17,6 +18,7 @@ import { setBackgroundColorAsync } from 'expo-system-ui';
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}><SafeAreaProvider>
+      <Head><title>Queue Ease · UM Tagum Registrar</title></Head>
       <AppearanceProvider>
         <SessionProvider><TurnAlertsProvider><QueueProvider><NavigationMotionProvider><RootNavigator /></NavigationMotionProvider></QueueProvider></TurnAlertsProvider></SessionProvider>
       </AppearanceProvider>

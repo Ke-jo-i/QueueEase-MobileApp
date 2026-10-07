@@ -61,6 +61,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
+    "start:tunnel": "expo start --tunnel",
+    "build:web": "node scripts/build-web.mjs",
+    "serve:web": "tsx server/web.ts",
+    "test:web": "npm run build:web && playwright test --config playwright.web.config.ts",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
     "test:e2e": "playwright test"

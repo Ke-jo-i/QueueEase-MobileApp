@@ -1,4 +1,5 @@
 import { ApiError, request } from '@/data/api';
+import { demoLoginEnabled } from '@/constants/demo-mode';
 import { createContext, PropsWithChildren, useCallback, useContext, useRef, useState } from 'react';
 
 export type Role = 'student' | 'staff' | 'admin';
@@ -29,7 +30,7 @@ export function SessionProvider({ children }: PropsWithChildren) {
     user: auth?.user ?? null, token: auth?.token ?? null, signedOutRole,
     signIn: (portal, login, password) => authenticate('/auth/login', { portal, login, password }),
     quickSignIn: async (role) => {
-      if (!__DEV__) throw new ApiError('Quick login is available only while testing.');
+      if (!demoLoginEnabled) throw new ApiError('Quick login is available only while testing.');
       return authenticate('/auth/demo-login', { role });
     },
     signOut: async () => {

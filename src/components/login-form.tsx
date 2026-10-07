@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { demoLoginEnabled } from '@/constants/demo-mode';
 
 export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   const { signIn, quickSignIn } = useSession(); const router = useRouter();
@@ -23,7 +24,7 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   };
   return <FormPage title={portal === 'student' ? 'Welcome back' : 'Staff sign in'} subtitle={portal === 'student' ? 'Your place in line, wherever you are on campus.' : 'Sign in with your registrar or administrator account.'}>
     <View style={{ gap: 18 }}>
-      {__DEV__ && <View style={{ gap: 8 }}>
+      {demoLoginEnabled && <View style={{ gap: 8 }}>
         <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>Quick login · demo accounts</Text>
         {quickRoles.map((role) => <ActionButton key={role} label={`Quick login as ${role[0].toUpperCase()}${role.slice(1)}`} secondary disabled={busy}
           onPress={() => void submit(role)} />)}

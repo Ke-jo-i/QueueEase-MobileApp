@@ -1,6 +1,6 @@
 # Queue Ease
 
-A registrar queue app for the UM Tagum project, available on **Android/iOS through Expo** and as a **website**. Both versions share the Node.js API and SQLite database. Students book and track tickets, staff call and serve students, and administrators manage accounts, services and queue availability.
+A registrar queue app, available on **Android/iOS through Expo** and as a **website**. Both versions share the Node.js API and SQLite database. Students book and track tickets, staff call and serve students, and administrators manage accounts, services and queue availability.
 
 ## Start the mobile app
 

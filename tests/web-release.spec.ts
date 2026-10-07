@@ -15,7 +15,7 @@ async function signIn(page: Page, origin: string, role: 'student' | 'staff' | 'a
 test('exported website supports desktop and phone browsers with a shared queue and no quick-login controls', async ({ page, browser, apiUrl }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await signIn(page, apiUrl, 'student');
-  await expect(page).toHaveTitle('Queue Ease · UM Tagum Registrar');
+  await expect(page).toHaveTitle('Queue Ease · Registrar');
   await expect(page.getByText('Registrar Services', { exact: true })).toBeVisible();
   await page.screenshot({ path: '.local/screenshots/web-student-desktop.png', fullPage: true, animations: 'disabled' });
   await page.getByRole('button', { name: 'Academic Records Request', exact: true }).click();
@@ -27,14 +27,14 @@ test('exported website supports desktop and phone browsers with a shared queue a
     const staff = await staffContext.newPage();
     staff.on('dialog', dialog => dialog.accept());
     await signIn(staff, apiUrl, 'staff');
-    await staff.getByRole('button', { name: 'CALL NEXT', exact: true }).click();
+    await staff.getByRole('button', { name: 'Call Next', exact: true }).click();
     await staff.getByRole('button', { name: 'Scan / verify ticket', exact: true }).click();
     await expect(staff.getByRole('button', { name: 'Scan QR ticket', exact: true })).toHaveCount(0);
     await staff.getByLabel('Ticket number or QR text', { exact: true }).fill('R - 1');
     await staff.getByRole('button', { name: 'Confirm arrival', exact: true }).click();
     await expect(staff.getByText(/Arrival confirmed and recorded/)).toBeVisible();
     await staff.getByRole('button', { name: 'Back to queue', exact: true }).click();
-    await staff.getByRole('button', { name: 'MARK AS DONE', exact: true }).click();
+    await staff.getByRole('button', { name: 'Mark as Done', exact: true }).click();
     await expect(page.getByTestId('student-tickets').getByText('COMPLETED', { exact: true })).toBeVisible({ timeout: 10000 });
     await page.reload();
     await expect(page.getByText('Student Portal', { exact: true })).toBeVisible();

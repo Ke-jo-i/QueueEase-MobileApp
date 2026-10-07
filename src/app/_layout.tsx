@@ -18,7 +18,7 @@ import { setBackgroundColorAsync } from 'expo-system-ui';
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}><SafeAreaProvider>
-      <Head><title>Queue Ease · UM Tagum Registrar</title></Head>
+      <Head><title>Queue Ease · Registrar</title></Head>
       <AppearanceProvider>
         <SessionProvider><TurnAlertsProvider><QueueProvider><NavigationMotionProvider><RootNavigator /></NavigationMotionProvider></QueueProvider></TurnAlertsProvider></SessionProvider>
       </AppearanceProvider>

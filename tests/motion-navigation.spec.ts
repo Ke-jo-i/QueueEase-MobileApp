@@ -5,28 +5,35 @@ async function motionFrames(page: Page, testId: string, action: () => Promise<un
   const frames = page.evaluate(testId => new Promise<{ x: number; y: number }[]>(resolve => {
     const points: { x: number; y: number }[] = [];
     const start = performance.now();
+    let finish = Infinity;
+    const done = () => { finish = performance.now() + 700; };
+    document.addEventListener('motion-action-finished', done, { once: true });
     function sample(now: number) {
       const rect = document.querySelector(`[data-testid="${testId}"]`)?.getBoundingClientRect();
       if (rect?.height) points.push({ x: Math.round(rect.x), y: Math.round(rect.y) });
-      if (now - start < 700) requestAnimationFrame(sample);
-      else resolve(points);
+      if (now < finish && now - start < 6000) requestAnimationFrame(sample);
+      else { document.removeEventListener('motion-action-finished', done); resolve(points); }
     }
     requestAnimationFrame(sample);
   }), testId);
   await action();
+  await page.evaluate(() => document.dispatchEvent(new Event('motion-action-finished')));
   return frames;
 }
 
 test('tabs travel sideways and detail Back reverses vertically after booking', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await login(page);
+  const service = page.getByRole('button', { name: 'Academic Records Request', exact: true });
+  const serviceLeft = (await service.boundingBox())?.x;
   const right = await motionFrames(page, 'student-tickets', () => page.getByRole('tab', { name: 'Tickets', exact: true }).click());
   expect(right.some(frame => frame.x > 5)).toBeTruthy();
   expect(right.at(-1)).toEqual({ x: 0, y: 0 });
   const left = await motionFrames(page, 'student-home', () => page.getByRole('tab', { name: 'Home', exact: true }).click());
   expect(left.some(frame => frame.x < -5)).toBeTruthy();
   expect(left.at(-1)).toEqual({ x: 0, y: 0 });
-  await page.getByRole('button', { name: 'Academic Records Request', exact: true }).click();
+  expect((await service.boundingBox())?.x).toBe(serviceLeft);
+  await service.click();
   const booking = await motionFrames(page, 'student-tickets', () => page.getByRole('button', { name: 'Get Queue Number', exact: true }).click());
   expect(booking.some(frame => frame.y > 5)).toBeTruthy();
   expect(booking.at(-1)).toEqual({ x: 0, y: 0 });
@@ -36,7 +43,13 @@ test('tabs travel sideways and detail Back reverses vertically after booking', a
   expect(up.at(-1)).toEqual({ x: 0, y: 0 });
   const down = await motionFrames(page, 'live-queue', () => page.getByLabel('Back', { exact: true }).click());
   expect(down.some(frame => frame.y > 5)).toBeTruthy();
-  expect(down.every(frame => frame.y >= 0)).toBeTruthy();
+  expect(down.filter(frame => frame.y < 0)).toEqual([]);
+  await expect(page.getByRole('button', { name: 'View QR Ticket', exact: true })).toBeVisible();
+  await page.getByTestId('student-tickets').getByLabel('View queue progress', { exact: true }).click();
+  await expect.poll(async () => Math.round((await page.getByTestId('live-queue').boundingBox())?.y ?? -1)).toBe(0);
+  const browserBack = await motionFrames(page, 'live-queue', () => page.goBack());
+  expect(browserBack.some(frame => frame.y > 5)).toBeTruthy();
+  expect(browserBack.every(frame => frame.y >= 0)).toBeTruthy();
   await expect(page.getByRole('button', { name: 'View QR Ticket', exact: true })).toBeVisible();
 });
 

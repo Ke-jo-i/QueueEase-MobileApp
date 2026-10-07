@@ -16,7 +16,7 @@ export function FormPage({ title, subtitle, children, back = true }: PropsWithCh
         else router.replace('/landing');
       }} style={{ alignSelf: 'flex-start', padding: 8 }}><Ionicons name="arrow-back" size={24} color={colors.text} /></MotionButton>}
       <View style={{ gap: 10 }}><View style={{ width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.brand }}><Text style={{ fontSize: 27, fontWeight: '800', color: '#fff' }}>Q</Text></View>
-        <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1.4, color: colors.brandText }}>Queue Ease · UM TAGUM</Text>
+        <Text style={{ fontSize: 12, fontWeight: '700', letterSpacing: 1.4, color: colors.brandText }}>Queue Ease</Text>
         <Text accessibilityRole="header" style={{ fontSize: 30, lineHeight: 36, fontWeight: '800', color: colors.text }}>{title}</Text>
         {!!subtitle && <Text style={{ fontSize: 15, lineHeight: 22, color: colors.textMuted }}>{subtitle}</Text>}
       </View>

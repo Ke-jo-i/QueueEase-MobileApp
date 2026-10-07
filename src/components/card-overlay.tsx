@@ -1,10 +1,12 @@
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
-import Animated, { cancelAnimation, Easing, ReduceMotion, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { cancelAnimation, Easing, ReduceMotion, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { navigationSpring } from './motion';
 
 type CardOverlayProps = { open: boolean; onClose: () => void; children: ReactNode };
-const timing = { duration: 260, easing: Easing.out(Easing.cubic), reduceMotion: ReduceMotion.System };
+const timing = { duration: 210, easing: Easing.bezier(0.4, 0, 0.2, 1), reduceMotion: ReduceMotion.System };
+const opening = { ...navigationSpring, reduceMotion: ReduceMotion.System };
 
 export function CardOverlay({ open, onClose, children }: CardOverlayProps) {
   const colors = useAppTheme();
@@ -24,8 +26,9 @@ export function CardOverlay({ open, onClose, children }: CardOverlayProps) {
   useEffect(() => {
     const version = ++revision.current;
     if (open && !shown) return;
-    progress.set(withTiming(open ? 1 : 0, timing, finished => {
-      if (finished && !open) runOnJS(finishClose)(version);
+    if (open) progress.set(withSpring(1, opening));
+    else progress.set(withTiming(0, timing, finished => {
+      if (finished) runOnJS(finishClose)(version);
     }));
   }, [open, shown, progress, finishClose]);
   const frame = useAnimatedStyle(() => ({ transform: [{ translateY: viewport.height * (1 - progress.get()) }] }));

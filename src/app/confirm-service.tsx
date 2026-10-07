@@ -46,7 +46,7 @@ export default function ConfirmServiceScreen() {
           <Text style={styles.headerTitle}>Confirm Service</Text>
         </TouchableOpacity>
 
-        <Text style={styles.studentInfo}>Student: {studentId} (Tagum Campus)</Text>
+        <Text style={styles.studentInfo}>Student: {studentId}</Text>
 
         {/* Selected Service Detail Card */}
         <View style={styles.serviceDetailCard}>

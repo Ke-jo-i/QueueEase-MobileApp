@@ -2,6 +2,7 @@ import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
+import { type Ticket } from '@/data/queue-model';
 import { useSession } from '@/contexts/session';
 import { registrarReminders } from '@/constants/registrar-services';
 import { ticketStatusLabels } from '@/constants/queue-labels';
@@ -26,20 +27,26 @@ export default function MyTicketsScreen() {
   const { studentTicket, studentHistory, studentProgress, cancelTicket } = useQueue();
   const { studentId } = useSession();
   const router = useRouter();
-  const [showQrModal, setShowQrModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [qrTicketId, setQrTicketId] = useState<string | null>(null);
+  const [cancelTicketId, setCancelTicketId] = useState<string | null>(null);
+  const [lastPreview, setLastPreview] = useState<Ticket | null>(null);
   const [cancelReason, setCancelReason] = useState('');
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
+  const showQrModal = !!studentTicket && qrTicketId === studentTicket.id;
+  const showCancelModal = showQrModal && studentTicket?.status === 'WAITING' && cancelTicketId === studentTicket.id;
+  const preview = showQrModal ? studentTicket : lastPreview;
+  if (showQrModal && studentTicket !== lastPreview) setLastPreview(studentTicket);
+  if (qrTicketId && !showQrModal) setQrTicketId(null);
+  if (cancelTicketId && !showCancelModal) { setCancelTicketId(null); setCancelReason(''); }
+  const closePreview = () => { setQrTicketId(null); setCancelTicketId(null); setCancelReason(''); };
 
   // Handle Ticket Cancellation Logic
   const handleConfirmCancel = async () => {
-    if (!cancelReason.trim()) return;
+    if (!showCancelModal || !cancelReason.trim()) return;
     if (!await cancelTicket(cancelReason)) return;
-    setShowCancelModal(false);
-    setShowQrModal(false);
-    setCancelReason('');
+    closePreview();
   };
 
   return (
@@ -77,7 +84,7 @@ export default function MyTicketsScreen() {
                   styles.viewQrContainer,
                   pressed && styles.pressedEffect,
                 ]}
-                onPress={() => setShowQrModal(true)}
+                onPress={() => { setLastPreview(studentTicket); setQrTicketId(studentTicket.id); }}
               >
                 <Text style={styles.viewQrText}>View QR Ticket</Text>
               </Pressable>
@@ -115,34 +122,34 @@ export default function MyTicketsScreen() {
       </ScrollView>
 
       {/* QUEUE TICKET MODAL */}
-      <CardOverlay open={showQrModal && !!studentTicket} onClose={() => setShowQrModal(false)}>
+      <CardOverlay open={showQrModal} onClose={closePreview}>
         <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Header with Close */}
             <View style={styles.modalHeaderRow}>
               <View>
                 <Text style={styles.title}>Queue Ticket</Text>
-                <Text style={styles.studentInfo}>Student: {studentId} (Tagum Campus)</Text>
+                <Text style={styles.studentInfo}>Student: {studentId}</Text>
               </View>
-              <TouchableOpacity accessibilityLabel="Close ticket" onPress={() => setShowQrModal(false)} style={styles.closeBtn}>
+              <TouchableOpacity accessibilityLabel="Close ticket" onPress={closePreview} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             {/* Ticket Status Card */}
             <View style={styles.card}>
-              <Text style={styles.ticketNumber}>{studentTicket?.number}</Text>
+              <Text style={styles.ticketNumber}>{preview?.number}</Text>
               <Text style={styles.statusLabel}>
-                Status: <Text style={styles.statusValue}>{studentTicket ? ticketStatusLabels[studentTicket.status] : ''}</Text>
+                Status: <Text style={styles.statusValue}>{preview ? ticketStatusLabels[preview.status] : ''}</Text>
               </Text>
-              <Text style={styles.windowText}>{studentTicket?.window}</Text>
+              <Text style={styles.windowText}>{preview?.window}</Text>
             </View>
 
             {/* QR Code Card */}
             <View style={styles.cardCenter}>
-              {studentTicket && <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}><QRCode value={`queueease:v1:${studentTicket.id}`} size={160} /></View>}
+              {preview && <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}><QRCode value={`queueease:v1:${preview.id}`} size={160} /></View>}
               <Text style={styles.qrSubtext}>
-                Show this ticket when called at {studentTicket?.window.split(' - ')[0]}. Staff can scan it to confirm your arrival. Scanning does not skip the line.
+                Show this ticket when called at {preview?.window.split(' - ')[0]}. Staff can scan it to confirm your arrival. Scanning does not skip the line.
               </Text>
             </View>
 
@@ -160,13 +167,13 @@ export default function MyTicketsScreen() {
             </View>
 
             {/* Cancel Queue Ticket Button */}
-            {studentTicket?.status === 'WAITING' && (
+            {preview?.status === 'WAITING' && (
               <Pressable
                 style={({ pressed }) => [
                   styles.cancelButton,
                   pressed && styles.cancelButtonPressed,
                 ]}
-                onPress={() => setShowCancelModal(true)}
+                onPress={() => { setCancelReason(''); setCancelTicketId(studentTicket?.id ?? null); }}
               >
                 <Text style={styles.cancelButtonText}>Cancel Queue Ticket</Text>
               </Pressable>
@@ -180,7 +187,7 @@ export default function MyTicketsScreen() {
         visible={showCancelModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowCancelModal(false)}
+        onRequestClose={() => setCancelTicketId(null)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -209,7 +216,7 @@ export default function MyTicketsScreen() {
             <TouchableOpacity
               style={styles.modalKeepBtn}
               activeOpacity={0.8}
-              onPress={() => setShowCancelModal(false)}
+              onPress={() => setCancelTicketId(null)}
             >
               <Text style={styles.modalKeepBtnText}>No, Keep my ticket</Text>
             </TouchableOpacity>

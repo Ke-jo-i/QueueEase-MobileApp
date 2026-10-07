@@ -1,9 +1,11 @@
 import { Pressable, StyleSheet, type TouchableOpacityProps, type ViewProps } from 'react-native';
-import Animated, { Easing, FadeIn, FadeOut, ReduceMotion, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeInDown, FadeOut, ReduceMotion, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 
 const AnimatedTouch = Animated.createAnimatedComponent(Pressable);
 const pressTiming = { duration: 75, easing: Easing.out(Easing.quad), reduceMotion: ReduceMotion.System };
 export const settleSpring = { stiffness: 420, damping: 32, mass: 0.7, overshootClamping: true, reduceMotion: ReduceMotion.System };
+export const navigationSpring = { stiffness: 360, damping: 38, mass: 0.9, overshootClamping: true, restDisplacementThreshold: 0.001, restSpeedThreshold: 0.01 };
+const reveal = FadeInDown.duration(220).easing(Easing.bezier(0.22, 1, 0.36, 1)).reduceMotion(ReduceMotion.System);
 export function MotionButton({ style, onPressIn, onPressOut, activeOpacity: _activeOpacity, ...props }: TouchableOpacityProps) {
   const pressed = useSharedValue(0);
   const baseOpacity = StyleSheet.flatten(style)?.opacity;
@@ -14,6 +16,6 @@ export function MotionButton({ style, onPressIn, onPressOut, activeOpacity: _act
     onPressOut={(event) => { pressed.set(withSpring(0, settleSpring)); onPressOut?.(event); }} />;
 }
 export function Reveal({ children, ...props }: ViewProps) {
-  return <Animated.View {...props} entering={FadeIn.duration(180).reduceMotion(ReduceMotion.System)}
+  return <Animated.View {...props} entering={reveal}
     exiting={FadeOut.duration(100).reduceMotion(ReduceMotion.System)}>{children}</Animated.View>;
 }

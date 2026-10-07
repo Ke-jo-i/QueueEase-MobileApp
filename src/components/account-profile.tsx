@@ -38,7 +38,7 @@ export function AccountProfile() {
       <Reveal style={{ flexDirection: 'row', gap: 14, padding: 20, borderRadius: 18, backgroundColor: colors.infoSurface, alignItems: 'center' }}>
         <ProfilePhoto storageId={`${role}:${user?.id}`} initials={user?.name.split(' ').map((part) => part[0]).slice(0, 2).join('') ?? 'Q'} size={56} variant={role === 'staff' ? 'staff' : 'student'} />
         <View style={{ flex: 1, gap: 4 }}><Text style={{ color: colors.text, fontSize: 18, fontWeight: '700' }}>{user?.name}</Text>
-          <Text style={{ color: colors.textMuted }}>{user?.login}</Text><Text style={{ color: colors.brandText, fontSize: 12 }}>{role === 'staff' ? assignedWindow || 'No window assigned' : 'Student · Tagum Campus'}</Text></View>
+          <Text style={{ color: colors.textMuted }}>{user?.login}</Text><Text style={{ color: colors.brandText, fontSize: 12 }}>{role === 'staff' ? assignedWindow || 'No window assigned' : 'Student'}</Text></View>
       </Reveal>
       <View style={{ borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: colors.border }}><DarkModeToggle /><ThemePicker /></View>
       {role === 'student' && Platform.OS !== 'web' && <View style={{ gap: 8 }}>

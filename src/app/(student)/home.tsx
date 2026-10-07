@@ -32,7 +32,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.brandTitle}>Queue Ease</Text>
-            <Text style={styles.campusLabel}>Registrar · UM Tagum</Text>
+            <Text style={styles.campusLabel}>Registrar</Text>
           </View>
           <TouchableOpacity style={styles.profileIconBtn} onPress={() => router.push('/profile')}>
             <Ionicons name="person-outline" size={22} color={colors.brandText} />
@@ -72,32 +72,33 @@ export default function HomeScreen() {
 
           {ready && !acceptingTickets && <Notice text="New tickets are paused. Existing tickets remain in the queue. Please check again later." />}
           {services.map(({ name: service, enabled }) => (
-            <Pressable
-              key={service}
-              accessibilityRole="button"
-              accessibilityLabel={service}
-              disabled={!connected || !enabled || !acceptingTickets}
-              onPress={() => handleSelectService(service)}
-              style={({ hovered, pressed }) => [
-                styles.serviceCard,
-                (!enabled || !acceptingTickets) && { opacity: 0.45 },
-                hovered && styles.serviceCardHovered, // Kulay kapag itinaas lang ang mouse cursor
-                pressed && styles.serviceCardPressed, // Kulay kapag talagang pino-press/kiniclick
-              ]}
-            >
-              {({ hovered }) => (<>
-                <View style={styles.serviceInfo}><Text
-                  style={[
-                    styles.serviceName,
-                    hovered && styles.serviceNameHovered,
-                  ]}
-                >
-                  {service}
-                </Text>
-                <Text style={styles.serviceDescription}>{enabled ? serviceDescriptions[service] : 'Temporarily unavailable'}</Text></View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </>)}
-            </Pressable>
+            <Reveal key={service}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={service}
+                disabled={!connected || !enabled || !acceptingTickets}
+                onPress={() => handleSelectService(service)}
+                style={({ hovered, pressed }) => [
+                  styles.serviceCard,
+                  (!enabled || !acceptingTickets) && { opacity: 0.45 },
+                  hovered && styles.serviceCardHovered, // Kulay kapag itinaas lang ang mouse cursor
+                  pressed && styles.serviceCardPressed, // Kulay kapag talagang pino-press/kiniclick
+                ]}
+              >
+                {({ hovered }) => (<>
+                  <View style={styles.serviceInfo}><Text
+                    style={[
+                      styles.serviceName,
+                      hovered && styles.serviceNameHovered,
+                    ]}
+                  >
+                    {service}
+                  </Text>
+                  <Text style={styles.serviceDescription}>{enabled ? serviceDescriptions[service] : 'Temporarily unavailable'}</Text></View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                </>)}
+              </Pressable>
+            </Reveal>
           ))}
         </View>
       </ScrollView>

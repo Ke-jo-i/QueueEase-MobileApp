@@ -55,8 +55,8 @@ test('separate student and staff devices share call, arrival and completion hist
     await page.screenshot({ path: '.local/screenshots/student-ticket.png', fullPage: true, animations: 'disabled' });
     await page.getByLabel('Close ticket').click();
     await login(staff, 'staff');
-    await expect(staff.getByText('View Waiting Queue List (1)', { exact: true })).toBeVisible();
-    await staff.getByRole('button', { name: 'CALL NEXT', exact: true }).click();
+    await expect(staff.getByRole('button', { name: 'View Waiting Queue List (1)', exact: true })).toBeVisible();
+    await staff.getByRole('button', { name: 'Call Next', exact: true }).click();
     await expect(staff.getByText('R - 1', { exact: true })).toBeVisible();
     await staff.screenshot({ path: '.local/screenshots/staff-queue.png', fullPage: true, animations: 'disabled' });
     await page.getByRole('tab', { name: /Alerts/ }).click();
@@ -68,8 +68,8 @@ test('separate student and staff devices share call, arrival and completion hist
     await staff.getByRole('button', { name: 'Confirm arrival' }).click();
     await expect(staff.getByText(/Arrival confirmed and recorded/)).toBeVisible();
     await staff.getByRole('button', { name: 'Back to queue' }).click();
-    await staff.getByRole('button', { name: 'MARK AS DONE', exact: true }).click();
-    await expect(staff.getByText('NO QUEUE', { exact: true }).filter({ visible: true }).first()).toBeVisible();
+    await staff.getByRole('button', { name: 'Mark as Done', exact: true }).click();
+    await expect(staff.getByText('No active ticket', { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await page.getByRole('tab', { name: /Tickets/ }).click();
     await expect(page.getByTestId('student-tickets').getByText('COMPLETED', { exact: true }).filter({ visible: true }).first()).toBeVisible({ timeout: 10000 });
     await staff.getByText('History', { exact: true }).click();

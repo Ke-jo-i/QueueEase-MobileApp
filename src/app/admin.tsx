@@ -47,7 +47,7 @@ export default function AdminScreen() {
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>{data?.counts.map((item) => <View key={item.status} style={{ padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}><Text style={heading}>{item.count}</Text><Text style={{ color: colors.textMuted, fontSize: 11 }}>{item.status.replace('_', ' ')}</Text></View>)}</View>
     <ActionButton label="Service routing" secondary onPress={() => setSection(section === 'services' ? '' : 'services')} />
     {section === 'services' && <Reveal style={{ gap: 20 }}>
-      <Notice text="These are the six service categories in the approved proposal. Window assignments are configurable project settings, not a verified UM Tagum office policy. Changes apply to new tickets; existing tickets keep their assigned window." />
+      <Notice text="Choose which window handles each service. Changes apply to new tickets; existing tickets keep their assigned window." />
       {data?.services.map((service) => <View key={service.name} style={{ gap: 10, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.border }}>
         <Text style={heading}>{service.name}</Text>
         <ActionButton label={service.enabled ? 'Enabled · tap to pause service' : 'Paused · tap to enable service'} secondary disabled={busy} onPress={() => void act({ type: 'SET_SERVICE', ...service, enabled: !service.enabled })} />

@@ -20,6 +20,13 @@ const ACTION_REASONS = {
   skip: ['Student not present', 'Student missed the call', 'Incorrect service queue', 'Other'],
 } as const;
 
+const TICKET_ACTIONS = [
+  { id: 'hold', label: 'Hold ticket', description: 'Keep it active while the student gathers documents.', icon: 'pause-circle-outline' },
+  { id: 'transfer', label: 'Transfer ticket', description: 'Move it to another window’s waiting line.', icon: 'swap-horizontal-outline' },
+  { id: 'skip', label: 'Skip ticket', description: 'End this ticket as skipped.', icon: 'play-skip-forward-outline' },
+  { id: 'noShow', label: 'Mark no-show', description: 'Record that the student did not respond to the call.', icon: 'person-remove-outline' },
+] as const;
+
 export default function StaffDashboardScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
@@ -30,6 +37,7 @@ export default function StaffDashboardScreen() {
   const [selectedReason, setSelectedReason] = useState('');
   const [reasonMenuOpen, setReasonMenuOpen] = useState(false);
   const [transferWindow, setTransferWindow] = useState('Window 1 - Registrar');
+  const [menuTicketId, setMenuTicketId] = useState<string | null>(null);
 
   const {
     assignedWindow,
@@ -46,6 +54,12 @@ export default function StaffDashboardScreen() {
     connected,
   } = useQueue();
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
+  const menuOpen = !!currentServing && menuTicketId === currentServing.id;
+  if (menuTicketId && !menuOpen) setMenuTicketId(null);
+  const unavailable = busy || !connected;
+  const arrivalConfirmed = currentServing?.events.slice(currentServing.events.map((event) => event.type).lastIndexOf('CALLED'))
+    .some((event) => event.type === 'CHECKED_IN');
+  const closeActions = () => { setMenuTicketId(null); setAction(null); setReasonMenuOpen(false); };
 
   // Handler para sa Call Next
   const handleCallNext = async () => {
@@ -88,6 +102,7 @@ export default function StaffDashboardScreen() {
     setActionTicketId(currentServing.id);
     setSelectedReason('');
     setReasonMenuOpen(false);
+    setMenuTicketId(null);
     if (nextAction === 'transfer') setTransferWindow(registrarWindows.find((window) => window !== assignedWindow)!);
     setAction(nextAction);
   };
@@ -154,87 +169,93 @@ export default function StaffDashboardScreen() {
           <Text style={styles.headerSubtitle}>{assignedWindow || 'Choose an available window in Profile'}</Text>
         </View>
         {!assignedWindow && <Notice text="All windows may already be assigned. Ask the administrator to review staff assignments." />}
-        {currentServing && <View style={{ marginBottom: 14 }}><ActionButton label={currentServing.events.slice(currentServing.events.map((event) => event.type).lastIndexOf('CALLED')).some((event) => event.type === 'CHECKED_IN') ? 'Arrival confirmed' : 'Scan / verify ticket'} disabled={busy || !connected} secondary onPress={() => router.push('/staff/scan')} /></View>}
 
         {/* Currently Serving Display Box */}
         <View style={styles.servingCard}>
           <Text style={styles.servingLabel}>CURRENTLY SERVING</Text>
-          <Text style={styles.ticketNumber}>
-            {currentServing ? currentServing.number : 'NO QUEUE'}
+          <Text style={[styles.ticketNumber, !currentServing && styles.emptyTitle]}>
+            {currentServing ? currentServing.number : 'No active ticket'}
           </Text>
           <Text style={styles.serviceText}>
-            {currentServing ? currentServing.service : 'Tap Call Next when ready'}
+            {currentServing ? currentServing.service : windowWaiting.length ? 'Call the next student to begin.' : 'No students waiting at this window.'}
           </Text>
+          {currentServing && (arrivalConfirmed ? <View style={styles.arrivalStatus}>
+            <Ionicons name="checkmark-circle-outline" size={18} color={colors.successStrong} />
+            <Text style={styles.arrivalStatusText}>Arrival confirmed</Text>
+          </View> : <TouchableOpacity style={[styles.verifyButton, unavailable && styles.disabled]} disabled={unavailable}
+            accessibilityLabel="Scan / verify ticket" onPress={() => router.push('/staff/scan')}>
+            <Ionicons name="qr-code-outline" size={18} color={colors.brandText} />
+            <Text style={styles.verifyText}>Scan / verify ticket</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.brandText} />
+          </TouchableOpacity>)}
         </View>
 
         {/* Action Buttons */}
         <View style={styles.actionContainer}>
-          <TouchableOpacity
-            disabled={busy || !connected || !!currentServing || windowWaiting.length === 0 || !assignedWindow}
-            style={[styles.callNextBtn, (busy || !connected || !!currentServing || windowWaiting.length === 0) && { opacity: 0.45 }]}
-            activeOpacity={0.8}
-            onPress={handleCallNext}
-          >
-            <Text style={styles.callNextBtnText}>CALL NEXT</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            disabled={busy || !connected || !currentServing}
-            style={[styles.recallBtn, (busy || !connected || !currentServing) && { opacity: 0.45 }]}
-            activeOpacity={0.8}
-            onPress={handleRecall}
-          >
-            <Text style={styles.recallBtnText}>RECALL</Text>
-          </TouchableOpacity>
-
-          <View pointerEvents={busy || !connected || !currentServing ? 'none' : 'auto'} style={[styles.secondaryActionRow, (busy || !connected || !currentServing) && { opacity: 0.45 }]}>
-            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => openAction('hold')}>
-              <Text style={styles.secondaryActionText}>HOLD</Text>
+          <ActionButton label={currentServing ? 'Mark as Done' : 'Call Next'} busy={busy}
+            disabled={!connected || (!currentServing && (!assignedWindow || !windowWaiting.length))}
+            onPress={currentServing ? handleMarkAsDone : handleCallNext} />
+          {currentServing && <View style={styles.secondaryActionRow}>
+            <TouchableOpacity style={[styles.secondaryActionBtn, unavailable && styles.disabled]} disabled={unavailable} accessibilityLabel="Recall" onPress={handleRecall}>
+              <Ionicons name="volume-high-outline" size={18} color={colors.textSecondary} />
+              <Text style={styles.secondaryActionText}>Recall</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => openAction('skip')}>
-              <Text style={styles.secondaryActionText}>SKIP</Text>
+            <TouchableOpacity style={[styles.secondaryActionBtn, unavailable && styles.disabled]} disabled={unavailable}
+              accessibilityLabel="More actions" accessibilityState={{ expanded: menuOpen }} onPress={() => setMenuTicketId(currentServing.id)}>
+              <Ionicons name="ellipsis-horizontal" size={18} color={colors.textSecondary} />
+              <Text style={styles.secondaryActionText}>More actions</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => openAction('noShow')}>
-              <Text style={styles.secondaryActionText}>NO-SHOW</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => openAction('transfer')}>
-              <Text style={styles.secondaryActionText}>TRANSFER</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity
-            disabled={busy || !connected || !currentServing}
-            style={[styles.doneBtn, (busy || !connected || !currentServing) && { opacity: 0.45 }]}
-            activeOpacity={0.8}
-            onPress={handleMarkAsDone}
-          >
-            <Text style={styles.doneBtnText}>MARK AS DONE</Text>
-          </TouchableOpacity>
+          </View>}
         </View>
 
         {/* View Waiting Queue List Link */}
         <TouchableOpacity
           style={styles.queueListBtn}
+          accessibilityLabel={`View Waiting Queue List (${windowWaiting.length})`}
           activeOpacity={0.7}
           onPress={() => router.push('/staff/queue-list')}
         >
-          <Text style={styles.queueListBtnText}>
-            View Waiting Queue List ({windowWaiting.length})
-          </Text>
-          {windowWaiting[0] && <Text style={styles.nextTicket}>Up next: {windowWaiting[0].number} · {windowWaiting[0].service}</Text>}
+          <Ionicons name="list-outline" size={20} color={colors.textMuted} />
+          <View style={styles.queueListInfo}>
+            <Text style={styles.queueListBtnText}>Waiting queue</Text>
+            {windowWaiting[0] && <Text style={styles.nextTicket}>Up next: {windowWaiting[0].number} · {windowWaiting[0].service}</Text>}
+          </View>
+          <View style={styles.waitingBadge}><Text style={styles.waitingCount}>{windowWaiting.length}</Text></View>
+          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
         </TouchableOpacity>
       </ScrollView>
 
-      <Modal visible={action !== null} transparent animationType="fade" onRequestClose={() => setAction(null)}>
-        <View style={styles.modalOverlay}>
-          {action && <View style={styles.modalCard}>
+      <Modal visible={menuOpen || action !== null} transparent animationType="fade" onRequestClose={closeActions}>
+        <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.modalOverlay, menuOpen && styles.menuOverlay]}>
+          {menuOpen ? <View style={[styles.modalCard, styles.menuCard]}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <Text style={styles.modalEyebrow}>TICKET {currentServing?.number}</Text>
+                <Text accessibilityRole="header" style={styles.modalTitle}>Ticket actions</Text>
+              </View>
+              <TouchableOpacity style={styles.modalCloseButton} onPress={closeActions} accessibilityLabel="Close actions">
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.menuList}>
+              {TICKET_ACTIONS.map((item) => <TouchableOpacity key={item.id} style={[styles.menuOption, unavailable && styles.disabled]}
+                accessibilityLabel={item.label} disabled={unavailable} onPress={() => openAction(item.id)}>
+                <Ionicons name={item.icon} size={22} color={item.id === 'noShow' ? colors.dangerStrong : colors.textSecondary} />
+                <View style={styles.menuOptionInfo}>
+                  <Text style={[styles.menuOptionTitle, item.id === 'noShow' && styles.menuOptionDanger]}>{item.label}</Text>
+                  <Text style={styles.menuOptionDescription}>{item.description}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+              </TouchableOpacity>)}
+            </ScrollView>
+          </View> : action && <View style={styles.modalCard}>
             {currentServing?.id !== actionTicketId && <Notice text="This ticket changed while the dialog was open. Close it and review the current queue before taking another action." error />}
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
                 <Text style={styles.modalEyebrow}>TICKET {currentServing?.number}</Text>
                 <Text style={styles.modalTitle}>{action === 'transfer' ? 'Transfer ticket' : `${action === 'noShow' ? 'Mark no-show' : action === 'hold' ? 'Hold ticket' : 'Skip ticket'}`}</Text>
               </View>
-              <TouchableOpacity style={styles.modalCloseButton} onPress={() => setAction(null)} accessibilityLabel="Close action dialog">
+              <TouchableOpacity style={styles.modalCloseButton} onPress={closeActions} accessibilityLabel="Close action dialog">
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
@@ -249,7 +270,8 @@ export default function StaffDashboardScreen() {
             ) : action === 'hold' || action === 'skip' ? (
               <View>
                 <Text style={styles.modalPrompt}>Select why this ticket is being {action === 'hold' ? 'held' : 'skipped'}.</Text>
-                <TouchableOpacity style={styles.dropdownButton} onPress={() => setReasonMenuOpen((open) => !open)}>
+                <TouchableOpacity style={styles.dropdownButton} accessibilityLabel={selectedReason || 'Choose a reason'}
+                  accessibilityState={{ expanded: reasonMenuOpen }} onPress={() => setReasonMenuOpen((open) => !open)}>
                   <Text style={[styles.dropdownText, !selectedReason && styles.dropdownPlaceholder]}>
                     {selectedReason || 'Choose a reason'}
                   </Text>
@@ -300,15 +322,15 @@ export default function StaffDashboardScreen() {
               />
             )}
             <View style={styles.modalActionRow}>
-              <TouchableOpacity style={styles.modalCancelButton} onPress={() => setAction(null)}>
+              <TouchableOpacity style={styles.modalCancelButton} onPress={closeActions}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalConfirmButton, (!hasValidReason || busy) && styles.modalConfirmDisabled]} onPress={submitAction} disabled={!hasValidReason || busy}>
+              <TouchableOpacity style={[styles.modalConfirmButton, (!hasValidReason || unavailable) && styles.modalConfirmDisabled]} onPress={submitAction} disabled={!hasValidReason || unavailable}>
                 <Text style={styles.modalConfirmText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>}
-        </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Standardized Bottom Navigation */}
@@ -323,11 +345,14 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 24,
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+    paddingHorizontal: 20,
     paddingTop: 32,
     paddingBottom: 24,
   },
-  nextTicket: { color: colors.textMuted, fontSize: 11, lineHeight: 17, marginTop: 5, paddingHorizontal: 12, textAlign: 'center' },
+  nextTicket: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   header: {
     alignItems: 'center',
     marginBottom: 24,
@@ -343,9 +368,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 18,
-    paddingVertical: 28,
+    paddingVertical: 24,
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
   },
   servingLabel: {
     fontSize: 12,
@@ -366,83 +391,56 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
+  emptyTitle: { fontSize: 26, color: colors.text },
+  disabled: { opacity: 0.45 },
+  verifyButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, marginTop: 14, width: '100%', borderTopWidth: 1, borderTopColor: colors.border },
+  verifyText: { color: colors.brandText, fontSize: 13, fontWeight: '700' },
+  arrivalStatus: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
+  arrivalStatusText: { color: colors.successStrong, fontSize: 12, fontWeight: '600' },
   actionContainer: {
-    gap: 12,
-    marginBottom: 28,
+    gap: 10,
+    marginBottom: 20,
   },
   secondaryActionRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   secondaryActionBtn: {
     flex: 1,
-    minWidth: '22%',
+    minWidth: 0,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
-    paddingVertical: 11,
+    borderRadius: 12,
+    minHeight: 48,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
     alignItems: 'center',
   },
   secondaryActionText: {
-    color: colors.brandText,
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  callNextBtn: {
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  callNextBtnText: {
-    color: '#FFFFFF',
+    color: colors.textSecondary,
     fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  recallBtn: {
-    backgroundColor: colors.surfaceSubtle,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  recallBtnText: {
-    color: colors.brandText,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  doneBtn: {
-    backgroundColor: colors.brand,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  doneBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.5,
+    fontWeight: '600',
     textAlign: 'center',
   },
   queueListBtn: {
-    borderWidth: 1.5,
-    borderColor: colors.brandText,
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 14,
+    padding: 16,
+    minHeight: 64,
+    flexDirection: 'row',
+    gap: 12,
     alignItems: 'center',
   },
+  queueListInfo: { flex: 1, minWidth: 0 },
   queueListBtnText: {
-    color: colors.brandText,
-    fontSize: 13,
+    color: colors.text,
+    fontSize: 14,
     fontWeight: '700',
-    textAlign: 'center',
   },
+  waitingBadge: { minWidth: 28, minHeight: 28, paddingHorizontal: 7, borderRadius: 14, backgroundColor: colors.surfaceMuted, justifyContent: 'center', alignItems: 'center' },
+  waitingCount: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -457,6 +455,14 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     maxWidth: 420,
     alignSelf: 'center',
   },
+  menuOverlay: { justifyContent: 'flex-end', paddingVertical: 16, paddingHorizontal: 12 },
+  menuCard: { maxHeight: '90%', borderRadius: 20 },
+  menuList: { flexShrink: 1 },
+  menuOption: { minHeight: 76, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 14, borderTopWidth: 1, borderTopColor: colors.borderSubtle },
+  menuOptionInfo: { flex: 1, minWidth: 0, gap: 4 },
+  menuOptionTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  menuOptionDescription: { fontSize: 12, lineHeight: 18, color: colors.textMuted },
+  menuOptionDanger: { color: colors.dangerStrong },
   modalHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -479,9 +485,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontWeight: '800',
   },
   modalCloseButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,

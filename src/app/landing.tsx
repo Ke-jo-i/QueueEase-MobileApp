@@ -13,7 +13,7 @@ export default function LandingScreen() {
         <View style={{ width: 62, height: 62, borderRadius: 20, backgroundColor: colors.brand, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><Text style={{ fontSize: 34, color: '#fff', fontWeight: '800' }}>Q</Text></View>
         <Text style={{ color: colors.brandText, fontSize: 14, fontWeight: '800', letterSpacing: 1.5 }}>Queue Ease</Text>
         <Text style={{ fontSize: 36, lineHeight: 42, fontWeight: '800', color: colors.text }}>Your time matters.</Text>
-        <Text style={{ fontSize: 16, lineHeight: 24, color: colors.textMuted }}>A clearer way to queue at the registrar.{ '\n' }University of Mindanao · Tagum Campus</Text>
+        <Text style={{ fontSize: 16, lineHeight: 24, color: colors.textMuted }}>A clearer way to queue at the registrar.</Text>
       </View>
       <View style={{ gap: 12 }}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textMuted }}>Select Your Portal</Text>

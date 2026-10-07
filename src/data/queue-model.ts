@@ -54,6 +54,14 @@ export function ticketProgress(tickets: Ticket[], ticket: Ticket) {
   };
 }
 
+export function queueByWindow(tickets: Ticket[]) {
+  return registrarWindows.map(window => {
+    const line = waitingTickets(tickets, window);
+    return { window, waitingCount: line.length, nextNumber: line[0]?.number ?? null,
+      servingNumber: tickets.find(ticket => ticket.window === window && ticket.status === 'SERVING')?.number ?? null };
+  });
+}
+
 function newTicket(sequence: number, service: string, window: string, queueOrder: number, at: string, ownerId?: string): Ticket {
   const id = `ticket-${sequence}`;
   return { id, sequence, number: `R - ${sequence}`, service, window, status: 'WAITING', ownerId, queueOrder, createdAt: at,

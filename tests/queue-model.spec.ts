@@ -1,10 +1,23 @@
 import { expect, test } from '@playwright/test';
-import { applyQueueCommand, createDemoQueue, decodeQueueSnapshot, isActiveTicket, QueueCommand, QueueSnapshot, ticketProgress, waitingTickets } from '../src/data/queue-model';
+import { applyQueueCommand, createDemoQueue, decodeQueueSnapshot, isActiveTicket, queueByWindow, QueueCommand, QueueSnapshot, ticketProgress, waitingTickets } from '../src/data/queue-model';
 
 const time = '2026-10-02T01:00:00.000Z';
 const window1 = 'Window 1 - Registrar';
 const window3 = 'Window 3 - Registrar';
 const window4 = 'Window 4 - Registrar';
+
+test('window overview separates serving and waiting tickets and excludes held tickets', () => {
+  let state = createDemoQueue(time);
+  expect(queueByWindow(state.tickets)).toEqual([
+    { window: window1, waitingCount: 1, nextNumber: 'R - 104', servingNumber: null },
+    { window: 'Window 2 - Registrar', waitingCount: 1, nextNumber: 'R - 103', servingNumber: null },
+    { window: window3, waitingCount: 1, nextNumber: 'R - 105', servingNumber: 'R - 102' },
+    { window: window4, waitingCount: 0, nextNumber: null, servingNumber: null },
+  ]);
+  state = execute(state, { type: 'ACT', window: window3, action: 'HELD', reason: 'Missing document' });
+  state = execute(state, { type: 'CALL_NEXT', window: window3 });
+  expect(queueByWindow(state.tickets)[2]).toEqual({ window: window3, waitingCount: 0, nextNumber: null, servingNumber: 'R - 105' });
+});
 
 function execute(state: QueueSnapshot, command: QueueCommand) {
   const result = applyQueueCommand(state, command, time);

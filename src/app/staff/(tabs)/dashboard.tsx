@@ -1,4 +1,3 @@
-import { StaffNav } from '@/components/staff-nav';
 import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
@@ -313,7 +312,6 @@ export default function StaffDashboardScreen() {
       </Modal>
 
       {/* Standardized Bottom Navigation */}
-      <StaffNav active="Queue" />
     </SafeAreaView>
   );
 }

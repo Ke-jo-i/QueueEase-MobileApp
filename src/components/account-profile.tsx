@@ -11,11 +11,11 @@ import { ThemePicker } from './theme-picker';
 import { ProfilePhoto } from './profile-photo';
 import { ActionButton, Field, Notice } from './form';
 import { Reveal } from './motion';
-import { StaffNav } from './staff-nav';
 import { useTurnAlerts } from '@/contexts/turn-alerts';
 import { turnAlertDelivery } from '@/data/notifications';
 import { KeyboardScrollView } from './keyboard-scroll-view';
 import { StudentProfileTitle } from './student-profile-title';
+import { Disclosure } from './disclosure';
 
 export function AccountProfile() {
   const colors = useAppTheme(); const { user, role, token, signOut, expire } = useSession();
@@ -46,24 +46,23 @@ export function AccountProfile() {
         <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18 }}>{turnAlertDelivery === 'in-app' ? 'Shows a pop-up inside the app when your turn is near or called.' : 'Shows a device notification when your turn is near or called.'} Keep Queue Ease open and connected to receive updates. Alerts are not delivered while the app is closed.</Text>
       </View>}
       {role === 'staff' && <><ActionButton label="Window Assignment" secondary onPress={() => toggle('window')} />
-        {section === 'window' && <Reveal style={{ gap: 8 }}><Text style={{ color: colors.textMuted }}>Select Registrar Window. Occupied windows cannot be taken.</Text>
+        <Disclosure open={section === 'window'} gap={20} style={{ gap: 8 }}><Text style={{ color: colors.textMuted }}>Select Registrar Window. Occupied windows cannot be taken.</Text>
           {registrarWindows.map((window) => <ActionButton key={window} label={window} secondary={assignedWindow !== window} disabled={busy || !connected} onPress={() => { void setAssignedWindow(window).then((ok) => { if (ok) setSection(''); }); }} />)}
-        </Reveal>}</>}
+        </Disclosure></>}
       <ActionButton label="Personal Information" secondary onPress={() => toggle('personal')} />
-      {section === 'personal' && <Reveal style={{ gap: 8 }}><Text style={{ color: colors.text }}>{user?.name}</Text><Text style={{ color: colors.text }}>ID: {user?.login}</Text><Text style={{ color: colors.text }}>{user?.email}</Text><Text style={{ color: colors.textMuted }}>Profile photos are saved on this device.</Text></Reveal>}
+      <Disclosure open={section === 'personal'} gap={20} style={{ gap: 8 }}><Text style={{ color: colors.text }}>{user?.name}</Text><Text style={{ color: colors.text }}>ID: {user?.login}</Text><Text style={{ color: colors.text }}>{user?.email}</Text><Text style={{ color: colors.textMuted }}>Profile photos are saved on this device.</Text></Disclosure>
       <ActionButton label="Change Password" secondary onPress={() => toggle('password')} />
-      {section === 'password' && <Reveal style={{ gap: 14 }}>
+      <Disclosure open={section === 'password'} gap={20} style={{ gap: 14 }}>
         <Field label="Current password" value={current} onChangeText={setCurrent} secureTextEntry />
         <Field label="New password (at least 10 characters)" value={next} onChangeText={setNext} secureTextEntry />
         <Field label="Confirm new password" value={confirm} onChangeText={setConfirm} secureTextEntry />
         <Text style={{ color: colors.textMuted }}>Changing your password signs out all your sessions. Sign in again with the new password.</Text>
         <ActionButton label="Update Password" busy={saving} onPress={() => void changePassword()} />
-      </Reveal>}
+      </Disclosure>
       <ActionButton label="Help & Support" secondary onPress={() => toggle('help')} />
-      {section === 'help' && <Reveal><Notice text="Choose a service to get one active ticket. Watch Live Status or Alerts for your turn, then go to the assigned window. A queue ticket reserves your place in line; it does not mean your document is ready. For account recovery, ask the project administrator. For document requirements, speak with registrar staff." /></Reveal>}
+      <Disclosure open={section === 'help'} gap={20}><Notice text="Choose a service to get one active ticket. Watch Live Status or Alerts for your turn, then go to the assigned window. A queue ticket reserves your place in line; it does not mean your document is ready. For account recovery, ask the project administrator. For document requirements, speak with registrar staff." /></Disclosure>
       <Notice text={message} error />
       <ActionButton label="Log Out" onPress={() => { void signOut().catch((error: Error) => setMessage(error.message)); }} />
     </KeyboardScrollView>
-    {role === 'staff' && <StaffNav active="Profile" />}
   </SafeAreaView>;
 }

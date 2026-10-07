@@ -1,73 +1,27 @@
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { Ionicons } from '@expo/vector-icons';
+import { NavigationBar } from '@/components/navigation-bar';
+import { useTabTransitions } from '@/hooks/use-navigation-transitions';
 import { Tabs } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const items = [
+  { id: 'home', label: 'Home', icon: 'grid-outline', selectedIcon: 'grid' },
+  { id: 'tickets', label: 'Tickets', icon: 'ticket-outline', selectedIcon: 'ticket' },
+  { id: 'alerts', label: 'Alerts', icon: 'notifications-outline', selectedIcon: 'notifications' },
+  { id: 'profile', label: 'Profile', icon: 'person-outline', selectedIcon: 'person' },
+] as const;
 
 export default function TabLayout() {
-  const colors = useAppTheme();
-  const insets = useSafeAreaInsets();
-  const bottomPadding = Math.max(insets.bottom, 8);
-  return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        sceneStyle: { backgroundColor: colors.surface },
-        tabBarActiveTintColor: colors.brandText,
-        tabBarInactiveTintColor: colors.textDisabled,
-        tabBarLabelPosition: 'below-icon', 
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          height: 60 + bottomPadding,
-          paddingBottom: bottomPadding,
-          paddingTop: 4,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          lineHeight: 14,
-          flexShrink: 0,
-          fontWeight: '600',
-          marginTop: 2,
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="home"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="grid-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="tickets"
-        options={{
-          title: 'Tickets',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="ticket-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="alerts"
-        options={{
-          title: 'Alerts',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="notifications-outline" size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person-outline" size={22} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
-  );
+  const transitions = useTabTransitions();
+  return <Tabs initialRouteName="home" backBehavior="initialRoute" screenOptions={transitions}
+    tabBar={({ state, navigation }) => <NavigationBar tabs items={items} selected={state.routes[state.index].name}
+      onSelect={id => {
+        const route = state.routes.find(route => route.name === id);
+        if (!route) return;
+        const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+        if (state.routes[state.index].key !== route.key && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+      }} onLongPress={id => {
+        const route = state.routes.find(route => route.name === id);
+        if (route) navigation.emit({ type: 'tabLongPress', target: route.key });
+      }} />}>
+    {items.map(item => <Tabs.Screen key={item.id} name={item.id} options={{ title: item.label }} />)}
+  </Tabs>;
 }

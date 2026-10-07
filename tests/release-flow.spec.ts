@@ -19,6 +19,7 @@ test('real registration rejects mismatched passwords and creates a usable accoun
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
   await expect(page.getByText('Good day, New.')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Academic Records Request', exact: true })).toBeEnabled();
 });
 
 test('wrong credentials fail and logout prevents back navigation into either portal', async ({ page }) => {
@@ -50,6 +51,7 @@ test('separate student and staff devices share call, arrival and completion hist
     await expect(page.getByTestId('student-tickets').getByText('R - 1', { exact: true }).filter({ visible: true }).first()).toBeVisible();
     await page.getByRole('button', { name: 'View QR Ticket', exact: true }).click();
     await expect(page.getByText(/Scanning does not skip the line/)).toBeVisible();
+    await expect.poll(async () => Math.round((await page.getByTestId('ticket-overlay').boundingBox())?.y ?? -1)).toBe(0);
     await page.screenshot({ path: '.local/screenshots/student-ticket.png', fullPage: true, animations: 'disabled' });
     await page.getByLabel('Close ticket').click();
     await login(staff, 'staff');

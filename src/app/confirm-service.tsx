@@ -2,33 +2,46 @@ import { MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import { type StackNavigationProp } from 'expo-router/js-stack';
+import { useEffect } from 'react';
 import { useQueue } from '@/contexts/queue';
 import { useSession } from '@/contexts/session';
 import { registrarReminders, serviceDescriptions } from '@/constants/registrar-services';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigationMotion } from '@/contexts/navigation-motion';
 
 export default function ConfirmServiceScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const { openTickets, booking, finishBooking } = useNavigationMotion();
+  const navigation = useNavigation<StackNavigationProp<Record<string, object | undefined>>>();
   const { bookTicket, studentTicket, busy, connected, services, acceptingTickets } = useQueue();
   const { studentId } = useSession();
   const params = useLocalSearchParams();
   const serviceTitle = (params.serviceName as string) || 'Certificate of Enrollment';
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('transitionEnd', event => {
+      if (event.data.closing) finishBooking();
+    });
+    return () => { unsubscribe(); finishBooking(); };
+  }, [navigation, finishBooking]);
+
   const handleGetQueue = async () => {
-    if (studentTicket) { router.navigate('/tickets'); return; }
+    if (booking) return;
+    if (studentTicket) { openTickets(); return; }
     if (!await bookTicket(serviceTitle)) return;
-    router.navigate('/tickets');
+    openTickets();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         {/* Back Button & Title */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} accessibilityLabel="Back" onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.brandText} />
           <Text style={styles.headerTitle}>Confirm Service</Text>
         </TouchableOpacity>
@@ -57,7 +70,7 @@ export default function ConfirmServiceScreen() {
 
         {/* Get Queue Number Button */}
         <View style={styles.footer}>
-          <TouchableOpacity disabled={busy || !connected || (!studentTicket && !acceptingTickets)} style={[styles.confirmButton, (busy || !connected || !acceptingTickets) && { opacity: 0.5 }]} onPress={handleGetQueue} activeOpacity={0.8}>
+          <TouchableOpacity disabled={busy || booking || !connected || (!studentTicket && !acceptingTickets)} style={[styles.confirmButton, (busy || booking || !connected || !acceptingTickets) && { opacity: 0.5 }]} onPress={handleGetQueue} activeOpacity={0.8}>
             <Text style={styles.confirmButtonText}>{busy ? 'Creating ticket…' : studentTicket ? 'View active ticket' : !acceptingTickets ? 'New tickets paused' : 'Get Queue Number'}</Text>
           </TouchableOpacity>
         </View>

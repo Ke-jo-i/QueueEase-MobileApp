@@ -54,12 +54,15 @@ export default function HomeScreen() {
                   ? `${studentProgress.peopleAhead} ${studentProgress.peopleAhead === 1 ? 'person' : 'people'} ahead`
                   : studentTicket.status === 'HELD' ? 'Check staff instructions' : 'Please proceed to the window'}</Text>
               </View>
-              <TouchableOpacity style={styles.progressButton} accessibilityRole="button" onPress={() => router.push('/live-status')}>
+              <TouchableOpacity style={styles.progressButton} accessibilityRole="button" accessibilityLabel="View queue progress" onPress={() => router.push('/live-status')}>
                 <Text style={styles.progressButtonText}>View queue progress</Text>
                 <Ionicons name="arrow-forward" size={16} color={colors.brandText} />
               </TouchableOpacity>
             </>}
             {!studentTicket && <Text style={styles.queueBannerSub}>Choose a service below to join the queue.</Text>}
+            {!studentTicket && <TouchableOpacity style={styles.progressButton} accessibilityLabel="View all window queues" onPress={() => router.push('/live-status')}>
+              <Text style={styles.progressButtonText}>View all window queues</Text><Ionicons name="arrow-up" size={16} color={colors.brandText} />
+            </TouchableOpacity>}
           </Reveal>
         </View>
 

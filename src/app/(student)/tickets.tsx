@@ -6,8 +6,11 @@ import { useSession } from '@/contexts/session';
 import { registrarReminders } from '@/constants/registrar-services';
 import { ticketStatusLabels } from '@/constants/queue-labels';
 import { TicketActivity } from '@/components/ticket-activity';
+import { CardOverlay } from '@/components/card-overlay';
+import { Disclosure } from '@/components/disclosure';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
@@ -20,8 +23,9 @@ function formatTicketDate(value: string) {
 
 export default function MyTicketsScreen() {
   const styles = useThemedStyles(createStyles);
-  const { studentTicket, studentHistory, cancelTicket } = useQueue();
+  const { studentTicket, studentHistory, studentProgress, cancelTicket } = useQueue();
   const { studentId } = useSession();
+  const router = useRouter();
   const [showQrModal, setShowQrModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -77,6 +81,9 @@ export default function MyTicketsScreen() {
               >
                 <Text style={styles.viewQrText}>View QR Ticket</Text>
               </Pressable>
+              <TouchableOpacity style={styles.activityButton} accessibilityLabel="View queue progress" onPress={() => router.push('/live-status')}>
+                <Text style={styles.activityButtonText}>{studentTicket.status === 'WAITING' ? `${studentProgress?.peopleAhead ?? 0} ${studentProgress?.peopleAhead === 1 ? 'person' : 'people'} ahead · View progress` : 'View queue progress'}</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -101,18 +108,14 @@ export default function MyTicketsScreen() {
               <TouchableOpacity style={styles.activityButton} accessibilityRole="button" accessibilityLabel={`Activity for ${ticket.number}`} accessibilityState={{ expanded: expandedHistory === ticket.id }} onPress={() => setExpandedHistory(expandedHistory === ticket.id ? null : ticket.id)}>
                 <Text style={styles.activityButtonText}>{expandedHistory === ticket.id ? 'Hide activity' : 'View activity'}</Text>
               </TouchableOpacity>
-              {expandedHistory === ticket.id && <TicketActivity ticket={ticket} />}
+              <Disclosure open={expandedHistory === ticket.id}><TicketActivity ticket={ticket} /></Disclosure>
             </View>
           ))}
         </View>
       </ScrollView>
 
       {/* QUEUE TICKET MODAL */}
-      <Modal
-        visible={showQrModal && !!studentTicket}
-        animationType="slide"
-        onRequestClose={() => setShowQrModal(false)}
-      >
+      <CardOverlay open={showQrModal && !!studentTicket} onClose={() => setShowQrModal(false)}>
         <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Header with Close */}
@@ -170,7 +173,7 @@ export default function MyTicketsScreen() {
             )}
           </ScrollView>
         </SafeAreaView>
-      </Modal>
+      </CardOverlay>
 
       {/* Cancel Confirmation Alert Modal */}
       <Modal

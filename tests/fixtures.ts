@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 
 export const password = 'e2e-test-password-123';
 export const test = base.extend<{ apiUrl: string; connect: (context: BrowserContext) => Promise<void> }>({
-  apiUrl: async ({}, use) => {
+  apiUrl: async ({}, provide) => {
     const child = spawn(process.execPath, ['--import', 'tsx', 'server/e2e.ts'], { cwd: process.cwd(), stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     let logs = '';
     const port = await new Promise<number>((resolve, reject) => {
@@ -12,11 +12,11 @@ export const test = base.extend<{ apiUrl: string; connect: (context: BrowserCont
       child.stderr.on('data', (chunk) => { logs += chunk.toString(); });
       child.on('error', reject); child.on('exit', (code) => { clearTimeout(timer); if (code) reject(new Error(logs)); });
     });
-    try { await use(`http://127.0.0.1:${port}`); }
+    try { await provide(`http://127.0.0.1:${port}`); }
     finally { child.stdin.end(); await new Promise<void>((resolve) => child.once('exit', () => resolve())); }
   },
-  connect: async ({ apiUrl }, use) => {
-    await use(async (context) => {
+  connect: async ({ apiUrl }, provide) => {
+    await provide(async (context) => {
       await context.route('**/localhost:4100/**', async (route) => {
         const url = route.request().url().replace('http://localhost:4100', apiUrl);
         const response = await route.fetch({ url, headers: { ...route.request().headers(), origin: new URL(apiUrl).origin } });
@@ -24,7 +24,11 @@ export const test = base.extend<{ apiUrl: string; connect: (context: BrowserCont
       });
     });
   },
-  page: async ({ page, connect }, use) => { await connect(page.context()); await use(page); },
+  context: async ({ context, connect }, provide) => {
+    await connect(context);
+    try { await provide(context); }
+    finally { await context.close(); }
+  },
 });
 export async function login(page: Page, role: 'student' | 'staff' | 'admin' = 'student') {
   await page.goto('/landing');

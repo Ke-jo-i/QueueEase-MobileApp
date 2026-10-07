@@ -2,7 +2,7 @@ import { useSession } from '@/contexts/session';
 import { ApiError, request } from '@/data/api';
 import { notifyTurn } from '@/data/notifications';
 import { useTurnAlerts } from './turn-alerts';
-import { HistoryTicket, isActiveTicket, isHistoryTicket, Ticket, ticketProgress, waitingTickets } from '@/data/queue-model';
+import { HistoryTicket, isActiveTicket, isHistoryTicket, Ticket, ticketProgress, waitingTickets, queueByWindow } from '@/data/queue-model';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, Text, TouchableOpacity, View } from 'react-native';
@@ -13,6 +13,7 @@ type QueueView = { tickets: Ticket[]; assignedWindow: string; services: Service[
 type QueueState = {
   studentTicket: Ticket | null; studentHistory: HistoryTicket[]; studentTickets: Ticket[];
   studentProgress: ReturnType<typeof ticketProgress> | null;
+  windowQueues: ReturnType<typeof queueByWindow>;
   bookTicket: (service: string) => Promise<boolean>; cancelTicket: (reason: string) => Promise<boolean>;
   assignedWindow: string; setAssignedWindow: (window: string) => Promise<boolean>;
   waiting: Ticket[]; currentServing: Ticket | null; staffHistory: HistoryTicket[];
@@ -107,7 +108,7 @@ function QueueSession({ children }: PropsWithChildren) {
   const currentServing = tickets.find((ticket) => ticket.status === 'SERVING' && ticket.window === assignedWindow) ?? null;
   const act = async (action: string, reason?: string) => !!await run({ type: 'ACT', action, reason, expectedTicketId: currentServing?.id });
   const value: QueueState = {
-    studentTicket, studentTickets, studentProgress: progress,
+    studentTicket, studentTickets, studentProgress: progress, windowQueues: queueByWindow(tickets),
     studentHistory: staffHistory.filter((ticket) => ticket.ownerId === studentId && ticket.status !== 'HELD'),
     bookTicket: async (service) => !!await run({ type: 'BOOK', service }), cancelTicket: async (reason) => !!await run({ type: 'CANCEL', reason }),
     assignedWindow, setAssignedWindow: async (window) => !!await run({ type: 'ASSIGN', window }), waiting: waitingTickets(tickets), currentServing, staffHistory,

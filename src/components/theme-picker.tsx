@@ -4,7 +4,7 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Reveal } from './motion';
+import { Disclosure } from './disclosure';
 
 export function ThemePicker() {
   const { themeName, setThemeName, isReady } = useAppearance();
@@ -28,7 +28,7 @@ export function ThemePicker() {
         <View style={[styles.swatch, { backgroundColor: currentTheme.swatch, borderColor: colors.borderStrong }]} />
         <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
       </Pressable>
-      {expanded && <Reveal style={styles.options} accessibilityRole="radiogroup">
+      <Disclosure open={expanded} style={styles.options} accessibilityRole="radiogroup">
         {ThemeOptions.map((option) => {
           const selected = themeName === option.id;
           return (
@@ -55,7 +55,7 @@ export function ThemePicker() {
             </Pressable>
           );
         })}
-      </Reveal>}
+      </Disclosure>
     </View>
   );
 }

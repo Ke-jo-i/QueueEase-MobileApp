@@ -1,5 +1,5 @@
-import { StaffNav } from '@/components/staff-nav';
-import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
+import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { Disclosure } from '@/components/disclosure';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
@@ -96,7 +96,7 @@ export default function StaffHistoryScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        {filtersOpen && <Reveal style={styles.filterPanel}>
+        <Disclosure open={filtersOpen} style={styles.filterPanel}>
           <View style={styles.filterPanelHeader}>
             <Text style={styles.filterPanelTitle}>Filter records</Text>
             <TouchableOpacity onPress={clearFilters}>
@@ -127,7 +127,7 @@ export default function StaffHistoryScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Reveal>}
+        </Disclosure>
         {filteredHistory.length === 0 ? (
           <Text style={styles.empty}>{staffHistory.length === 0 ? 'No queue activity yet.' : 'No tickets match the selected filters.'}</Text>
         ) : filteredHistory.map((ticket) => (
@@ -155,7 +155,7 @@ export default function StaffHistoryScreen() {
             <TouchableOpacity style={styles.activityButton} accessibilityRole="button" accessibilityLabel={`Activity for ${ticket.number}`} accessibilityState={{ expanded: expandedHistory === ticket.id }} onPress={() => setExpandedHistory(expandedHistory === ticket.id ? null : ticket.id)}>
               <Text style={styles.activityButtonText}>{expandedHistory === ticket.id ? 'Hide activity' : 'View activity'}</Text>
             </TouchableOpacity>
-            {expandedHistory === ticket.id && <TicketActivity ticket={ticket} />}
+            <Disclosure open={expandedHistory === ticket.id}><TicketActivity ticket={ticket} /></Disclosure>
             {ticket.status !== 'COMPLETED' && (
               <TouchableOpacity disabled={busy || !connected || ticket.window !== assignedWindow} style={[styles.reopenButton, ticket.window !== assignedWindow && { opacity: 0.4 }]} onPress={() => reopenTicket(ticket.number)}>
                 <Ionicons name="refresh-outline" size={16} color={colors.warningStrong} />
@@ -165,7 +165,6 @@ export default function StaffHistoryScreen() {
           </View>
         ))}
       </ScrollView>
-      <StaffNav active="History" />
     </SafeAreaView>
   );
 }

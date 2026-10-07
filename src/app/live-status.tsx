@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { WindowQueues } from '@/components/window-queues';
 
 export default function LiveQueueScreen() {
   const colors = useAppTheme();
@@ -17,15 +18,15 @@ export default function LiveQueueScreen() {
 
   return (
     <SafeAreaView style={styles.container} testID="live-queue">
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={[styles.scrollContent, { gap: 12 }]}>
         <TouchableOpacity style={styles.headerBtn} accessibilityRole="button" accessibilityLabel="Back" onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={20} color={colors.brandText} />
           <Text style={styles.headerTitle}>Live Queue</Text>
         </TouchableOpacity>
         {!studentTicket ? <View style={styles.card}>
           <Text style={styles.progressTitle}>No active ticket</Text>
-          <Text style={styles.detail}>Choose a registrar service to join the queue.</Text>
-          <TouchableOpacity style={styles.ticketButton} onPress={() => router.replace('/home')}><Text style={styles.ticketButtonText}>Choose a service</Text></TouchableOpacity>
+          <Text style={styles.detail}>You can check all windows before choosing a registrar service.</Text>
+          <TouchableOpacity style={styles.ticketButton} onPress={() => router.dismissTo('/home')}><Text style={styles.ticketButtonText}>Choose a service</Text></TouchableOpacity>
         </View> : <>
         <View style={styles.yourTicketCard}>
           <Text style={styles.label}>YOUR TICKET NUMBER</Text>
@@ -51,8 +52,9 @@ export default function LiveQueueScreen() {
         <View style={styles.card}>
           <TicketActivity ticket={studentTicket} />
         </View>
-        <TouchableOpacity style={styles.ticketButton} accessibilityRole="button" onPress={() => router.navigate('/tickets')}><Text style={styles.ticketButtonText}>Open my ticket</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.ticketButton} accessibilityRole="button" onPress={() => router.dismissTo('/tickets')}><Text style={styles.ticketButtonText}>Open my ticket</Text></TouchableOpacity>
         </>}
+        <WindowQueues />
       </ScrollView>
     </SafeAreaView>
   );

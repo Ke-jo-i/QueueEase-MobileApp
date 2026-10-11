@@ -1,19 +1,22 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { Stack } from 'expo-router/js-stack';
-import Head from 'expo-router/head';
-import { StatusBar } from 'expo-status-bar';
 import { AppearanceProvider, useAppearance } from '@/contexts/appearance';
-import { SessionProvider, useSession } from '@/contexts/session';
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { QueueProvider } from '@/contexts/queue';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationMotionProvider, useNavigationMotion } from '@/contexts/navigation-motion';
-import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueueProvider } from '@/contexts/queue';
+import { SessionProvider, useSession } from '@/contexts/session';
 import { TurnAlertsProvider } from '@/contexts/turn-alerts';
-import { useEffect } from 'react';
-import { View } from 'react-native';
+import { useAppTheme } from '@/hooks/use-app-theme';
+import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
+import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import Head from 'expo-router/head';
+import { Stack } from 'expo-router/js-stack';
+import { StatusBar } from 'expo-status-bar';
 import { setBackgroundColorAsync } from 'expo-system-ui';
+import { useEffect } from 'react';
+import { LogBox, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+
+LogBox.ignoreLogs(['InteractionManager has been deprecated']);
 
 export default function RootLayout() {
   return (

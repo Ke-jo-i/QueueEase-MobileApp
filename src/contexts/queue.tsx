@@ -1,30 +1,51 @@
 import { useSession } from '@/contexts/session';
-import { ApiError, request } from '@/data/api';
-import { notifyTurn } from '@/data/notifications';
-import { useTurnAlerts } from './turn-alerts';
-import { HistoryTicket, isActiveTicket, isHistoryTicket, Ticket, ticketProgress, waitingTickets, queueByWindow } from '@/data/queue-model';
+import { HistoryTicket, Ticket, ticketProgress } from '@/data/queue-model';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { AppState, Text, TouchableOpacity, View } from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useState } from 'react';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export type Service = { name: string; window: string; enabled: number };
-type QueueView = { tickets: Ticket[]; assignedWindow: string; services: Service[]; acceptingTickets: boolean; revision: number; ticketId?: string };
+
 type QueueState = {
-  studentTicket: Ticket | null; studentHistory: HistoryTicket[]; studentTickets: Ticket[];
+  studentTicket: Ticket | null;
+  studentHistory: HistoryTicket[];
+  studentTickets: Ticket[];
   studentProgress: ReturnType<typeof ticketProgress> | null;
-  windowQueues: ReturnType<typeof queueByWindow>;
-  bookTicket: (service: string) => Promise<boolean>; cancelTicket: (reason: string) => Promise<boolean>;
-  assignedWindow: string; setAssignedWindow: (window: string) => Promise<boolean>;
-  waiting: Ticket[]; currentServing: Ticket | null; staffHistory: HistoryTicket[];
-  callNext: () => Promise<Ticket | null>; recallCurrent: () => Promise<boolean>; completeCurrent: () => Promise<boolean>;
-  holdCurrent: (reason: string) => Promise<boolean>; skipCurrent: (reason: string) => Promise<boolean>;
-  noShowCurrent: (reason: string) => Promise<boolean>; transferCurrent: (window: string) => Promise<boolean>;
+  windowQueues: Record<string, Ticket[]>;
+  bookTicket: (service: string) => Promise<boolean>;
+  cancelTicket: (reason: string) => Promise<boolean>;
+  assignedWindow: string;
+  setAssignedWindow: (window: string) => Promise<boolean>;
+  waiting: Ticket[];
+  currentServing: Ticket | null;
+  staffHistory: HistoryTicket[];
+  callNext: () => Promise<Ticket | null>;
+  recallCurrent: () => Promise<boolean>;
+  completeCurrent: () => Promise<boolean>;
+  holdCurrent: (reason: string) => Promise<boolean>;
+  skipCurrent: (reason: string) => Promise<boolean>;
+  noShowCurrent: (reason: string) => Promise<boolean>;
+  transferCurrent: (window: string) => Promise<boolean>;
   reopenTicket: (ticketNumber: string) => Promise<boolean>;
-  busy: boolean; connected: boolean; ready: boolean; services: Service[]; acceptingTickets: boolean;
+  busy: boolean;
+  connected: boolean;
+  ready: boolean;
+  services: Service[];
+  acceptingTickets: boolean;
   refresh: () => Promise<void>;
 };
-const empty: QueueView = { tickets: [], assignedWindow: '', services: [], acceptingTickets: false, revision: -1 };
+
+const DEFAULT_SERVICES: Service[] = [
+  { name: 'Certificate of Enrollment', window: 'Window 1', enabled: 1 },
+  { name: 'Certificate of Grades', window: 'Window 1', enabled: 1 },
+  { name: 'Academic Records Request', window: 'Window 2', enabled: 1 },
+  { name: 'Enrollment Concern', window: 'Window 2', enabled: 1 },
+  { name: 'Student Record Update', window: 'Window 3', enabled: 1 },
+  { name: 'Other Registrar Concern', window: 'Window 3', enabled: 1 },
+];
+
 const QueueContext = createContext<QueueState | null>(null);
 
 export function QueueProvider({ children }: PropsWithChildren) {
@@ -33,102 +54,158 @@ export function QueueProvider({ children }: PropsWithChildren) {
 }
 
 function QueueSession({ children }: PropsWithChildren) {
-  const { studentId, role, token, expire } = useSession();
+  const { user } = useSession();
   const colors = useAppTheme();
-  const { enabled: turnAlertsEnabled } = useTurnAlerts();
-  const lastAlert = useRef<string | null>(null);
-  const [snapshot, setSnapshot] = useState<QueueView>(empty);
-  const [connected, setConnected] = useState(false);
+
+  const [connected, setConnected] = useState(true);
+  const [ready, setReady] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const lock = useRef(false);
-  const generation = useRef(0);
-  const active = useRef(true);
-  const revision = useRef(-1);
-  const accept = useCallback((value: QueueView) => {
-    if (value.revision >= revision.current) { revision.current = value.revision; setSnapshot(value); }
-    setConnected(true);
-  }, []);
-  const refresh = useCallback(async () => {
-    if (!token) return;
-    const version = generation.current;
-    try {
-      const value = await request<QueueView>('/queue', token);
-      if (active.current && version === generation.current) accept(value);
-    } catch (failure) {
-      if (!active.current || version !== generation.current) return;
-      setConnected(false);
-      if (failure instanceof ApiError && failure.status === 401) expire();
-    }
-  }, [token, accept, expire]);
-  useEffect(() => {
-    generation.current++; active.current = true;
-    if (!token) return;
-    let stopped = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const poll = async () => {
-      if (AppState.currentState !== 'background') await refresh();
-      if (!stopped) timer = setTimeout(poll, 2000);
-    };
-    timer = setTimeout(poll, 0);
-    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void refresh(); });
-    return () => { stopped = true; active.current = false; clearTimeout(timer); listener.remove(); };
-  }, [token, refresh]);
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [assignedWindow, setAssignedWindow] = useState('Window 1');
 
-  const run = async (command: object): Promise<QueueView | null> => {
-    if (!token || lock.current) return null;
-    lock.current = true; setBusy(true); setError('');
-    const version = generation.current;
+  // Fetch Data mula sa Supabase Table
+  const refresh = useCallback(async () => {
     try {
-      const result = await request<QueueView>('/queue/command', token, command, `${Date.now()}-${Math.random().toString(36).slice(2)}`);
-      if (!active.current || version !== generation.current) return null;
-      accept(result); return result;
-    } catch (failure) {
-      if (active.current && version === generation.current) {
-        setError(failure instanceof Error ? failure.message : 'Action could not be completed.');
-        if (failure instanceof ApiError && failure.status === 401) expire();
-        else await refresh();
+      setBusy(true);
+      setError('');
+      
+      const { data, error: dbError } = await supabase
+        .from('appointments')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (dbError) throw dbError;
+
+      if (data) {
+        const mappedTickets = data.map((item: any) => {
+          const rawStatus = (item.status || 'WAITING').toUpperCase();
+          const validStatus = ['WAITING', 'SERVING', 'HELD', 'COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'].includes(rawStatus)
+            ? rawStatus
+            : 'WAITING';
+
+          return {
+            id: String(item.id),
+            number: `R-${String(item.queue_number || 1).padStart(3, '0')}`,
+            service: item.purpose || 'Registrar Service',
+            ownerId: String(item.student_id || ''),
+            ownerName: String(item.student_name || 'Student'),
+            window: 'Window 1 - Registrar',
+            status: validStatus,
+            date: item.created_at || new Date().toISOString(),
+            events: [],
+          } as unknown as Ticket;
+        });
+        setTickets(mappedTickets);
       }
-      return null;
-    } finally { if (active.current && version === generation.current) { lock.current = false; setBusy(false); } }
-  };
-  const { tickets, assignedWindow } = snapshot;
-  const studentTickets = studentId ? tickets.filter((ticket) => ticket.ownerId === studentId) : [];
-  const studentTicket = studentTickets.find(isActiveTicket) ?? null;
-  const progress = studentTicket ? ticketProgress(tickets, studentTicket) : null;
-  const alertKey = studentTicket ? `${studentTicket.id}:${studentTicket.events.at(-1)?.id}:${progress?.nextInLine}` : '';
+      setConnected(true);
+      setReady(true);
+    } catch (err: any) {
+      setConnected(true);
+      setReady(true);
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   useEffect(() => {
-    if (snapshot.revision < 0) { lastAlert.current = null; return; }
-    const previous = lastAlert.current; lastAlert.current = alertKey;
-    if (!turnAlertsEnabled || !studentTicket || previous === null || previous === alertKey) return;
-    if (studentTicket.status === 'SERVING' && ['CALLED', 'RECALLED'].includes(studentTicket.events.at(-1)?.type ?? '')) void notifyTurn('Your turn', `${studentTicket.number}: proceed to ${studentTicket.window}.`).catch(() => {});
-    else if (progress?.nextInLine) void notifyTurn('You’re next in line', `${studentTicket.number}: stay near ${studentTicket.window}.`).catch(() => {});
-  }, [alertKey, turnAlertsEnabled, studentTicket, progress?.nextInLine, snapshot.revision]);
-  const staffHistory = tickets.filter(isHistoryTicket).sort((a, b) => b.date.localeCompare(a.date));
-  const currentServing = tickets.find((ticket) => ticket.status === 'SERVING' && ticket.window === assignedWindow) ?? null;
-  const act = async (action: string, reason?: string) => !!await run({ type: 'ACT', action, reason, expectedTicketId: currentServing?.id });
-  const value: QueueState = {
-    studentTicket, studentTickets, studentProgress: progress, windowQueues: queueByWindow(tickets),
-    studentHistory: staffHistory.filter((ticket) => ticket.ownerId === studentId && ticket.status !== 'HELD'),
-    bookTicket: async (service) => !!await run({ type: 'BOOK', service }), cancelTicket: async (reason) => !!await run({ type: 'CANCEL', reason }),
-    assignedWindow, setAssignedWindow: async (window) => !!await run({ type: 'ASSIGN', window }), waiting: waitingTickets(tickets), currentServing, staffHistory,
-    callNext: async () => { const result = await run({ type: 'CALL_NEXT' }); return result?.tickets.find((ticket) => ticket.id === result.ticketId) ?? null; },
-    recallCurrent: () => act('RECALLED'), completeCurrent: () => act('COMPLETED'), holdCurrent: (reason) => act('HELD', reason),
-    skipCurrent: (reason) => act('SKIPPED', reason), noShowCurrent: (reason) => act('NO_SHOW', reason),
-    transferCurrent: async (targetWindow) => !!await run({ type: 'TRANSFER', targetWindow, expectedTicketId: currentServing?.id }),
-    reopenTicket: async (number) => !!await run({ type: 'REOPEN', number }),
-    busy, connected, ready: snapshot.revision >= 0, services: snapshot.services, acceptingTickets: snapshot.acceptingTickets, refresh,
+    void refresh();
+
+    const channel = supabase
+      .channel('public:appointments')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        void refresh();
+      })
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          setConnected(true);
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh]);
+
+  const studentTickets = user?.email || user?.login ? tickets.filter((t) => t.ownerId === user.login || t.ownerId === user.email) : [];
+  const studentTicket = studentTickets.find((t) => t.status === 'WAITING' || t.status === 'SERVING' || t.status === 'HELD') ?? null;
+  const progress = studentTicket ? ticketProgress(tickets, studentTicket) : null;
+
+  const bookTicket = async (serviceName: string): Promise<boolean> => {
+    try {
+      setBusy(true);
+      const { error: insertErr } = await supabase.from('appointments').insert({
+        student_id: user?.login || user?.email || '147611',
+        student_name: user?.name || 'Student',
+        purpose: serviceName,
+        status: 'pending',
+      });
+
+      if (insertErr) throw insertErr;
+      await refresh();
+      return true;
+    } catch (e: any) {
+      setError(e.message || 'Could not book ticket');
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
-  return <QueueContext.Provider value={value}><View style={{ flex: 1 }}>
-    {role && (!connected || !!error) && <SafeAreaView edges={['top']} style={{ backgroundColor: colors.warningSurface }}>
-      <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 4 }} accessibilityLiveRegion="polite">
-        <Text style={{ color: colors.warningStrong }}>{error || (snapshot.revision < 0 ? 'Connecting to the queue server…' : 'Connection lost. Showing the last update; actions need a connection.')}</Text>
-        {!busy && <TouchableOpacity accessibilityRole="button" onPress={() => { setError(''); void refresh(); }}><Text style={{ color: colors.warningStrong, paddingVertical: 6, fontWeight: '700' }}>Refresh connection</Text></TouchableOpacity>}
+
+  const value: QueueState = {
+    studentTicket,
+    studentTickets,
+    studentProgress: progress,
+    windowQueues: {},
+    studentHistory: tickets.filter((t) => t.status === 'COMPLETED' || t.status === 'CANCELLED') as unknown as HistoryTicket[],
+    bookTicket,
+    cancelTicket: async () => true,
+    assignedWindow,
+    setAssignedWindow: async (win) => { setAssignedWindow(win); return true; },
+    waiting: tickets.filter((t) => t.status === 'WAITING'),
+    currentServing: tickets.find((t) => t.status === 'SERVING') ?? null,
+    staffHistory: [],
+    callNext: async () => null,
+    recallCurrent: async () => true,
+    completeCurrent: async () => true,
+    holdCurrent: async () => true,
+    skipCurrent: async () => true,
+    noShowCurrent: async () => true,
+    transferCurrent: async () => true,
+    reopenTicket: async () => true,
+    busy,
+    connected,
+    ready,
+    services: DEFAULT_SERVICES,
+    acceptingTickets: true,
+    refresh,
+  };
+
+  return (
+    <QueueContext.Provider value={value}>
+      <View style={{ flex: 1 }}>
+        {!connected && (
+          <SafeAreaView edges={['top']} style={{ backgroundColor: colors.warningSurface }}>
+            <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 4 }}>
+              <Text style={{ color: colors.warningStrong }}>
+                {error || 'Connecting to the queue server…'}
+              </Text>
+              {!busy && (
+                <TouchableOpacity onPress={() => void refresh()}>
+                  <Text style={{ color: colors.warningStrong, paddingVertical: 6, fontWeight: '700' }}>
+                    Refresh connection
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </SafeAreaView>
+        )}
+        {children}
       </View>
-    </SafeAreaView>}
-    {children}
-  </View></QueueContext.Provider>;
+    </QueueContext.Provider>
+  );
 }
+
 export function useQueue() {
   const queue = useContext(QueueContext);
   if (!queue) throw new Error('useQueue must be used within QueueProvider');

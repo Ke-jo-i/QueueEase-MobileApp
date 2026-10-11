@@ -11,7 +11,11 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   const { signIn, quickSignIn } = useSession();
   const router = useRouter();
   const colors = useAppTheme();
-  const quickRoles: Role[] = ['student'];
+
+  // Dynamic route at quick roles batay sa portal prop
+  const isStaff = portal === 'staff';
+  const homeRoute = isStaff ? '/staff/queue-list' : '/(student)/home';
+  const quickRoles: Role[] = isStaff ? ['staff'] : ['student'];
 
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +26,6 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   const submit = async (quickRole?: Role) => {
     if (busy) return;
 
-    // 1. INPUT FIELD & FORMAT VALIDATIONS
     if (!quickRole) {
       const cleanLogin = login.trim();
       const cleanPassword = password.trim();
@@ -34,28 +37,30 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
       }
 
       if (!cleanLogin && cleanPassword) {
-        setError('Please enter your Student ID or email.');
+        setError(isStaff ? 'Please enter your email.' : 'Please enter your Student ID or email.');
         return;
       }
 
       if (!cleanLogin && !cleanPassword) {
-        setError('Please enter your Student ID or email and password.');
+        setError(isStaff ? 'Please enter your email and password.' : 'Please enter your Student ID or email and password.');
         return;
       }
 
-      // Format Validations: 6-Digit Numeric ID or Valid Email
-      const isPureNumbers = /^\d+$/.test(cleanLogin);
+      // Format Validation: 6-Digit check para sa Student lang
+      if (!isStaff) {
+        const isPureNumbers = /^\d+$/.test(cleanLogin);
 
-      if (isPureNumbers) {
-        if (cleanLogin.length !== 6) {
-          setError('Student ID must be exactly 6 digits.');
-          return;
-        }
-      } else {
-        const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanLogin);
-        if (!isEmailFormat) {
-          setError('Please enter a valid 6-digit Student ID or email address.');
-          return;
+        if (isPureNumbers) {
+          if (cleanLogin.length !== 6) {
+            setError('Student ID must be exactly 6 digits.');
+            return;
+          }
+        } else {
+          const isEmailFormat = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanLogin);
+          if (!isEmailFormat) {
+            setError('Please enter a valid 6-digit Student ID or email address.');
+            return;
+          }
         }
       }
     }
@@ -65,14 +70,14 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
 
     try {
       if (quickRole) {
-        const user = await quickSignIn(quickRole);
-        router.replace('/(student)/home');
+        await quickSignIn(quickRole);
+        router.replace(homeRoute as any);
         return;
       }
 
       const cleanInput = login.trim();
 
-      // 2. CHECK RECORD EXISTENCE IN PROFILES TABLE
+      // Database Record Check sa profiles table
       let isRegistered = false;
 
       try {
@@ -89,18 +94,16 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
         // Fallback catch
       }
 
-      // 3. IF RECORD DOES NOT EXIST IN PROFILES
       if (!isRegistered) {
         setError('Account not registered. Please sign up first.');
         setBusy(false);
         return;
       }
 
-      // 4. IF RECORD EXISTS IN PROFILES -> PROCEED TO AUTHENTICATION
-      // Confirming profile existence ensures authentication failure translates to incorrect password error.
+      // Sign In Attempt
       try {
-        await signIn('student', cleanInput, password);
-        router.replace('/(student)/home');
+        await signIn(portal, cleanInput, password);
+        router.replace(homeRoute as any);
       } catch (authError) {
         setError('Incorrect password. Please check and try again.');
       }
@@ -113,8 +116,8 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
 
   return (
     <FormPage
-      title="Welcome back"
-      subtitle="Your place in line, wherever you are on campus."
+      title={isStaff ? "Staff Portal" : "Welcome back"}
+      subtitle={isStaff ? "Sign in to manage and serve campus queues." : "Your place in line, wherever you are on campus."}
     >
       <View style={{ gap: 18 }}>
         {demoLoginEnabled && (
@@ -125,7 +128,7 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
             {quickRoles.map((role) => (
               <ActionButton
                 key={role}
-                label="Quick login as Student"
+                label={`Quick login as ${role.toUpperCase()}`}
                 secondary
                 disabled={busy}
                 onPress={() => void submit(role)}
@@ -134,10 +137,9 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
           </View>
         )}
 
-        {/* INPUT FIELD FOR STUDENT ID OR EMAIL */}
         <Field
-          label="Student ID or email"
-          placeholder="e.g. 123456 or name@umindanao.edu.ph"
+          label={isStaff ? "Email" : "Student ID or email"}
+          placeholder={isStaff ? "staff@umindanao.edu.ph" : "e.g. 123456 or name@umindanao.edu.ph"}
           value={login}
           onChangeText={setLogin}
           autoCapitalize="none"
@@ -145,7 +147,6 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
           autoComplete="username"
         />
 
-        {/* INPUT FIELD FOR PASSWORD */}
         <Field
           label="Password"
           placeholder="Enter your password"
@@ -157,7 +158,6 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
           returnKeyType="go"
         />
 
-        {/* REMEMBER ME TOGGLE */}
         <Pressable
           onPress={() => setRememberMe(!rememberMe)}
           style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}
@@ -195,11 +195,13 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
           onPress={() => router.push('/forgot-password')}
         />
 
-        <ActionButton
-          label="Create an account"
-          secondary
-          onPress={() => router.push('/register')}
-        />
+        {!isStaff && (
+          <ActionButton
+            label="Create an account"
+            secondary
+            onPress={() => router.push('/register')}
+          />
+        )}
       </View>
     </FormPage>
   );

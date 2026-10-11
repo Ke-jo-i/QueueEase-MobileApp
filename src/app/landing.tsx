@@ -1,9 +1,9 @@
+import { MotionButton } from '@/components/motion';
+import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { MotionButton } from '@/components/motion';
 
 export default function LandingScreen() {
   const colors = useAppTheme(); const router = useRouter();

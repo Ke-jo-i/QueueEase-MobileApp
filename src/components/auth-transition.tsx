@@ -27,19 +27,20 @@ export function AuthTransitionFrame({ children }: PropsWithChildren) {
     if (id === undefined) { progress.set(1); return; }
     progress.set(0);
     progress.set(withTiming(1, {
-      duration: reduced ? 100 : entering ? 560 : 440,
-      easing: Easing.bezier(0.22, 0.8, 0.2, 1),
+      duration: reduced ? 100 : entering ? role === 'staff' ? 980 : 900 : 720,
+      easing: Easing.linear,
       reduceMotion: ReduceMotion.Never,
     }, finished => {
       if (finished) scheduleOnRN(finishTransition, id);
     }));
     return () => cancelAnimation(progress);
-  }, [entering, finishTransition, id, progress, reduced]);
+  }, [entering, finishTransition, id, progress, reduced, role]);
 
   const scene = useAnimatedStyle(() => {
-    const remainder = Math.pow(1 - progress.get(), 2);
+    const reveal = interpolate(progress.get(), [0, 0.32, 1], [0, 0, 1], 'clamp');
+    const remainder = Math.pow(1 - reveal, 3);
     return {
-      opacity: interpolate(progress.get(), [0, 0.3, 1], [0.01, 1, 1], 'clamp'),
+      opacity: interpolate(progress.get(), [0, 0.32, 0.85, 1], [0.01, 0.01, 1, 1], 'clamp'),
       transform: [
         { translateY: reduced ? 0 : remainder * (entering ? role === 'student' ? 52 : 16 : -22) },
         { translateX: reduced || role !== 'staff' ? 0 : remainder * (entering ? 34 : -26) },
@@ -61,15 +62,15 @@ function AuthTransitionOverlay({ transition, progress, reduced }: { transition: 
   const entering = transition.direction === 'login';
   const accent = transition.role === 'staff' ? colors.successStrong : transition.role === 'admin' ? colors.info : colors.brandText;
   const name = transition.role[0].toUpperCase() + transition.role.slice(1);
-  const veil = useAnimatedStyle(() => ({ opacity: reduced ? 1 - progress.get() : interpolate(progress.get(), [0, 0.18, 0.92, 1], [1, 1, 0, 0], 'clamp') }));
+  const veil = useAnimatedStyle(() => ({ opacity: reduced ? 1 - progress.get() : interpolate(progress.get(), [0, 0.32, 0.94, 1], [1, 1, 0, 0], 'clamp') }));
   const emblem = useAnimatedStyle(() => {
     const p = progress.get();
-    const exit = interpolate(p, [0.18, 0.85], [0, 1], 'clamp');
+    const exit = interpolate(p, [0.42, 0.88], [0, 1], 'clamp');
     return {
-      opacity: interpolate(p, [0, 0.12, 0.55, 0.9], [entering ? 0.5 : 1, 1, 0.7, 0], 'clamp'),
+      opacity: interpolate(p, [0, 0.14, 0.42, 0.86], [entering ? 0.5 : 1, 1, 1, 0], 'clamp'),
       transform: [
-        { translateY: transition.role === 'student' ? entering ? 28 * (1 - p) - 108 * exit : -18 + 96 * exit : 0 },
-        { scale: entering ? 0.88 + 0.2 * p - 0.16 * exit : 1 - 0.3 * exit },
+        { translateY: transition.role === 'student' ? entering ? 24 * (1 - p) - 108 * exit + Math.sin(p * Math.PI * 2) * 6 : -18 + 96 * exit : 0 },
+        { scale: entering ? 0.88 + 0.2 * Math.min(1, p / 0.25) - 0.24 * exit : 1 - 0.3 * exit },
         { rotate: `${transition.role === 'student' ? (entering ? -8 * (1 - p) : 8 * exit) : transition.role === 'admin' ? -24 * (1 - p) : 0}deg` },
       ],
     };

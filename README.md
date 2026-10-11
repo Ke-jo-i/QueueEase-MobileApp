@@ -2,6 +2,8 @@
 
 A registrar queue app, available on **Android/iOS through Expo** and as a **website**. Both versions share the Node.js API and SQLite database. Students book and track tickets, staff call and serve students, and administrators manage accounts, services and queue availability.
 
+Each student can have **one active registrar ticket**, including a ticket on hold. Completing or cancelling it permits another booking; earlier tickets remain in history. Administrators can create staff/admin accounts, edit account details, assign available windows, reset passwords, disable access, configure services, and search queue records and administrator activity. Accounts with an active transaction cannot be disabled.
+
 ## Start the mobile app
 
 Install **Node.js 24.14 or newer**, npm and Expo Go on the phone. From the project folder, run:
@@ -78,13 +80,7 @@ Staff can verify arrival by entering the ticket number in the browser; camera QR
 
 ## Expo tunnel fallback
 
-If the phone cannot reach the Expo development server, install its tunnel helper once:
-
-```powershell
-npm install -g @expo/ngrok
-```
-
-Keep the API running. Replace `npm start` with:
+If the phone cannot reach the Expo development server, keep the API running and replace `npm start` with the following. The tunnel helper is included in the project dependencies.
 
 ```powershell
 $env:EXPO_PUBLIC_API_URL='http://YOUR-LAPTOP-IP:4100'

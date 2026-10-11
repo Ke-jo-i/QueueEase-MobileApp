@@ -26,7 +26,6 @@ export default function LiveQueueScreen() {
         </TouchableOpacity>
         {!studentTicket ? <GlassSurface style={styles.card}>
           <Text style={styles.progressTitle}>No active ticket</Text>
-          <Text style={styles.detail}>You can check all windows before choosing a registrar service.</Text>
           <TouchableOpacity style={styles.ticketButton} onPress={() => router.dismissTo('/home')}><Text style={styles.ticketButtonText}>Choose a service</Text></TouchableOpacity>
         </GlassSurface> : <>
         <Reveal><GlassSurface variant="tinted" style={styles.yourTicketCard}>
@@ -42,12 +41,12 @@ export default function LiveQueueScreen() {
               <View style={styles.stat}><Text style={styles.label}>PEOPLE AHEAD</Text><Text style={styles.statValue}>{studentProgress?.peopleAhead}</Text></View>
               <View style={styles.stat}><Text style={styles.label}>NOW SERVING</Text><Text style={styles.statValue}>{studentProgress?.serving?.number ?? '—'}</Text></View>
             </View>
-            <Text style={styles.detail}>{studentProgress?.nextInLine ? 'You’re next in line. Stay nearby and wait for staff to call your number.' : 'Your place updates as staff work through this window’s queue.'}</Text>
+            {studentProgress?.nextInLine && <Text style={styles.detail}>Next in line</Text>}
           </>}
           {studentTicket.status === 'SERVING' && <Text style={styles.detail}>Please proceed to {studentTicket.window.replace(' - Registrar', '')} with your student ID and request documents.</Text>}
           {studentTicket.status === 'HELD' && <>
             <Text style={styles.detail}>{studentTicket.reason}</Text>
-            <Text style={styles.detail}>Speak with staff when you are ready. They can return this ticket to the waiting line.</Text>
+            <Text style={styles.detail}>Contact staff to resume.</Text>
           </>}
         </GlassSurface>
         <GlassSurface style={styles.card}>

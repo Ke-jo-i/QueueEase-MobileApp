@@ -1,5 +1,5 @@
-import { DarkTheme, DefaultTheme, ThemeProvider, useRouter } from 'expo-router';
-import { Stack } from 'expo-router/js-stack';
+import { DarkTheme, DefaultTheme, ThemeProvider, useRouter, type ErrorBoundaryProps } from 'expo-router';
+import { Stack } from '@/components/app-stack';
 import Head from 'expo-router/head';
 import { StatusBar } from 'expo-status-bar';
 import { AppearanceProvider, useAppearance } from '@/contexts/appearance';
@@ -15,6 +15,13 @@ import { useEffect } from 'react';
 import { setBackgroundColorAsync } from 'expo-system-ui';
 import { AuthTransitionFrame } from '@/components/auth-transition';
 import { GlassBackdrop } from '@/components/glass-surface';
+import { StateScreen, stateOverlay } from '@/components/state-screen';
+import { useQueue } from '@/contexts/queue';
+import { View } from 'react-native';
+
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <AppearanceProvider><StateScreen title="Something went wrong" message="Your saved tickets are still on the server." onRetry={retry} /></AppearanceProvider>;
+}
 
 export default function RootLayout() {
   return (
@@ -28,7 +35,8 @@ export default function RootLayout() {
 }
 
 function RootNavigator() {
-  const { role, transition } = useSession();
+  const { role, transition, signOut } = useSession();
+  const queue = useQueue();
   const router = useRouter();
   const { colorScheme } = useAppearance();
   const colors = useAppTheme();
@@ -78,6 +86,10 @@ function RootNavigator() {
         </Stack.Protected>
         <Stack.Protected guard={role === 'staff'}><Stack.Screen name="staff" /></Stack.Protected>
       </Stack>
+      {(role === 'student' || role === 'staff') && !queue.ready && <View style={stateOverlay}>
+        <StateScreen loading={queue.loading} title={queue.loading ? 'Getting your queue ready' : 'Unable to connect'} message={queue.loading ? undefined : 'Check your connection and that the queue server is running.'}
+          onRetry={queue.loading ? undefined : () => void queue.refresh()} onBack={() => void signOut()} />
+      </View>}
       </AuthTransitionFrame>
       </GlassBackdrop>
     </ThemeProvider>

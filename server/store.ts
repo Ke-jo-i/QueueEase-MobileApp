@@ -1,4 +1,4 @@
-import { DatabaseSync } from 'node:sqlite';
+import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { randomBytes, randomUUID, scrypt, timingSafeEqual, createHash } from 'node:crypto';
 import { promisify } from 'node:util';
@@ -127,11 +127,19 @@ export class Store {
     return publicAccount(row);
   }
   logout(token: string) { this.db.prepare('DELETE FROM sessions WHERE token_hash=?').run(tokenHash(token)); }
-  async changePassword(user: Account, input: Record<string, unknown>) {
+  async changePassword(user: Account, input: Record<string, unknown>, token?: string) {
+    const requireSession = () => {
+      const current = token === undefined ? this.account(user.id) : this.authenticate(token);
+      check(current.id === user.id && current.active, 'Your session has ended. Please sign in again.', 401);
+    };
+    requireSession();
     const row = this.db.prepare('SELECT password_hash FROM accounts WHERE id=?').get(user.id) as { password_hash: string };
     check(typeof input.currentPassword === 'string' && input.currentPassword.length <= 128 && await matches(input.currentPassword, row.password_hash), 'Current password is incorrect.', 403);
     const hash = await hashPassword(password(input.newPassword));
     this.transaction(() => {
+      requireSession();
+      const latest = this.db.prepare('SELECT password_hash FROM accounts WHERE id=?').get(user.id) as { password_hash: string };
+      check(latest.password_hash === row.password_hash, 'Account credentials changed. Please sign in again.', 409);
       this.db.prepare('UPDATE accounts SET password_hash=? WHERE id=?').run(hash, user.id);
       this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(user.id);
     });
@@ -172,7 +180,10 @@ export class Store {
           check(configured, 'This service is currently unavailable.');
           check(this.db.prepare('SELECT accepting FROM queue_state WHERE id=1').get()!.accepting, 'New tickets are paused. Please check again later.', 409);
           command = { type: 'BOOK', service, ownerId: user.id };
-        } else command = { type: 'CANCEL', ownerId: user.id, reason: field(input.reason, 'reason', 300) };
+        } else {
+          if (input.expectedTicketId !== undefined) check(state.tickets.some(ticket => ticket.id === input.expectedTicketId && ticket.ownerId === user.id && ['WAITING', 'HELD'].includes(ticket.status)), 'This ticket has changed. Refresh and try again.', 409);
+          command = { type: 'CANCEL', ownerId: user.id, reason: field(input.reason, 'reason', 300) };
+        }
       } else {
         check(user.role === 'staff', 'Staff access is required.', 403);
         if (input.type === 'ASSIGN') {
@@ -201,13 +212,9 @@ export class Store {
           }
         }
       }
-      const result = applyQueueCommand(state, command, at);
+      const result = applyQueueCommand(state, command, at, this.services().filter(service => service.enabled).map(service => ({ name: String(service.name), window: String(service.window) })));
       check(result.ok, result.ok ? '' : result.message, 409);
       const ticket = result.ticket!;
-      if (command.type === 'BOOK') {
-        ticket.window = String(this.db.prepare('SELECT window FROM services WHERE name=?').get(ticket.service)!.window);
-        ticket.events[0].window = ticket.window;
-      }
       this.db.prepare(`INSERT INTO tickets VALUES(?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
         window=excluded.window,status=excluded.status,queue_order=excluded.queue_order,finished_at=excluded.finished_at,reason=excluded.reason`)
         .run(ticket.id, ticket.sequence, ticket.number, ticket.service, ticket.window, ticket.status, ticket.ownerId!, ticket.createdAt, ticket.queueOrder, ticket.date ?? null, ticket.reason ?? null);
@@ -219,45 +226,202 @@ export class Store {
       return { ...this.view(user), ticketId: ticket.id };
     });
   }
-  adminView() {
-    return { accounts: this.db.prepare('SELECT id,login,email,name,role,active,window FROM accounts ORDER BY created_at').all(), services: this.services(),
-      acceptingTickets: !!this.db.prepare('SELECT accepting FROM queue_state WHERE id=1').get()!.accepting,
-      records: this.snapshot().tickets.slice().reverse().map((ticket) => ({ ...ticket, ownerId: this.account(ticket.ownerId!).login })),
-      counts: this.db.prepare('SELECT status,COUNT(*) AS count FROM tickets GROUP BY status').all() };
+  private requireAdmin(user: Account, token?: string) {
+    const current = token === undefined ? this.account(user.id) : this.authenticate(token);
+    check(current.id === user.id && current.active && current.role === 'admin', 'Administrator access is required.', 403);
+    return current;
   }
-  async adminAction(user: Account, input: Record<string, unknown>) {
-    check(user.role === 'admin', 'Administrator access is required.', 403);
-    if (input.type === 'CREATE_STAFF') await this.createAccount(input, 'staff');
-    else if (input.type === 'SET_ACTIVE') {
-      const id = field(input.id, 'account');
-      check(id !== user.id && this.account(id).role !== 'admin', 'Administrator accounts cannot be disabled here.');
-      check(typeof input.active === 'boolean', 'Choose an account status.');
-      this.transaction(() => {
-        this.db.prepare('UPDATE accounts SET active=?,window=CASE WHEN ?=0 THEN NULL ELSE window END WHERE id=?').run(Number(input.active), Number(input.active), id);
-        this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(id);
-      });
-    } else if (input.type === 'RELEASE_WINDOW') {
-      const id = field(input.id, 'account'); const staff = this.account(id);
-      check(staff.role === 'staff', 'Select a staff account.');
-      check(!this.snapshot().tickets.some((ticket) => ticket.status === 'SERVING' && ticket.window === staff.window), 'Finish the window’s current ticket before releasing its assignment.', 409);
-      this.db.prepare('UPDATE accounts SET window=NULL WHERE id=?').run(id);
-      this.db.prepare('UPDATE queue_state SET revision=revision+1 WHERE id=1').run();
+  private audit(user: Account, action: string, target: string, details: AdminAudit['details']) {
+    this.db.prepare('INSERT INTO admin_audit(id,actor_id,action,target,details,at) VALUES(?,?,?,?,?,?)')
+      .run(randomUUID(), user.id, action, target, JSON.stringify(details), new Date().toISOString());
+  }
+  private availableWindow(window: unknown, id?: string) {
+    const selected = field(window, 'window');
+    check(registrarWindows.includes(selected), 'Choose a listed registrar window.');
+    check(!this.db.prepare('SELECT id FROM accounts WHERE window=? AND id!=?').get(selected, id ?? ''), 'Another staff member is assigned to that window.', 409);
+    return selected;
+  }
+  private idleWindow(staff: Account) {
+    check(!staff.window || !this.db.prepare("SELECT id FROM tickets WHERE window=? AND status='SERVING'").get(staff.window), 'Finish or transfer the current ticket before changing this window assignment.', 409);
+  }
+  private readAdminRecords(where = '', values: SQLInputValue[] = [], limit?: number, offset = 0): Ticket[] {
+    const rows = this.db.prepare(`SELECT t.*,a.login AS owner_login FROM tickets t JOIN accounts a ON a.id=t.owner_id ${where}
+      ORDER BY t.sequence DESC ${limit === undefined ? '' : 'LIMIT ? OFFSET ?'}`)
+      .all(...values, ...(limit === undefined ? [] : [limit, offset]));
+    const events = this.db.prepare('SELECT id,type,at,window,reason FROM ticket_events WHERE ticket_id=? ORDER BY rowid');
+    return rows.map(row => ({
+      id: row.id, sequence: row.sequence, number: row.number, service: row.service, window: row.window, status: row.status,
+      ownerId: row.owner_login, createdAt: row.created_at, queueOrder: row.queue_order, date: row.finished_at ?? undefined, reason: row.reason ?? undefined,
+      events: events.all(row.id).map(event => ({ id: event.id, type: event.type, at: event.at, window: event.window, reason: event.reason ?? undefined })),
+    })) as Ticket[];
+  }
+  private readAdminAudit(where = '', values: SQLInputValue[] = [], limit = 100, offset = 0): AdminAudit[] {
+    return this.db.prepare(`SELECT j.*,a.login AS actor_login,a.name AS actor_name FROM admin_audit j JOIN accounts a ON a.id=j.actor_id
+      ${where} ORDER BY j.rowid DESC LIMIT ? OFFSET ?`).all(...values, limit, offset).map(row => ({
+      id: String(row.id), actorId: String(row.actor_id), actorLogin: String(row.actor_login), actorName: String(row.actor_name),
+      action: String(row.action), target: String(row.target), details: JSON.parse(String(row.details)), at: String(row.at),
+    }));
+  }
+  adminView(): AdminData {
+    const now = Date.now();
+    const accounts = this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
+      (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ORDER BY a.created_at`).all(now) as AdminAccount[];
+    const records = this.readAdminRecords();
+    const today = day(new Date(now).toISOString());
+    const completed = records.filter(ticket => ticket.status === 'COMPLETED' && ticket.date && day(ticket.date) === today);
+    const waits: number[] = [];
+    const durations: number[] = [];
+    for (const ticket of completed) {
+      const firstCall = ticket.events.find(event => event.type === 'CALLED');
+      const lastCompletion = ticket.events.findLastIndex(event => event.type === 'COMPLETED');
+      const finalCall = ticket.events.slice(0, lastCompletion).findLast(event => event.type === 'CALLED');
+      if (firstCall) waits.push(Math.max(0, Date.parse(firstCall.at) - Date.parse(ticket.createdAt)));
+      if (finalCall && lastCompletion >= 0) durations.push(Math.max(0, Date.parse(ticket.events[lastCompletion].at) - Date.parse(finalCall.at)));
+    }
+    const count = (status: string) => records.filter(ticket => ticket.status === status).length;
+    const finishedToday = (status: string) => records.filter(ticket => ticket.status === status && ticket.date && day(ticket.date) === today).length;
+    return {
+      accounts, services: this.services() as AdminService[],
+      acceptingTickets: !!this.db.prepare('SELECT accepting FROM queue_state WHERE id=1').get()!.accepting,
+      records, counts: this.db.prepare('SELECT status,COUNT(*) AS count FROM tickets GROUP BY status').all() as AdminData['counts'],
+      statistics: {
+        date: today, requestedToday: records.filter(ticket => day(ticket.createdAt) === today).length,
+        completedToday: completed.length, cancelledToday: finishedToday('CANCELLED'), noShowsToday: finishedToday('NO_SHOW'),
+        waiting: count('WAITING'), serving: count('SERVING'), held: count('HELD'), activeAccounts: accounts.filter(account => account.active).length,
+        staffedWindows: accounts.filter(account => account.active && account.role === 'staff' && account.window).length,
+        activeSessions: accounts.filter(account => account.active).reduce((total, account) => total + account.activeSessions, 0),
+        averageWaitMinutes: averageMinutes(waits), averageServiceMinutes: averageMinutes(durations),
+      },
+      windows: registrarWindows.map(window => ({
+        window, staff: accounts.find(account => account.active && account.role === 'staff' && account.window === window) ?? null,
+        waiting: records.filter(ticket => ticket.window === window && ticket.status === 'WAITING').length,
+        serving: records.filter(ticket => ticket.window === window && ticket.status === 'SERVING').length,
+        held: records.filter(ticket => ticket.window === window && ticket.status === 'HELD').length,
+        completedToday: completed.filter(ticket => ticket.window === window).length,
+      })),
+      audit: this.readAdminAudit(),
+    };
+  }
+  adminHistory(user: Account, input: Record<string, unknown>): AdminHistoryPage {
+    this.requireAdmin(user);
+    const { page, pageSize } = pageFields(input);
+    const clauses: string[] = [];
+    const values: SQLInputValue[] = [];
+    if (input.status !== undefined && input.status !== '') {
+      check(statuses.includes(String(input.status)), 'Choose a valid ticket status.');
+      clauses.push('t.status=?'); values.push(String(input.status));
+    }
+    if (input.window !== undefined && input.window !== '') {
+      check(registrarWindows.includes(String(input.window)), 'Choose a listed registrar window.');
+      clauses.push('t.window=?'); values.push(String(input.window));
+    }
+    if (input.service !== undefined && input.service !== '') {
+      const service = field(input.service, 'service');
+      check(this.db.prepare('SELECT name FROM services WHERE name=?').get(service), 'Choose a listed registrar service.');
+      clauses.push('t.service=?'); values.push(service);
+    }
+    if (input.search !== undefined && input.search !== '') {
+      const query = field(input.search, 'search', 100).replace(/[\\%_]/g, '\\$&');
+      clauses.push("(t.number LIKE ? ESCAPE '\\' OR a.login LIKE ? ESCAPE '\\' OR a.name LIKE ? ESCAPE '\\')");
+      values.push(...Array<SQLInputValue>(3).fill(`%${query}%`));
+    }
+    const from = dateField(input.from, 'start date');
+    const to = dateField(input.to, 'end date');
+    check(!from || !to || from <= to, 'The start date must come before the end date.');
+    if (from) { clauses.push('t.created_at>=?'); values.push(new Date(`${from}T00:00:00`).toISOString()); }
+    if (to) {
+      const end = new Date(`${to}T00:00:00`); end.setDate(end.getDate() + 1);
+      clauses.push('t.created_at<?'); values.push(end.toISOString());
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const total = Number(this.db.prepare(`SELECT COUNT(*) AS total FROM tickets t JOIN accounts a ON a.id=t.owner_id ${where}`).get(...values)!.total);
+    return { records: this.readAdminRecords(where, values, pageSize, (page - 1) * pageSize), total, page, pageSize };
+  }
+  adminAudit(user: Account, input: Record<string, unknown>): AdminAuditPage {
+    this.requireAdmin(user);
+    const { page, pageSize } = pageFields(input);
+    const clauses: string[] = [];
+    const values: SQLInputValue[] = [];
+    if (input.action !== undefined && input.action !== '') { clauses.push('j.action=?'); values.push(field(input.action, 'action', 40)); }
+    if (input.search !== undefined && input.search !== '') {
+      const query = field(input.search, 'search', 100).replace(/[\\%_]/g, '\\$&');
+      clauses.push("(j.target LIKE ? ESCAPE '\\' OR a.login LIKE ? ESCAPE '\\' OR a.name LIKE ? ESCAPE '\\')");
+      values.push(...Array<SQLInputValue>(3).fill(`%${query}%`));
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const total = Number(this.db.prepare(`SELECT COUNT(*) AS total FROM admin_audit j JOIN accounts a ON a.id=j.actor_id ${where}`).get(...values)!.total);
+    return { audit: this.readAdminAudit(where, values, pageSize, (page - 1) * pageSize), total, page, pageSize };
+  }
+  async adminAction(user: Account, input: Record<string, unknown>, token?: string) {
+    this.requireAdmin(user, token);
+    let prepared: { values: ReturnType<typeof accountFields>; role: 'staff' | 'admin'; hash: string } | undefined;
+    let resetHash: string | undefined;
+    if (input.type === 'CREATE_STAFF' || input.type === 'CREATE_ACCOUNT') {
+      const role = input.type === 'CREATE_STAFF' ? 'staff' : input.role;
+      check(role === 'staff' || role === 'admin', 'Choose a staff or administrator account.');
+      const values = accountFields(input);
+      prepared = { values, role, hash: await hashPassword(password(input.password)) };
     } else if (input.type === 'RESET_PASSWORD') {
-      const id = field(input.id, 'account'); this.account(id);
-      const hash = await hashPassword(password(input.password));
-      this.transaction(() => {
-        this.db.prepare('UPDATE accounts SET password_hash=? WHERE id=?').run(hash, id);
-        this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(id);
-      });
-    } else if (input.type === 'SET_SERVICE') {
-      const name = field(input.name, 'service');
-      check(registrarServices.includes(name) && registrarWindows.includes(String(input.window)) && typeof input.enabled === 'boolean', 'Choose a listed service and window.');
-      this.db.prepare('UPDATE services SET window=?,enabled=? WHERE name=?').run(String(input.window), Number(input.enabled), name);
+      check(field(input.id, 'account') !== user.id, 'Change your own password in Profile.');
+      resetHash = await hashPassword(password(input.password));
+    }
+    this.transaction(() => {
+      const actor = this.requireAdmin(user, token);
+      if (prepared) {
+        check(prepared.role === 'staff' || !input.window, 'Administrator accounts do not have a window assignment.');
+        const window = input.window ? this.availableWindow(input.window) : null;
+        const account = this.insertAccount(prepared.values, prepared.role, prepared.hash, window);
+        this.audit(actor, 'CREATE_ACCOUNT', account.login, { role: account.role, window });
+      } else if (input.type === 'UPDATE_ACCOUNT') {
+        const account = this.account(field(input.id, 'account'));
+        const name = field(input.name, 'full name', 80);
+        const email = validEmail(input.email);
+        try { this.db.prepare('UPDATE accounts SET name=?,email=? WHERE id=?').run(name, email, account.id); }
+        catch (error) { if (String(error).includes('UNIQUE')) throw new RequestError(409, 'That email is already registered.'); throw error; }
+        this.audit(actor, 'UPDATE_ACCOUNT', account.login, { name, email });
+      } else if (input.type === 'SET_ACTIVE') {
+        const account = this.account(field(input.id, 'account'));
+        check(typeof input.active === 'boolean', 'Choose an account status.');
+        if (!input.active) {
+          check(account.id !== actor.id, 'You cannot disable your own account.', 409);
+          if (account.role === 'admin' && account.active) check(Number(this.db.prepare("SELECT COUNT(*) AS count FROM accounts WHERE role='admin' AND active=1").get()!.count) > 1, 'Keep at least one active administrator.', 409);
+          if (account.role === 'staff') this.idleWindow(account);
+          if (account.role === 'student') check(!this.db.prepare("SELECT id FROM tickets WHERE owner_id=? AND status IN ('WAITING','SERVING','HELD')").get(account.id), 'Finish or cancel this student’s active ticket before disabling the account.', 409);
+        }
+        this.db.prepare('UPDATE accounts SET active=?,window=CASE WHEN ?=0 THEN NULL ELSE window END WHERE id=?').run(Number(input.active), Number(input.active), account.id);
+        this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(account.id);
+        this.audit(actor, 'SET_ACTIVE', account.login, { active: input.active });
+      } else if (input.type === 'ASSIGN_WINDOW' || input.type === 'RELEASE_WINDOW') {
+        const account = this.account(field(input.id, 'account'));
+        check(account.role === 'staff' && account.active, 'Select an active staff account.');
+        this.idleWindow(account);
+        const window = input.type === 'RELEASE_WINDOW' ? null : this.availableWindow(input.window, account.id);
+        this.db.prepare('UPDATE accounts SET window=? WHERE id=?').run(window, account.id);
+        this.audit(actor, input.type, account.login, { window, previousWindow: account.window });
+      } else if (input.type === 'RESET_PASSWORD' && resetHash) {
+        const account = this.account(field(input.id, 'account'));
+        this.db.prepare('UPDATE accounts SET password_hash=? WHERE id=?').run(resetHash, account.id);
+        this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(account.id);
+        this.audit(actor, 'RESET_PASSWORD', account.login, { sessionsRevoked: true });
+      } else if (input.type === 'CREATE_SERVICE' || input.type === 'SET_SERVICE') {
+        const name = field(input.name, 'service');
+        const window = field(input.window, 'window');
+        check(registrarWindows.includes(window) && typeof input.enabled === 'boolean', 'Choose a listed registrar window and service status.');
+        if (input.type === 'CREATE_SERVICE') {
+          check(!this.db.prepare('SELECT name FROM services WHERE name=? COLLATE NOCASE').get(name), 'That service already exists.', 409);
+          this.db.prepare('INSERT INTO services(name,window,enabled) VALUES(?,?,?)').run(name, window, Number(input.enabled));
+        } else {
+          check(this.db.prepare('SELECT name FROM services WHERE name=?').get(name), 'Service not found.', 404);
+          this.db.prepare('UPDATE services SET window=?,enabled=? WHERE name=?').run(window, Number(input.enabled), name);
+        }
+        this.audit(actor, input.type, name, { window, enabled: input.enabled });
+      } else if (input.type === 'SET_ACCEPTING') {
+        check(typeof input.accepting === 'boolean', 'Choose whether new tickets are allowed.');
+        this.db.prepare('UPDATE queue_state SET accepting=? WHERE id=1').run(Number(input.accepting));
+        this.audit(actor, 'SET_ACCEPTING', 'Registrar queue', { accepting: input.accepting });
+      } else throw new RequestError(400, 'Unknown administrator action.');
       this.db.prepare('UPDATE queue_state SET revision=revision+1 WHERE id=1').run();
-    } else if (input.type === 'SET_ACCEPTING') {
-      check(typeof input.accepting === 'boolean', 'Choose whether new tickets are allowed.');
-      this.db.prepare('UPDATE queue_state SET accepting=?,revision=revision+1 WHERE id=1').run(Number(input.accepting));
-    } else throw new RequestError(400, 'Unknown administrator action.');
+    });
     return this.adminView();
   }
 }

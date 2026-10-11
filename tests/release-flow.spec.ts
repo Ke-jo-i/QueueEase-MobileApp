@@ -85,11 +85,12 @@ test('administrator pauses bookings and creates staff accounts', async ({ page }
   await page.screenshot({ path: '.local/screenshots/administrator.png', fullPage: true, animations: 'disabled' });
   await page.getByRole('button', { name: 'Pause new tickets', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open queue', exact: true })).toBeVisible();
+  await page.getByRole('radio', { name: 'Accounts', exact: true }).click();
   await page.getByRole('button', { name: 'Create staff account', exact: true }).click();
   await page.getByLabel('Staff name', { exact: true }).fill('Second Staff'); await page.getByLabel('Staff ID', { exact: true }).fill('staff2');
   await page.getByLabel('Staff email', { exact: true }).fill('staff2@example.test'); await page.getByLabel('Initial password (at least 10 characters)', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Save staff account' }).click();
-  await expect(page.getByRole('button', { name: 'Accounts (4)' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Accounts (4)' })).toBeVisible();
   await page.getByRole('button', { name: 'Log Out', exact: true }).click();
   await login(page);
   await expect(page.getByText(/New tickets are paused. Existing tickets/)).toBeVisible();

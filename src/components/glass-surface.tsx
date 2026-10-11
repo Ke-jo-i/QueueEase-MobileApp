@@ -58,12 +58,13 @@ export function GlassSurface({ children, style, variant = 'regular', interactive
   const flattened = StyleSheet.flatten(style);
   const tint = variant === 'tinted' ? colors.infoSurface : typeof flattened?.backgroundColor === 'string' ? flattened.backgroundColor : colors.surface;
   const material = translucent(tint, opaque ? 1 : native ? 0.28 : dark ? 0.82 : 0.76);
+  const blurred = !opaque && (Platform.OS !== 'android' || interactive);
   return <View {...props} style={[{
     borderRadius: 26, borderWidth: StyleSheet.hairlineWidth,
     borderColor: translucent(dark ? '#FFFFFF' : '#FFFFFF', dark ? 0.13 : 0.85),
-    boxShadow: `0 8px 30px ${translucent('#12233D', dark ? 0.14 : 0.055)}`,
+    boxShadow: `0 4px 12px ${translucent('#12233D', dark ? 0.1 : 0.04)}`,
   }, style, { backgroundColor: material, overflow: 'hidden' }]}>
-    {!opaque && (native
+    {blurred && (native
       ? <GlassView pointerEvents="none" style={[StyleSheet.absoluteFill, { borderRadius: flattened?.borderRadius ?? 26 }]} glassEffectStyle="regular" colorScheme={colorScheme} tintColor={translucent(tint, 0.2)} isInteractive={interactive} />
       : <BlurView pointerEvents="none" style={StyleSheet.absoluteFill} intensity={variant === 'tinted' ? 55 : 36} tint={dark ? 'dark' : 'light'} blurTarget={target} blurMethod={Platform.OS === 'android' && target ? 'dimezisBlurViewSdk31Plus' : 'none'} />)}
     <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: translucent(tint, native ? 0.1 : dark ? 0.2 : 0.24), borderRadius: flattened?.borderRadius ?? 26, borderTopWidth: 1, borderTopColor: translucent('#FFFFFF', dark ? 0.12 : 0.8) }]} />

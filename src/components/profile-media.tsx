@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEvent, useEventListener } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,10 +13,12 @@ export function ProfileMedia({ onClose }: { onClose: () => void }) {
     instance.audioMixingMode = 'doNotMix';
   });
   const { status } = useEvent(player, 'statusChange', { status: player.status });
+  const [shown, setShown] = useState(false);
   const close = () => { player.pause(); onClose(); };
   useEventListener(player, 'playToEnd', close);
+  useEffect(() => { if (shown && status === 'readyToPlay') player.play(); }, [shown, status, player]);
   useEffect(() => () => { if (Platform.OS === 'web') player.pause(); }, [player]);
-  return <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={close} onShow={() => player.play()}>
+  return <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={close} onShow={() => setShown(true)}>
     <StatusBar style="light" />
     <SafeAreaView style={styles.container}>
       <View style={styles.toolbar}>
@@ -25,7 +27,7 @@ export function ProfileMedia({ onClose }: { onClose: () => void }) {
         </Pressable>
       </View>
       <View style={styles.content}>
-        <VideoView player={player} style={styles.video} contentFit="contain" nativeControls fullscreenOptions={{ enable: false }} allowsPictureInPicture={false} />
+        <VideoView player={player} style={styles.video} contentFit="contain" nativeControls surfaceType="textureView" fullscreenOptions={{ enable: false }} allowsPictureInPicture={false} />
         {(status === 'idle' || status === 'loading') && <View pointerEvents="none" style={styles.overlay}><ActivityIndicator color="#fff" size="large" /></View>}
         {status === 'error' && <View style={styles.overlay}><Text style={styles.error}>Unable to play video.</Text></View>}
       </View>

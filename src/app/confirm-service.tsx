@@ -1,17 +1,16 @@
-import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { GlassSurface, translucent } from '@/components/glass-surface';
+import { Reveal, MotionButton as TouchableOpacity } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
+import { useNavigationMotion } from '@/contexts/navigation-motion';
+import { useQueue } from '@/contexts/queue';
+import { useSession } from '@/contexts/session';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { type StackNavigationProp } from 'expo-router/js-stack';
 import { useEffect } from 'react';
-import { useQueue } from '@/contexts/queue';
-import { useSession } from '@/contexts/session';
-import { registrarReminders, serviceDescriptions } from '@/constants/registrar-services';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigationMotion } from '@/contexts/navigation-motion';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function ConfirmServiceScreen() {
   const colors = useAppTheme();
@@ -21,8 +20,10 @@ export default function ConfirmServiceScreen() {
   const navigation = useNavigation<StackNavigationProp<Record<string, object | undefined>>>();
   const { bookTicket, studentTicket, busy, connected, services, acceptingTickets } = useQueue();
   const { studentId } = useSession();
-  const params = useLocalSearchParams();
-  const serviceTitle = (params.serviceName as string) || 'Certificate of Enrollment';
+  const params = useLocalSearchParams<{ serviceName?: string }>();
+  const requestedService = services.find(service => service.name === params.serviceName);
+  const serviceTitle = studentTicket?.service ?? requestedService?.name ?? params.serviceName ?? 'Choose a service';
+  const disabled = busy || booking || (!studentTicket && (!connected || !acceptingTickets || !requestedService?.enabled));
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('transitionEnd', event => {
@@ -34,45 +35,32 @@ export default function ConfirmServiceScreen() {
   const handleGetQueue = async () => {
     if (booking) return;
     if (studentTicket) { openTickets(); return; }
-    if (!await bookTicket(serviceTitle)) return;
+    if (!requestedService || !await bookTicket(requestedService.name)) return;
     openTickets();
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Back Button & Title */}
         <TouchableOpacity style={styles.backButton} accessibilityLabel="Back" onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.brandText} />
-          <Text style={styles.headerTitle}>Confirm Service</Text>
+          <Text style={styles.headerTitle}>{studentTicket ? 'Your active ticket' : 'Confirm Service'}</Text>
         </TouchableOpacity>
 
         <Text style={styles.studentInfo}>Student: {studentId}</Text>
 
-        {/* Selected Service Detail Card */}
         <Reveal><GlassSurface variant="tinted" style={styles.serviceDetailCard}>
-          <Ionicons name="document-text-outline" size={30} color={colors.brandText} style={{ marginBottom: 18 }} />
+          {studentTicket ? <Text style={styles.ticketNumber}>{studentTicket.number}</Text> : <Ionicons name="document-text-outline" size={30} color={colors.brandText} style={{ marginBottom: 18 }} />}
           <Text style={styles.serviceNameTitle}>{serviceTitle}</Text>
-          <Text style={styles.metaText}>{serviceDescriptions[serviceTitle]}</Text>
-          <Text style={styles.metaText}>Queue window: {services.find((service) => service.name === serviceTitle)?.window ?? 'Connecting…'}</Text>
+          <Text style={styles.metaText}>{studentTicket?.window ?? requestedService?.window ?? 'Connecting…'}</Text>
+          {studentTicket && <View style={styles.ticketPolicy}>
+            <Text style={styles.policyTitle}>One active ticket at a time.</Text>
+            <Text style={styles.metaText}>Finish your current request, or cancel it while waiting, before joining another queue.</Text>
+          </View>}
         </GlassSurface></Reveal>
 
-        {/* Important Reminders Box (Dynamic na nagbabago) */}
-        <Reveal delay={60}><GlassSurface style={styles.remindersCard}>
-          <Text style={styles.remindersTitle}>Important Reminders</Text>
-
-          {registrarReminders.map((reminder) => (
-            <View key={reminder} style={styles.bulletItem}>
-              <Text style={styles.bulletText}>• {reminder}</Text>
-            </View>
-          ))}
-
-          <Text style={styles.processingTime}>Your queue number is for your turn at the window, not a document release time.</Text>
-        </GlassSurface></Reveal>
-
-        {/* Get Queue Number Button */}
         <View style={styles.footer}>
-          <TouchableOpacity disabled={busy || booking || !connected || (!studentTicket && !acceptingTickets)} style={[styles.confirmButton, (busy || booking || !connected || !acceptingTickets) && { opacity: 0.5 }]} onPress={handleGetQueue} activeOpacity={0.8}>
+          <TouchableOpacity disabled={disabled} style={[styles.confirmButton, disabled && { opacity: 0.5 }]} onPress={handleGetQueue} activeOpacity={0.8}>
             <Text style={styles.confirmButtonText}>{busy ? 'Creating ticket…' : studentTicket ? 'View active ticket' : !acceptingTickets ? 'New tickets paused' : 'Get Queue Number'}</Text>
           </TouchableOpacity>
         </View>
@@ -123,37 +111,13 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.text,
     marginBottom: 8,
   },
+  ticketNumber: { fontSize: 44, fontWeight: '700', letterSpacing: -1, color: colors.brandText, marginBottom: 14 },
+  ticketPolicy: { borderTopWidth: 1, borderColor: colors.border, paddingTop: 18, marginTop: 18, gap: 4 },
+  policyTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   metaText: {
     fontSize: 14, lineHeight: 22,
     color: colors.textMuted,
     marginTop: 2,
-  },
-  remindersCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 26,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  remindersTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 12,
-  },
-  bulletItem: {
-    marginBottom: 6,
-  },
-  bulletText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textBody,
-  },
-  processingTime: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: colors.info,
-    marginTop: 16,
   },
   footer: {
     marginTop: 'auto',

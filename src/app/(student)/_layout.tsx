@@ -1,6 +1,7 @@
 import { NavigationBar } from '@/components/navigation-bar';
 import { useTabTransitions } from '@/hooks/use-navigation-transitions';
 import { Tabs } from 'expo-router';
+import { SceneResponses, useSceneResponse } from '@/contexts/scene-responses';
 
 const items = [
   { id: 'home', label: 'Home', icon: 'grid-outline', selectedIcon: 'grid' },
@@ -10,10 +11,16 @@ const items = [
 ] as const;
 
 export default function TabLayout() {
+  return <SceneResponses><StudentTabs /></SceneResponses>;
+}
+
+function StudentTabs() {
   const transitions = useTabTransitions();
+  const respond = useSceneResponse();
   return <Tabs initialRouteName="home" backBehavior="initialRoute" screenOptions={transitions}
     tabBar={({ state, navigation }) => <NavigationBar tabs items={items} selected={state.routes[state.index].name}
       onSelect={id => {
+        respond(id);
         const route = state.routes.find(route => route.name === id);
         if (!route) return;
         const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });

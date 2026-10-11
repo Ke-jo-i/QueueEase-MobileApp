@@ -94,6 +94,7 @@ test('administrator pause, service routing and account disable are enforced', as
     await store.adminAction(admin, { type: 'SET_ACCEPTING', accepting: true });
     await store.adminAction(admin, { type: 'SET_SERVICE', name: 'Academic Records Request', window: registrarWindows[3], enabled: true });
     assert.equal(command(student, { type: 'BOOK', service: 'Academic Records Request' }).tickets[0].window, registrarWindows[3]);
+    command(student, { type: 'CANCEL', reason: 'No longer needed' });
     const session = await store.login({ login: student.login, password, portal: 'student' });
     await store.adminAction(admin, { type: 'SET_ACTIVE', id: student.id, active: false });
     assert.throws(() => store.authenticate(session.token), /session has ended/);

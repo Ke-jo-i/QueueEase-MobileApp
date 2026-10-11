@@ -1,6 +1,6 @@
 import { useSession } from '@/contexts/session';
 import { Redirect } from 'expo-router';
-import { Stack } from 'expo-router/js-stack';
+import { Stack } from '@/components/app-stack';
 import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
 
 export default function StaffLayout() {

@@ -59,7 +59,7 @@ export function AccountProfile() {
           {role === 'staff' && <>
             <SettingsRow title="Window Assignment" subtitle={assignedWindow || 'Choose your service window'} icon="grid-outline" expanded={section === 'window'} onPress={() => toggle('window')} />
             <Disclosure open={section === 'window'} style={detailStyle}>
-              <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 19 }}>Choose a registrar window. Occupied windows cannot be taken.</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 13, lineHeight: 19 }}>Occupied windows are unavailable.</Text>
               {registrarWindows.map((window) => <ActionButton key={window} label={window} secondary={assignedWindow !== window} disabled={busy || !connected} onPress={() => { void setAssignedWindow(window).then((ok) => { if (ok) setSection(''); }); }} />)}
             </Disclosure>{divider}
           </>}
@@ -67,7 +67,7 @@ export function AccountProfile() {
           <Disclosure open={section === 'personal'} style={detailStyle}>
             <Text style={{ color: colors.text }}>{user?.name}</Text><Text style={{ color: colors.text }}>ID: {user?.login}</Text><Text style={{ color: colors.text }}>{user?.email}</Text><Text style={{ color: colors.textMuted, fontSize: 12 }}>Profile photos are saved on this device.</Text>
           </Disclosure>{divider}
-          <SettingsRow title="Change Password" subtitle="Keep your account secure" icon="lock-closed-outline" expanded={section === 'password'} onPress={() => toggle('password')} />
+          <SettingsRow title="Change Password" icon="lock-closed-outline" expanded={section === 'password'} onPress={() => toggle('password')} />
           <Disclosure open={section === 'password'} style={detailStyle}>
             <Field label="Current password" value={current} onChangeText={setCurrent} secureTextEntry />
             <Field label="New password (at least 10 characters)" value={next} onChangeText={setNext} secureTextEntry />
@@ -76,7 +76,7 @@ export function AccountProfile() {
             <ActionButton label="Update Password" busy={saving} onPress={() => void changePassword()} />
           </Disclosure>{divider}
           <SettingsRow title="Help & Support" subtitle="How the queue works" icon="help-circle-outline" expanded={section === 'help'} onPress={() => toggle('help')} />
-          <Disclosure open={section === 'help'} style={detailStyle}><Notice text="Choose a service to get one active ticket. Watch Live Status or Alerts for your turn, then go to the assigned window. A queue ticket reserves your place in line; it does not mean your document is ready. For account recovery, ask the project administrator. For document requirements, speak with registrar staff." /></Disclosure>
+          <Disclosure open={section === 'help'} style={detailStyle}><Notice text="For account recovery, contact an administrator. For service requirements, contact registrar staff." /></Disclosure>
         </GlassSurface>
       </View>
       {role === 'student' && Platform.OS !== 'web' && <GlassSurface style={{ borderRadius: 25, padding: 18, gap: 10 }}>

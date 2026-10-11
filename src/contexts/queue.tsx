@@ -4,7 +4,7 @@ import { notifyTurn } from '@/data/notifications';
 import { useTurnAlerts } from './turn-alerts';
 import { HistoryTicket, isActiveTicket, isHistoryTicket, Ticket, ticketProgress, waitingTickets, queueByWindow } from '@/data/queue-model';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -21,7 +21,7 @@ type QueueState = {
   holdCurrent: (reason: string) => Promise<boolean>; skipCurrent: (reason: string) => Promise<boolean>;
   noShowCurrent: (reason: string) => Promise<boolean>; transferCurrent: (window: string) => Promise<boolean>;
   reopenTicket: (ticketNumber: string) => Promise<boolean>;
-  busy: boolean; connected: boolean; ready: boolean; services: Service[]; acceptingTickets: boolean;
+  busy: boolean; connected: boolean; ready: boolean; loading: boolean; actionError: string; services: Service[]; acceptingTickets: boolean;
   refresh: () => Promise<void>;
 };
 const empty: QueueView = { tickets: [], assignedWindow: '', services: [], acceptingTickets: false, revision: -1 };
@@ -39,6 +39,7 @@ function QueueSession({ children }: PropsWithChildren) {
   const lastAlert = useRef<string | null>(null);
   const [snapshot, setSnapshot] = useState<QueueView>(empty);
   const [connected, setConnected] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const lock = useRef(false);
@@ -46,12 +47,16 @@ function QueueSession({ children }: PropsWithChildren) {
   const active = useRef(true);
   const revision = useRef(-1);
   const accept = useCallback((value: QueueView) => {
-    if (value.revision >= revision.current) { revision.current = value.revision; setSnapshot(value); }
+    if (value.revision >= revision.current) {
+      revision.current = value.revision;
+      setSnapshot(previous => previous.revision === value.revision && previous.assignedWindow === value.assignedWindow ? previous : value);
+    }
     setConnected(true);
   }, []);
   const refresh = useCallback(async () => {
-    if (!token) return;
+    if (!token || role === 'admin') return;
     const version = generation.current;
+    if (revision.current < 0) setLoading(true);
     try {
       const value = await request<QueueView>('/queue', token);
       if (active.current && version === generation.current) accept(value);
@@ -59,11 +64,13 @@ function QueueSession({ children }: PropsWithChildren) {
       if (!active.current || version !== generation.current) return;
       setConnected(false);
       if (failure instanceof ApiError && failure.status === 401) expire();
+    } finally {
+      if (active.current && version === generation.current) setLoading(false);
     }
-  }, [token, accept, expire]);
+  }, [token, role, accept, expire]);
   useEffect(() => {
     generation.current++; active.current = true;
-    if (!token) return;
+    if (!token || role === 'admin') return;
     let stopped = false;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
@@ -73,9 +80,9 @@ function QueueSession({ children }: PropsWithChildren) {
     timer = setTimeout(poll, 0);
     const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void refresh(); });
     return () => { stopped = true; active.current = false; clearTimeout(timer); listener.remove(); };
-  }, [token, refresh]);
+  }, [token, role, refresh]);
 
-  const run = async (command: object): Promise<QueueView | null> => {
+  const run = useCallback(async (command: object): Promise<QueueView | null> => {
     if (!token || lock.current) return null;
     lock.current = true; setBusy(true); setError('');
     const version = generation.current;
@@ -91,11 +98,11 @@ function QueueSession({ children }: PropsWithChildren) {
       }
       return null;
     } finally { if (active.current && version === generation.current) { lock.current = false; setBusy(false); } }
-  };
+  }, [token, accept, expire, refresh]);
   const { tickets, assignedWindow } = snapshot;
-  const studentTickets = studentId ? tickets.filter((ticket) => ticket.ownerId === studentId) : [];
+  const studentTickets = useMemo(() => studentId ? tickets.filter((ticket) => ticket.ownerId === studentId) : [], [tickets, studentId]);
   const studentTicket = studentTickets.find(isActiveTicket) ?? null;
-  const progress = studentTicket ? ticketProgress(tickets, studentTicket) : null;
+  const progress = useMemo(() => studentTicket ? ticketProgress(tickets, studentTicket) : null, [tickets, studentTicket]);
   const alertKey = studentTicket ? `${studentTicket.id}:${studentTicket.events.at(-1)?.id}:${progress?.nextInLine}` : '';
   useEffect(() => {
     if (snapshot.revision < 0) { lastAlert.current = null; return; }
@@ -104,23 +111,23 @@ function QueueSession({ children }: PropsWithChildren) {
     if (studentTicket.status === 'SERVING' && ['CALLED', 'RECALLED'].includes(studentTicket.events.at(-1)?.type ?? '')) void notifyTurn('Your turn', `${studentTicket.number}: proceed to ${studentTicket.window}.`).catch(() => {});
     else if (progress?.nextInLine) void notifyTurn('You’re next in line', `${studentTicket.number}: stay near ${studentTicket.window}.`).catch(() => {});
   }, [alertKey, turnAlertsEnabled, studentTicket, progress?.nextInLine, snapshot.revision]);
-  const staffHistory = tickets.filter(isHistoryTicket).sort((a, b) => b.date.localeCompare(a.date));
+  const staffHistory = useMemo(() => tickets.filter(isHistoryTicket).sort((a, b) => b.date.localeCompare(a.date)), [tickets]);
   const currentServing = tickets.find((ticket) => ticket.status === 'SERVING' && ticket.window === assignedWindow) ?? null;
-  const act = async (action: string, reason?: string) => !!await run({ type: 'ACT', action, reason, expectedTicketId: currentServing?.id });
-  const value: QueueState = {
+  const act = useCallback(async (action: string, reason?: string) => !!await run({ type: 'ACT', action, reason, expectedTicketId: currentServing?.id }), [run, currentServing?.id]);
+  const value: QueueState = useMemo(() => ({
     studentTicket, studentTickets, studentProgress: progress, windowQueues: queueByWindow(tickets),
     studentHistory: staffHistory.filter((ticket) => ticket.ownerId === studentId && ticket.status !== 'HELD'),
-    bookTicket: async (service) => !!await run({ type: 'BOOK', service }), cancelTicket: async (reason) => !!await run({ type: 'CANCEL', reason }),
+    bookTicket: async (service) => !!await run({ type: 'BOOK', service }), cancelTicket: async (reason) => !!await run({ type: 'CANCEL', reason, expectedTicketId: studentTicket?.id }),
     assignedWindow, setAssignedWindow: async (window) => !!await run({ type: 'ASSIGN', window }), waiting: waitingTickets(tickets), currentServing, staffHistory,
     callNext: async () => { const result = await run({ type: 'CALL_NEXT' }); return result?.tickets.find((ticket) => ticket.id === result.ticketId) ?? null; },
     recallCurrent: () => act('RECALLED'), completeCurrent: () => act('COMPLETED'), holdCurrent: (reason) => act('HELD', reason),
     skipCurrent: (reason) => act('SKIPPED', reason), noShowCurrent: (reason) => act('NO_SHOW', reason),
     transferCurrent: async (targetWindow) => !!await run({ type: 'TRANSFER', targetWindow, expectedTicketId: currentServing?.id }),
     reopenTicket: async (number) => !!await run({ type: 'REOPEN', number }),
-    busy, connected, ready: snapshot.revision >= 0, services: snapshot.services, acceptingTickets: snapshot.acceptingTickets, refresh,
-  };
+    busy, connected, ready: snapshot.revision >= 0, loading, actionError: error, services: snapshot.services, acceptingTickets: snapshot.acceptingTickets, refresh,
+  }), [studentTicket, studentTickets, progress, tickets, staffHistory, studentId, assignedWindow, currentServing, run, act, busy, connected, loading, error, snapshot.revision, snapshot.services, snapshot.acceptingTickets, refresh]);
   return <QueueContext.Provider value={value}><View style={{ flex: 1 }}>
-    {role && (!connected || !!error) && <SafeAreaView edges={['top']} style={{ backgroundColor: colors.warningSurface }}>
+    {(role === 'student' || role === 'staff') && snapshot.revision >= 0 && (!connected || !!error) && <SafeAreaView edges={['top']} style={{ backgroundColor: colors.warningSurface }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 4 }} accessibilityLiveRegion="polite">
         <Text style={{ color: colors.warningStrong }}>{error || (snapshot.revision < 0 ? 'Connecting to the queue server…' : 'Connection lost. Showing the last update; actions need a connection.')}</Text>
         {!busy && <TouchableOpacity accessibilityRole="button" onPress={() => { setError(''); void refresh(); }}><Text style={{ color: colors.warningStrong, paddingVertical: 6, fontWeight: '700' }}>Refresh connection</Text></TouchableOpacity>}

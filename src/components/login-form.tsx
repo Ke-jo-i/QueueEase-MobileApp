@@ -8,6 +8,7 @@ import { Keyboard, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { demoLoginEnabled } from '@/constants/demo-mode';
+import { StateScreen, stateOverlay } from './state-screen';
 
 export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   const { signIn, quickSignIn, cancelSignIn } = useSession();
@@ -61,7 +62,7 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
     }
   };
 
-  return <FormPage title={portal === 'student' ? 'Student sign in' : 'Staff sign in'}>
+  return <View style={{ flex: 1 }}><FormPage title={portal === 'student' ? 'Student sign in' : 'Staff sign in'}>
     {demoLoginEnabled && <Reveal><GlassSurface variant="tinted" style={{ borderRadius: 24, padding: 18, gap: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Ionicons name="flash-outline" size={16} color={colors.textMuted} />
@@ -88,5 +89,7 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
       <Text style={{ color: colors.brandText, fontSize: 15, fontWeight: '700' }}>Create an account</Text>
     </MotionButton>}
 
-  </FormPage>;
+  </FormPage>
+    {busy && <View style={stateOverlay}><StateScreen loading title="Signing you in" onBack={() => { requestId.current++; pending.current = false; cancelSignIn(); setBusy(false); }} /></View>}
+  </View>;
 }

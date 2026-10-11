@@ -1,5 +1,5 @@
 import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
-import { Stack } from 'expo-router/js-stack';
+import { Stack } from '@/components/app-stack';
 
 export default function StaffAuthLayout() {
   const transitions = useVerticalTransitions();

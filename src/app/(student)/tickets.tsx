@@ -6,11 +6,11 @@ import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
 import { type Ticket } from '@/data/queue-model';
 import { useSession } from '@/contexts/session';
-import { registrarReminders } from '@/constants/registrar-services';
 import { ticketStatusLabels } from '@/constants/queue-labels';
 import { TicketActivity } from '@/components/ticket-activity';
 import { CardOverlay } from '@/components/card-overlay';
 import { Disclosure } from '@/components/disclosure';
+import { Notice } from '@/components/form';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -26,7 +26,7 @@ function formatTicketDate(value: string) {
 
 export default function MyTicketsScreen() {
   const styles = useThemedStyles(createStyles);
-  const { studentTicket, studentHistory, studentProgress, cancelTicket } = useQueue();
+  const { studentTicket, studentHistory, studentProgress, cancelTicket, busy, connected, actionError } = useQueue();
   const { studentId } = useSession();
   const router = useRouter();
   const [qrTicketId, setQrTicketId] = useState<string | null>(null);
@@ -37,7 +37,8 @@ export default function MyTicketsScreen() {
 
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
   const showQrModal = !!studentTicket && qrTicketId === studentTicket.id;
-  const showCancelModal = showQrModal && studentTicket?.status === 'WAITING' && cancelTicketId === studentTicket.id;
+  const canCancel = !!studentTicket && ['WAITING', 'HELD'].includes(studentTicket.status);
+  const showCancelModal = canCancel && cancelTicketId === studentTicket.id;
   const preview = showQrModal ? studentTicket : lastPreview;
   if (showQrModal && studentTicket !== lastPreview) setLastPreview(studentTicket);
   if (qrTicketId && !showQrModal) setQrTicketId(null);
@@ -46,7 +47,7 @@ export default function MyTicketsScreen() {
 
   // Handle Ticket Cancellation Logic
   const handleConfirmCancel = async () => {
-    if (!showCancelModal || !cancelReason.trim()) return;
+    if (!showCancelModal || !cancelReason.trim() || busy || !connected) return;
     if (!await cancelTicket(cancelReason)) return;
     closePreview();
   };
@@ -97,6 +98,9 @@ export default function MyTicketsScreen() {
               <TouchableOpacity style={styles.activityButton} accessibilityLabel="View queue progress" onPress={() => router.push('/live-status')}>
                 <Text style={styles.activityButtonText}>{studentTicket.status === 'WAITING' ? `${studentProgress?.peopleAhead ?? 0} ${studentProgress?.peopleAhead === 1 ? 'person' : 'people'} ahead · View progress` : 'View queue progress'}</Text>
               </TouchableOpacity>
+              {canCancel && <TouchableOpacity accessibilityLabel="Cancel ticket" disabled={busy} style={styles.cancelButton} onPress={() => { setCancelReason(''); setCancelTicketId(studentTicket.id); }}>
+                <Text style={styles.cancelButtonText}>Cancel ticket</Text>
+              </TouchableOpacity>}
             </GlassSurface></Reveal>
           </View>
         )}
@@ -159,21 +163,8 @@ export default function MyTicketsScreen() {
               </Text>
             </GlassSurface>
 
-            {/* Dynamic Important Reminders Card */}
-            <GlassSurface style={styles.card}>
-              <Text style={styles.remindersTitle}>Important Reminders</Text>
-
-              {registrarReminders.map((reminder) => (
-                <Text key={reminder} style={styles.reminderItem}>
-                  • {reminder}
-                </Text>
-              ))}
-
-              <Text style={styles.processingTime}>Staff will confirm the document release time.</Text>
-            </GlassSurface>
-
             {/* Cancel Queue Ticket Button */}
-            {preview?.status === 'WAITING' && (
+            {preview && ['WAITING', 'HELD'].includes(preview.status) && (
               <TouchableOpacity
                 style={styles.cancelButton}
                 onPress={() => { setCancelReason(''); setCancelTicketId(studentTicket?.id ?? null); }}
@@ -196,7 +187,7 @@ export default function MyTicketsScreen() {
           <ScrollView keyboardShouldPersistTaps="handled" style={{ width: '100%', maxWidth: 380, flexGrow: 0 }} contentContainerStyle={styles.modalCard}>
             <Text style={styles.modalTitle}>Cancel Queue Ticket?</Text>
             <Text style={styles.modalSubtext}>
-              Are you sure you want to cancel your ticket ({studentTicket?.number})? This action cannot be undone.
+              Cancel {studentTicket?.number} and leave this queue?
             </Text>
             <TextInput
               style={styles.reasonInput}
@@ -206,15 +197,18 @@ export default function MyTicketsScreen() {
               value={cancelReason}
               onChangeText={setCancelReason}
               multiline
+              maxLength={300}
+              editable={!busy}
             />
+            <Notice text={actionError} error />
 
             <TouchableOpacity
-              style={[styles.modalCancelBtn, !cancelReason.trim() && styles.disabledButton]}
+              style={[styles.modalCancelBtn, (!cancelReason.trim() || busy || !connected) && styles.disabledButton]}
               activeOpacity={0.8}
               onPress={handleConfirmCancel}
-              disabled={!cancelReason.trim()}
+              disabled={!cancelReason.trim() || busy || !connected}
             >
-              <Text style={styles.modalCancelBtnText}>Yes, Cancel Ticket</Text>
+              <Text style={styles.modalCancelBtnText}>{busy ? 'Cancelling…' : 'Yes, Cancel Ticket'}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -445,24 +439,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     textAlign: 'center',
-  },
-  remindersTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: colors.text,
-    marginBottom: 10,
-  },
-  reminderItem: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textBody,
-    marginBottom: 4,
-  },
-  processingTime: {
-    fontSize: 12,
-    fontStyle: 'italic',
-    color: colors.info,
-    marginTop: 14,
   },
   cancelButton: {
     borderWidth: 1,

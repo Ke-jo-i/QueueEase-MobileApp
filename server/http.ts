@@ -27,7 +27,7 @@ export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = [
         const path = new URL(req.url ?? '/', 'http://localhost').pathname;
         if (path.startsWith('/api/')) req.url = (req.url ?? '').slice(4);
         else if (!(path === '/health' || path.startsWith('/auth/') || path === '/queue' || path.startsWith('/queue/') ||
-          (path === '/admin' && (!['GET', 'HEAD'].includes(req.method ?? '') || req.headers.authorization)))) {
+          ((path === '/admin' || path.startsWith('/admin/')) && (!['GET', 'HEAD'].includes(req.method ?? '') || req.headers.authorization)))) {
           serveWeb(req, res, webDirectory);
           return;
         }
@@ -46,7 +46,8 @@ export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = [
         res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       }
       if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
-      const path = new URL(req.url ?? '/', 'http://localhost').pathname;
+      const requested = new URL(req.url ?? '/', 'http://localhost');
+      const path = requested.pathname;
       if (path === '/health' && req.method === 'GET') { res.end(JSON.stringify({ ok: true, service: 'QueueEase', version: 1 })); return; }
       check(req.method === 'GET' || req.method === 'POST', 'Method not allowed.', 405);
       const input = req.method === 'POST' ? await body(req) : {};
@@ -77,12 +78,17 @@ export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = [
         const user = store.authenticate(token);
         if (path === '/auth/me' && req.method === 'GET') result = user;
         else if (path === '/auth/logout' && req.method === 'POST') { store.logout(token); result = { ok: true }; }
-        else if (path === '/auth/password' && req.method === 'POST') { await store.changePassword(user, input); result = { ok: true }; }
+        else if (path === '/auth/password' && req.method === 'POST') { await store.changePassword(user, input, token); result = { ok: true }; }
         else if (path === '/queue' && req.method === 'GET') result = store.view(user);
         else if (path === '/queue/command' && req.method === 'POST') result = store.command(user, input, String(req.headers['x-request-id'] ?? ''));
-        else if (path === '/admin') {
+        else if (path === '/admin' || path === '/admin/history' || path === '/admin/audit') {
           check(user.role === 'admin', 'Administrator access is required.', 403);
-          result = req.method === 'GET' ? store.adminView() : await store.adminAction(user, input);
+          if (path === '/admin') result = req.method === 'GET' ? store.adminView() : await store.adminAction(user, input, token);
+          else {
+            check(req.method === 'GET', 'Method not allowed.', 405);
+            const filters = Object.fromEntries(requested.searchParams);
+            result = path === '/admin/history' ? store.adminHistory(user, filters) : store.adminAudit(user, filters);
+          }
         } else throw new RequestError(404, 'Endpoint not found.');
       }
       res.end(JSON.stringify(result));

@@ -36,6 +36,20 @@ test('booking keeps one active ticket per student and allocates distinct numbers
   expect(next.tickets.slice(-2).map((ticket) => ticket.number)).toEqual(['R - 106', 'R - 107']);
 });
 
+test('configured service routes are explicit and default offline validation remains strict', () => {
+  const initial = { ...createDemoQueue(time), tickets: [], nextNumber: 1, nextQueueOrder: 1 };
+  const command: QueueCommand = { type: 'BOOK', ownerId: 'student-a', service: 'Document Authentication' };
+  expect(applyQueueCommand(initial, command, time).ok).toBe(false);
+  expect(applyQueueCommand(initial, command, time, [{ name: command.service, window: 'Window 99' }]).ok).toBe(false);
+  const routes = [{ name: command.service, window: window4 }];
+  const booked = applyQueueCommand(initial, command, time, routes);
+  expect(booked.ok).toBe(true);
+  if (!booked.ok) return;
+  expect(booked.ticket?.window).toBe(window4);
+  expect(() => decodeQueueSnapshot(JSON.stringify(booked.state))).toThrow();
+  expect(decodeQueueSnapshot(JSON.stringify(booked.state), routes)).toEqual(booked.state);
+});
+
 test('people ahead counts only the same window and completing does not call next', () => {
   let state = execute(createDemoQueue(time), { type: 'BOOK', ownerId: 'student-a', service: 'Certificate of Enrollment' });
   const ticket = state.tickets.at(-1)!;

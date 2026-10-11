@@ -20,6 +20,7 @@ export type Ticket = {
 };
 export type HistoryTicket = Ticket & { date: string };
 export type QueueSnapshot = { version: 1; tickets: Ticket[]; nextNumber: number; nextQueueOrder: number; assignedWindow: string };
+export type QueueService = { name: string; window: string };
 export type QueueCommand =
   | { type: 'BOOK'; ownerId: string; service: string }
   | { type: 'CANCEL'; ownerId: string; reason: string }
@@ -29,6 +30,7 @@ export type QueueCommand =
   | { type: 'TRANSFER'; window: string; targetWindow: string }
   | { type: 'REOPEN'; number: string };
 export type QueueResult = { ok: true; state: QueueSnapshot; ticket?: Ticket } | { ok: false; message: string };
+const defaultServices: readonly QueueService[] = registrarServices.map(name => ({ name, window: getServiceWindow(name) }));
 
 export function isActiveTicket(ticket: Ticket) {
   return ['WAITING', 'SERVING', 'HELD'].includes(ticket.status);
@@ -80,7 +82,7 @@ export function createDemoQueue(at: string): QueueSnapshot {
   return { version: 1, tickets, nextNumber: 106, nextQueueOrder: 5, assignedWindow: registrarWindows[0] };
 }
 
-export function applyQueueCommand(state: QueueSnapshot, command: QueueCommand, at: string): QueueResult {
+export function applyQueueCommand(state: QueueSnapshot, command: QueueCommand, at: string, services: readonly QueueService[] = defaultServices): QueueResult {
   const reject = (message: string): QueueResult => ({ ok: false, message });
   if (command.type === 'ASSIGN') {
     return registrarWindows.includes(command.window)
@@ -88,11 +90,12 @@ export function applyQueueCommand(state: QueueSnapshot, command: QueueCommand, a
       : reject('Choose a valid registrar window.');
   }
   if (command.type === 'BOOK') {
-    if (!command.ownerId.trim() || !registrarServices.includes(command.service)) return reject('Choose a listed registrar service.');
+    const service = services.find(item => item.name === command.service);
+    if (!command.ownerId.trim() || !service || !registrarWindows.includes(service.window)) return reject('Choose a listed registrar service.');
     if (state.tickets.some((ticket) => ticket.ownerId === command.ownerId && isActiveTicket(ticket))) {
       return reject('You already have an active ticket. Check Tickets for its status.');
     }
-    const ticket = newTicket(state.nextNumber, command.service, getServiceWindow(command.service), state.nextQueueOrder, at, command.ownerId);
+    const ticket = newTicket(state.nextNumber, service.name, service.window, state.nextQueueOrder, at, command.ownerId);
     return { ok: true, ticket, state: { ...state, tickets: [...state.tickets, ticket], nextNumber: state.nextNumber + 1, nextQueueOrder: state.nextQueueOrder + 1 } };
   }
 
@@ -104,9 +107,9 @@ export function applyQueueCommand(state: QueueSnapshot, command: QueueCommand, a
   let requeue = false;
 
   if (command.type === 'CANCEL') {
-    ticket = state.tickets.find((item) => item.ownerId === command.ownerId && item.status === 'WAITING');
+    ticket = state.tickets.find((item) => item.ownerId === command.ownerId && ['WAITING', 'HELD'].includes(item.status));
     reason = command.reason.trim();
-    if (!ticket || !reason) return reject('Only waiting tickets can be cancelled, with a reason.');
+    if (!ticket || !reason) return reject('Only waiting or held tickets can be cancelled, with a reason.');
     type = status = 'CANCELLED';
     window = ticket.window;
   } else if (command.type === 'CALL_NEXT') {
@@ -170,9 +173,9 @@ function timestamp(value: unknown): value is string { return typeof value === 's
 function knownWindow(value: unknown): value is string { return typeof value === 'string' && registrarWindows.includes(value); }
 function optionalString(value: unknown) { return value === undefined || typeof value === 'string'; }
 
-function validTicket(value: unknown): value is Ticket {
+function validTicket(value: unknown, services: readonly QueueService[]): value is Ticket {
   if (!record(value) || !positiveInteger(value.sequence) || value.id !== `ticket-${value.sequence}` || value.number !== `R - ${value.sequence}`
-    || typeof value.service !== 'string' || !registrarServices.includes(value.service) || !knownWindow(value.window)
+    || typeof value.service !== 'string' || !services.some(service => service.name === value.service) || !knownWindow(value.window)
     || !statuses.includes(value.status as TicketStatus) || !positiveInteger(value.queueOrder) || !timestamp(value.createdAt)
     || !optionalString(value.ownerId) || !optionalString(value.reason) || !Array.isArray(value.events) || !value.events.length) return false;
   if (['WAITING', 'SERVING'].includes(String(value.status)) ? value.date !== undefined : !timestamp(value.date)) return false;
@@ -184,10 +187,10 @@ function validTicket(value: unknown): value is Ticket {
     && eventStatus[last.type as TicketEventType] === value.status && (value.date === undefined || value.date === last.at);
 }
 
-export function decodeQueueSnapshot(raw: string): QueueSnapshot {
+export function decodeQueueSnapshot(raw: string, services: readonly QueueService[] = defaultServices): QueueSnapshot {
   const value: unknown = JSON.parse(raw);
   if (!record(value) || value.version !== 1 || !positiveInteger(value.nextNumber) || !positiveInteger(value.nextQueueOrder)
-    || !knownWindow(value.assignedWindow) || !Array.isArray(value.tickets) || !value.tickets.every(validTicket)) throw new Error('Unsupported or invalid queue data');
+    || !knownWindow(value.assignedWindow) || !Array.isArray(value.tickets) || !value.tickets.every(ticket => validTicket(ticket, services))) throw new Error('Unsupported or invalid queue data');
   const tickets = value.tickets;
   const ids = new Set<string>();
   const orders = new Set<number>();

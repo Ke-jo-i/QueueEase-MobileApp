@@ -45,6 +45,7 @@ test('leaving a pending login cancels entry and revokes the obsolete server sess
   await page.getByRole('button', { name: 'Student Portal', exact: true }).click();
   await page.getByRole('button', { name: 'Quick login as Student', exact: true }).click();
   await requestReceived;
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Go back', exact: true }).click();
   await expect(page).toHaveURL(/\/landing$/);
   const revoked = page.waitForResponse(response => response.url().endsWith('/auth/logout'));

@@ -1,5 +1,24 @@
 import { test, expect, login } from './fixtures';
 
+test('navigation bursts coalesce to the latest tab instead of starting every transition', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page);
+  const changes: string[] = [];
+  page.on('framenavigated', frame => { if (frame === page.mainFrame()) changes.push(new URL(frame.url()).pathname); });
+  await page.evaluate(async () => {
+    const labels = ['Tickets', 'Alerts', 'Home'];
+    for (let i = 0; i < 24; i++) {
+      const target = document.querySelector<HTMLElement>(`[role="tab"][aria-label="${labels[i % 3]}"]`);
+      target?.click();
+      await new Promise(resolve => setTimeout(resolve, 8));
+    }
+    document.querySelector<HTMLElement>('[role="tab"][aria-label="Profile"]')?.click();
+  });
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect(page.getByRole('heading', { name: 'Student Profile', exact: true })).toBeVisible();
+  expect(changes.length).toBeLessThanOrEqual(3);
+});
+
 test('rapid navigation settles on the final destination without runtime errors', async ({ page }) => {
   const failures: string[] = [];
   page.on('pageerror', error => failures.push(error.message));

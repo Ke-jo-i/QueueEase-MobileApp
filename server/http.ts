@@ -48,7 +48,7 @@ export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = [
       if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
       const requested = new URL(req.url ?? '/', 'http://localhost');
       const path = requested.pathname;
-      if (path === '/health' && req.method === 'GET') { res.end(JSON.stringify({ ok: true, service: 'QueueEase', version: 1 })); return; }
+      if (path === '/health' && req.method === 'GET') { res.end(JSON.stringify({ ok: true, service: 'QueueEase', version: 2 })); return; }
       check(req.method === 'GET' || req.method === 'POST', 'Method not allowed.', 405);
       const input = req.method === 'POST' ? await body(req) : {};
       let result: unknown;
@@ -81,13 +81,16 @@ export function createApi(store: Store, demoAccounts: readonly DemoAccount[] = [
         else if (path === '/auth/password' && req.method === 'POST') { await store.changePassword(user, input, token); result = { ok: true }; }
         else if (path === '/queue' && req.method === 'GET') result = store.view(user);
         else if (path === '/queue/command' && req.method === 'POST') result = store.command(user, input, String(req.headers['x-request-id'] ?? ''));
-        else if (path === '/admin' || path === '/admin/overview' || path === '/admin/history' || path === '/admin/audit') {
+        else if (path === '/admin' || path === '/admin/overview' || path === '/admin/accounts' || path === '/admin/history' || path === '/admin/audit') {
           check(user.role === 'admin', 'Administrator access is required.', 403);
-          if (path === '/admin') result = req.method === 'GET' ? store.adminView() : await store.adminAction(user, input, token);
+          if (path === '/admin') {
+            const workspace = requested.searchParams.get('view') === 'workspace';
+            result = req.method === 'GET' ? store.adminView(workspace ? user.id : undefined) : await store.adminAction(user, input, token, workspace);
+          }
           else {
             check(req.method === 'GET', 'Method not allowed.', 405);
             const filters = Object.fromEntries(requested.searchParams);
-            result = path === '/admin/overview' ? store.adminOverview() : path === '/admin/history' ? store.adminHistory(user, filters) : store.adminAudit(user, filters);
+            result = path === '/admin/overview' ? store.adminOverview() : path === '/admin/accounts' ? store.adminAccounts(user, filters) : path === '/admin/history' ? store.adminHistory(user, filters) : store.adminAudit(user, filters);
           }
         } else throw new RequestError(404, 'Endpoint not found.');
       }

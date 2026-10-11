@@ -1,6 +1,35 @@
 import { test, expect, login, password } from './fixtures';
 import type { AdminData } from '../src/data/admin-model';
 
+test('account directory loads bounded pages, searches the database and edits a filtered account', async ({ page, apiUrl }) => {
+  for (let i = 0; i < 23; i++) {
+    const response = await fetch(`${apiUrl}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: `directory${i}`, email: `directory${i}@example.test`, name: `Directory Person ${i}`, password }) });
+    expect(response.status).toBe(200);
+  }
+  await login(page, 'admin');
+  const workspace = await page.request.get(`${apiUrl}/health`);
+  expect(workspace.ok()).toBe(true);
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+  await expect(page.getByText('26 accounts · Page 1 of 3', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(10);
+  await page.getByRole('button', { name: 'Next page', exact: true }).click();
+  await expect(page.getByText('26 accounts · Page 2 of 3', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(10);
+  await page.getByLabel('Search accounts', { exact: true }).fill('directory0@');
+  await expect(page.getByText('1 accounts · Page 1 of 1', { exact: true })).toBeVisible();
+  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(1);
+  const row = page.getByTestId('admin-account-directory0');
+  await row.getByRole('button', { name: 'Directory Person 0', exact: true }).click();
+  await row.getByLabel('Name for directory0', { exact: true }).fill('Updated Directory Person');
+  await row.getByRole('button', { name: 'Save details for directory0', exact: true }).click();
+  await expect(row.getByRole('button', { name: 'Updated Directory Person', exact: true })).toBeVisible();
+  await page.getByLabel('Search accounts', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'Account role: All roles', exact: true }).click();
+  await page.getByRole('button', { name: 'Account role: select Admin', exact: true }).click();
+  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(1);
+  await expect(page.getByTestId('admin-account-admin')).toBeVisible();
+});
+
 async function session(apiUrl: string, role: 'student' | 'staff' | 'admin') {
   const response = await fetch(`${apiUrl}/auth/login`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },

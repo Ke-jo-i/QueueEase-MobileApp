@@ -65,3 +65,4 @@ export type AdminData = AdminOverviewData & {
 
 export type AdminHistoryPage = { records: Ticket[]; total: number; page: number; pageSize: number };
 export type AdminAuditPage = { audit: AdminAudit[]; total: number; page: number; pageSize: number };
+export type AdminAccountsPage = { accounts: AdminAccount[]; total: number; page: number; pageSize: number };

@@ -1,6 +1,27 @@
 import { test, expect, login, password } from './fixtures';
 
 for (const role of ['student', 'staff', 'admin'] as const) {
+  test(`${role} handoff uses the saved profile photo on login and logout`, async ({ page, apiUrl }) => {
+    const response = await fetch(`${apiUrl}/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ portal: role === 'student' ? 'student' : 'staff', login: role === 'admin' ? 'admin' : `${role}1`, password }) });
+    const account = await response.json();
+    const photo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aY1cAAAAASUVORK5CYII=';
+    await page.addInitScript(({ key, photo }) => localStorage.setItem(key, photo), { key: `queueease.profile-photo.${role}:${account.user.id}`, photo });
+    await page.goto(role === 'student' ? '/login' : '/staff/login');
+    await page.getByRole('button', { name: `Quick login as ${role[0].toUpperCase()}${role.slice(1)}`, exact: true }).click();
+    const avatar = page.getByTestId('auth-transition-avatar');
+    await expect(avatar.locator('img')).toHaveAttribute('src', photo);
+    await expect(page.getByTestId('auth-transition')).toHaveCount(0);
+    if (role !== 'admin') {
+      await page.getByRole('tab', { name: 'Profile', exact: true }).click();
+      await expect(page.getByRole('button', { name: 'Change profile photo', exact: true })).toBeVisible();
+    }
+    await page.getByRole('button', { name: 'Log Out', exact: true }).click();
+    await expect(avatar.locator('img')).toHaveAttribute('src', photo);
+    await expect(page.getByTestId('auth-transition')).toHaveCount(0);
+  });
+}
+
+for (const role of ['student', 'staff', 'admin'] as const) {
   test(`${role} quick login and logout animate without waiting for server signout`, async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
     await page.goto(role === 'student' ? '/login' : '/staff/login');
@@ -97,7 +118,8 @@ test('login reveals the destination continuously and finishes without a position
   const frames = await capture;
   const reveal = frames.filter(frame => frame.covered && frame.opacity > 0.05 && frame.opacity < 0.95);
   expect(reveal.length).toBeGreaterThan(2);
-  expect(Math.max(...reveal.map(frame => frame.y)) - Math.min(...reveal.map(frame => frame.y))).toBeGreaterThan(2);
+  expect(Math.max(...reveal.map(frame => frame.y)) - Math.min(...reveal.map(frame => frame.y))).toBeLessThan(2);
+  expect(frames.at(-1)!.time - frames[0].time).toBeLessThan(750);
   const end = frames.filter(frame => !frame.covered || frame.opacity < 0.05);
   expect(end.length).toBeGreaterThan(2);
   expect(Math.max(...end.map(frame => frame.y)) - Math.min(...end.map(frame => frame.y))).toBeLessThan(2);

@@ -49,12 +49,12 @@ export function AdminSelect({ label, value, options, onChange, disabled = false 
   </View>;
 }
 
-export function AdminPager({ page, total, pageSize, busy, onChange }: { page: number; total: number; pageSize: number; busy: boolean; onChange: (page: number) => void }) {
+export function AdminPager({ page, total, pageSize, busy, onChange, noun = 'records' }: { page: number; total: number; pageSize: number; busy: boolean; onChange: (page: number) => void; noun?: string }) {
   const colors = useAppTheme();
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
     <MotionButton accessibilityLabel="Previous page" disabled={busy || page === 1} onPress={() => onChange(page - 1)} style={{ padding: 12, opacity: page === 1 ? 0.35 : 1 }}><Ionicons name="chevron-back" size={22} color={colors.brandText} /></MotionButton>
-    <Text style={{ color: colors.textMuted, fontSize: 13 }}>{total} records · Page {page} of {pages}</Text>
+    <Text style={{ color: colors.textMuted, fontSize: 13 }}>{total} {noun} · Page {page} of {pages}</Text>
     <MotionButton accessibilityLabel="Next page" disabled={busy || page >= pages} onPress={() => onChange(page + 1)} style={{ padding: 12, opacity: page >= pages ? 0.35 : 1 }}><Ionicons name="chevron-forward" size={22} color={colors.brandText} /></MotionButton>
   </View>;
 }

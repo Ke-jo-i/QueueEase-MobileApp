@@ -1,4 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { profilePhotoKey } from '@/data/profile-photo';
+import { useSession } from '@/contexts/session';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,21 +18,24 @@ type ProfilePhotoProps = {
 
 export function ProfilePhoto({ storageId, initials, size, variant }: ProfilePhotoProps) {
   const colors = useAppTheme();
+  const { user, setProfilePhoto } = useSession();
   const styles = createStyles(colors);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const storageKey = `queueease.profile-photo.${storageId}`;
+  const storageKey = profilePhotoKey(storageId);
+  const ownsPhoto = storageId === `${user?.role}:${user?.id}`;
+  const publish = (uri: string | null) => { if (ownsPhoto) setProfilePhoto(uri); };
 
   useEffect(() => {
     let active = true;
     AsyncStorage.getItem(storageKey)
-      .then((stored) => { if (active) setPhotoUri(stored); })
+      .then((stored) => { if (active) { setPhotoUri(stored); if (ownsPhoto) setProfilePhoto(stored); } })
       .catch(() => { if (active) setError('Could not load photo.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [storageKey]);
+  }, [storageKey, ownsPhoto, setProfilePhoto]);
 
   const choosePhoto = async () => {
     setMenuOpen(false);
@@ -70,6 +75,7 @@ export function ProfilePhoto({ storageId, initials, size, variant }: ProfilePhot
       }
       await AsyncStorage.setItem(storageKey, nextPhoto);
       setPhotoUri(nextPhoto);
+      publish(nextPhoto);
     } catch {
       setError('Could not save photo. Try another image.');
     }
@@ -81,6 +87,7 @@ export function ProfilePhoto({ storageId, initials, size, variant }: ProfilePhot
     try {
       await AsyncStorage.removeItem(storageKey);
       setPhotoUri(null);
+      publish(null);
     } catch {
       setError('Could not remove photo.');
     }

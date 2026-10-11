@@ -1,6 +1,7 @@
 import { ActionButton, Field, Notice } from '@/components/form';
 import { AdminShell } from '@/components/admin-shell';
 import { AdminOverview } from '@/components/admin-overview';
+import { ProfilePhoto } from '@/components/profile-photo';
 import { CardOverlay } from '@/components/card-overlay';
 import { StateScreen } from '@/components/state-screen';
 import { KeyboardScrollView } from '@/components/keyboard-scroll-view';
@@ -15,7 +16,7 @@ import { TicketActivity } from '@/components/ticket-activity';
 import { registrarWindows } from '@/constants/service-windows';
 import { useSession } from '@/contexts/session';
 import { ApiError, request } from '@/data/api';
-import type { AdminAccount, AdminAuditPage, AdminData, AdminOverviewData, AdminHistoryPage, AdminService } from '@/data/admin-model';
+import type { AdminAccount, AdminAccountsPage, AdminAuditPage, AdminData, AdminOverviewData, AdminHistoryPage, AdminService, AdminWindow } from '@/data/admin-model';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
@@ -52,21 +53,21 @@ function useAdminPage<T>(path: string, token: string | null, expire: () => void,
       .catch(failure => {
         if (!active) return;
         if (failure instanceof ApiError && failure.status === 401) expire();
-        else setResult({ key, data: null, error: failure instanceof Error ? failure.message : 'Could not load records.' });
+        else setResult({ key, data: null, error: failure instanceof ApiError && failure.status === 404 ? 'The queue server needs an update. Restart it, then refresh.' : failure instanceof Error ? failure.message : 'Could not load records.' });
       });
     return () => { active = false; };
   }, [path, token, expire, query, key]);
   return { data: result.key === key ? result.data : null, busy: result.key !== key, error: result.key === key ? result.error : '' };
 }
 
-function AccountEditor({ account, accounts, ownId, busy, act, error }: { account: AdminAccount; accounts: AdminAccount[]; ownId?: string; busy: boolean; act: Act; error: MutationError | null }) {
+function AccountEditor({ account, assignments, ownId, busy, act, error }: { account: AdminAccount; assignments: AdminWindow[]; ownId?: string; busy: boolean; act: Act; error: MutationError | null }) {
   const colors = useAppTheme();
   const [name, setName] = useState(account.name);
   const [email, setEmail] = useState(account.email);
   const [resetOpen, setResetOpen] = useState(false);
   const [replacement, setReplacement] = useState('');
   const [confirmDisable, setConfirmDisable] = useState(false);
-  const available = windows.filter(window => window.value === account.window || !accounts.some(other => other.window === window.value));
+  const available = windows.filter(window => window.value === account.window || !assignments.some(other => other.window === window.value && other.staff));
   return <View style={{ gap: 15, paddingHorizontal: 18, paddingBottom: 20 }}>
     <Text style={{ color: colors.textMuted, fontSize: 13 }}>{account.login} · {humanize(account.role)} · {account.activeSessions} active {account.activeSessions === 1 ? 'session' : 'sessions'}</Text>
     <Field label={`Name for ${account.login}`} value={name} onChangeText={setName} maxLength={80} editable={!busy} />
@@ -97,11 +98,15 @@ function AccountEditor({ account, accounts, ownId, busy, act, error }: { account
   </View>;
 }
 
-function Accounts({ data, ownId, busy, act, error }: { data: AdminData; ownId?: string; busy: boolean; act: Act; error: MutationError | null }) {
+function Accounts({ data, ownId, busy, act, error, token, expire, revision }: { data: AdminData; ownId?: string; busy: boolean; act: Act; error: MutationError | null; token: string | null; expire: () => void; revision: number }) {
   const colors = useAppTheme();
   const [search, setSearch] = useState('');
-  const [role, setRole] = useState('All roles');
-  const [access, setAccess] = useState('All access');
+  const [role, setRole] = useState('');
+  const [access, setAccess] = useState('');
+  const [page, setPage] = useState(1);
+  const delayed = useDebounced(search);
+  const query = useMemo(() => new URLSearchParams({ search: delayed, role, access, page: String(page), pageSize: '10' }).toString(), [delayed, role, access, page]);
+  const directory = useAdminPage<AdminAccountsPage>('/admin/accounts', token, expire, query, revision);
   const [expanded, setExpanded] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [createRole, setCreateRole] = useState<'staff' | 'admin'>('staff');
@@ -109,21 +114,23 @@ function Accounts({ data, ownId, busy, act, error }: { data: AdminData; ownId?: 
   const [login, setLogin] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const query = search.trim().toLowerCase();
-  const filtered = data.accounts.filter(account => (role === 'All roles' || account.role === role) && (access === 'All access' || !!account.active === (access === 'Active')) && `${account.name} ${account.login} ${account.email}`.toLowerCase().includes(query));
+  const filtered = directory.data?.accounts ?? [];
   const prefix = createRole === 'staff' ? 'Staff' : 'Admin';
   return <View style={{ gap: 20 }}>
-    <AdminPanel title={`Accounts (${data.accounts.length})`}>
-      <Field label="Search accounts" value={search} onChangeText={setSearch} autoCapitalize="none" />
-      <AdminChoices label="Account role" value={role} options={['All roles', 'student', 'staff', 'admin'].map(value => ({ value, label: humanize(value) }))} onChange={setRole} />
-      <AdminChoices label="Account access" value={access} options={['All access', 'Active', 'Disabled'].map(value => ({ value, label: value }))} onChange={setAccess} />
+    <AdminPanel title={directory.data ? `Accounts (${directory.data.total})` : 'Accounts'}>
+      <Field label="Search accounts" value={search} onChangeText={value => { setSearch(value); setPage(1); setExpanded(''); }} autoCapitalize="none" maxLength={100} />
+      <AdminSelect label="Account role" value={role} options={[{ value: '', label: 'All roles' }, ...['student', 'staff', 'admin'].map(value => ({ value, label: humanize(value) }))]} onChange={value => { setRole(value); setPage(1); setExpanded(''); }} />
+      <AdminSelect label="Account access" value={access} options={[{ value: '', label: 'All access' }, { value: 'active', label: 'Active' }, { value: 'disabled', label: 'Disabled' }]} onChange={value => { setAccess(value); setPage(1); setExpanded(''); }} />
     </AdminPanel>
+    <Notice text={directory.error} error />
+    {directory.busy && <ActivityIndicator accessibilityLabel="Loading accounts" color={colors.brandText} />}
     {filtered.map(account => <GlassSurface key={account.id} testID={`admin-account-${account.login}`} style={{ borderRadius: 24, overflow: 'hidden' }}>
       <SettingsRow title={account.name} subtitle={`${account.login} · ${humanize(account.role)} · ${account.active ? 'Active' : 'Disabled'}`} icon={account.role === 'admin' ? 'shield-checkmark-outline' : 'person-outline'} expanded={expanded === account.id}
         onPress={() => setExpanded(expanded === account.id ? '' : account.id)} />
-      <Disclosure open={expanded === account.id}><AccountEditor key={account.id} account={account} accounts={data.accounts} ownId={ownId} busy={busy} act={act} error={error?.id === account.id ? error : null} /></Disclosure>
+      <Disclosure open={expanded === account.id}><AccountEditor key={account.id} account={account} assignments={data.windows} ownId={ownId} busy={busy} act={act} error={error?.id === account.id ? error : null} /></Disclosure>
     </GlassSurface>)}
-    {!filtered.length && <Text style={{ color: colors.textMuted }}>No matching accounts.</Text>}
+    {directory.data && !filtered.length && <Text style={{ color: colors.textMuted }}>No matching accounts.</Text>}
+    {directory.data && <AdminPager page={directory.data.page} total={directory.data.total} pageSize={directory.data.pageSize} busy={busy || directory.busy} noun="accounts" onChange={value => { setPage(value); setExpanded(''); }} />}
     <GlassSurface style={{ borderRadius: 24, overflow: 'hidden' }}>
       <SettingsRow title={`Create ${createRole === 'staff' ? 'staff' : 'admin'} account`} icon="person-add-outline" expanded={createOpen} onPress={() => setCreateOpen(!createOpen)} />
       <Disclosure open={createOpen} style={{ gap: 15, paddingHorizontal: 18, paddingBottom: 20 }}>
@@ -254,7 +261,7 @@ export default function AdminScreen() {
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
   const failure = useCallback((value: unknown) => {
     if (value instanceof ApiError && value.status === 401) expire();
-    else setError(value instanceof Error ? value.message : 'Could not complete this action.');
+    else setError(value instanceof ApiError && value.status === 404 ? 'The queue server needs an update. Restart it, then refresh.' : value instanceof Error ? value.message : 'Could not complete this action.');
   }, [expire]);
   const refresh = useCallback(async (overview = false) => {
     if (mutation.current) return;
@@ -272,7 +279,7 @@ export default function AdminScreen() {
           setError('');
         }
       } else {
-        const result = await request<AdminData>('/admin', token);
+        const result = await request<AdminData>('/admin?view=workspace', token);
         if (mounted.current && generation.current === version) { setData(result); setError(''); }
       }
     } catch (value) { if (mounted.current && generation.current === version) failure(value); }
@@ -293,7 +300,7 @@ export default function AdminScreen() {
     const version = ++generation.current;
     setBusy(true); setError(''); setNotice(''); setActionError(null);
     try {
-      const result = await request<AdminData>('/admin', token, body);
+      const result = await request<AdminData>('/admin?view=workspace', token, body);
       if (!mounted.current || generation.current !== version) return false;
       setData(result); setRevision(value => value + 1); setNotice('Changes saved.');
       return true;
@@ -325,7 +332,7 @@ export default function AdminScreen() {
     <Notice text={data ? error : ''} error /><Notice text={notice} />
     {!data && <StateScreen compact loading={!error} title={error ? 'Administration is unavailable' : 'Loading administration'} message={error || undefined} onRetry={error ? reload : undefined} />}
     {data && section === 'Overview' && <AdminOverview data={data} busy={busy} error={actionError?.type === 'SET_ACCEPTING' ? actionError.message : ''} toggle={() => void act({ type: 'SET_ACCEPTING', accepting: !data.acceptingTickets })} />}
-    {data && section === 'Accounts' && <Accounts data={data} ownId={user?.id} busy={busy} act={act} error={actionError} />}
+    {data && section === 'Accounts' && <Accounts data={data} ownId={user?.id} busy={busy} act={act} error={actionError} token={token} expire={expire} revision={revision} />}
     {data && section === 'Services' && <Services services={data.services} busy={busy} act={act} error={actionError} />}
     {data && section === 'Records' && <Records services={data.services} token={token} expire={expire} revision={revision} />}
     {data && section === 'Activity' && <Activity token={token} expire={expire} revision={revision} />}
@@ -333,6 +340,10 @@ export default function AdminScreen() {
     <KeyboardScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20, width: '100%', maxWidth: 620, alignSelf: 'center' }}>
     <ActionButton label="Close settings" secondary onPress={() => setSettingsOpen(false)} />
     <Text accessibilityRole="header" style={{ fontSize: 29, fontWeight: '700', color: colors.textStrong }}>Administration settings</Text>
+    <GlassSurface style={{ flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 25 }}>
+      <ProfilePhoto storageId={`admin:${user?.id}`} initials={user?.name.split(' ').map(part => part[0]).slice(0, 2).join('') ?? 'A'} size={64} variant="staff" />
+      <View style={{ flex: 1, gap: 4 }}><Text style={{ color: colors.text, fontSize: 19, fontWeight: '600' }}>{data?.accounts.find(account => account.id === user?.id)?.name ?? user?.name}</Text><Text style={{ color: colors.textMuted }}>{user?.email}</Text></View>
+    </GlassSurface>
     <GlassSurface style={{ borderRadius: 25, overflow: 'hidden' }}><DarkModeToggle /><ThemePicker />
       <SettingsRow title="Change my password" icon="lock-closed-outline" expanded={passwordOpen} onPress={() => setPasswordOpen(!passwordOpen)} />
       <Disclosure open={passwordOpen} style={{ gap: 15, paddingHorizontal: 18, paddingBottom: 20 }}>

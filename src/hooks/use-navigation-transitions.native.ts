@@ -1,6 +1,7 @@
 import { useNavigationMotion } from '@/contexts/navigation-motion';
 import { useAppTheme } from './use-app-theme';
-import { Animated, useWindowDimensions } from 'react-native';
+import { Animated, Easing, useWindowDimensions } from 'react-native';
+import { useMemo } from 'react';
 import { useReducedMotion } from 'react-native-reanimated';
 import type { NativeStackNavigationOptions } from '@react-navigation/native-stack';
 
@@ -9,24 +10,25 @@ export function useTabTransitions() {
   const reduced = useReducedMotion();
   const { booking } = useNavigationMotion();
   const { width } = useWindowDimensions();
-  return {
+  return useMemo(() => ({
     headerShown: false,
     sceneStyle: { backgroundColor: colors.surfaceSubtle },
     animation: reduced || booking ? 'none' as const : 'shift' as const,
-    transitionSpec: { animation: 'timing' as const, config: { duration: 280 } },
+    freezeOnBlur: true,
+    transitionSpec: { animation: 'timing' as const, config: { duration: 220, easing: Easing.bezier(0.2, 0.8, 0.2, 1) } },
     sceneStyleInterpolator: ({ current }: { current: { progress: Animated.Value } }) => ({ sceneStyle: {
-      transform: [{ translateX: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width * 0.2, 0, width * 0.2], extrapolate: 'clamp' }) }],
-      opacity: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.3, 1, 0.3], extrapolate: 'clamp' }),
+      transform: [{ translateX: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width], extrapolate: 'clamp' }) }],
     } }),
-  };
+  }), [booking, colors.surfaceSubtle, reduced, width]);
 }
 
 export function useVerticalTransitions(handoff = false): NativeStackNavigationOptions {
   const colors = useAppTheme();
   const reduced = useReducedMotion();
-  return {
+  return useMemo(() => ({
     headerShown: false, animation: reduced || handoff ? 'none' : 'slide_from_bottom', animationDuration: 360,
+    freezeOnBlur: true,
     contentStyle: { backgroundColor: colors.surfaceSubtle }, gestureDirection: 'vertical',
     gestureEnabled: !reduced, fullScreenGestureEnabled: false,
-  };
+  }), [colors.surfaceSubtle, handoff, reduced]);
 }

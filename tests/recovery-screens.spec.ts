@@ -36,7 +36,7 @@ test('initial queue failure offers recovery and retains the authenticated accoun
 });
 
 test('admin initial failure is recoverable and section navigation remains usable', async ({ page }) => {
-  const admin = /\/(?:api\/)?admin$/;
+  const admin = /\/(?:api\/)?admin(?:\?view=workspace)?$/;
   await page.route(admin, route => route.abort('connectionrefused'));
   await login(page, 'admin');
   await expect(page.getByRole('heading', { name: 'Administration is unavailable', exact: true })).toBeVisible();

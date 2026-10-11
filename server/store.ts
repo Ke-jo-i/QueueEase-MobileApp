@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { registrarServices } from '../src/constants/registrar-services';
 import { getServiceWindow, registrarWindows } from '../src/constants/service-windows';
 import { applyQueueCommand, type Ticket, type QueueCommand, type QueueSnapshot } from '../src/data/queue-model';
-import type { AdminAccount, AdminAudit, AdminData, AdminOverviewData, AdminHistoryPage, AdminAuditPage, AdminService } from '../src/data/admin-model';
+import type { AdminAccount, AdminAccountsPage, AdminAudit, AdminData, AdminOverviewData, AdminHistoryPage, AdminAuditPage, AdminService } from '../src/data/admin-model';
 
 const derive = promisify(scrypt);
 export type Role = 'student' | 'staff' | 'admin';
@@ -271,7 +271,7 @@ export class Store {
   adminOverview(): AdminOverviewData {
     const now = Date.now();
     const accounts = this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
-      (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ORDER BY a.created_at`).all(now) as AdminAccount[];
+      (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a WHERE a.active=1 AND a.role='staff' AND a.window IS NOT NULL`).all(now) as AdminAccount[];
     const today = day(new Date(now).toISOString());
     const start = new Date(`${today}T00:00:00`);
     const end = new Date(start); end.setDate(end.getDate() + 1);
@@ -302,9 +302,9 @@ export class Store {
       statistics: {
         date: today, requestedToday: Number(this.db.prepare('SELECT COUNT(*) AS count FROM tickets WHERE created_at>=? AND created_at<?').get(...bounds)!.count),
         completedToday: completed.length, cancelledToday: count('CANCELLED'), noShowsToday: count('NO_SHOW'),
-        waiting: count('WAITING'), serving: count('SERVING'), held: count('HELD'), activeAccounts: accounts.filter(account => account.active).length,
-        staffedWindows: accounts.filter(account => account.active && account.role === 'staff' && account.window).length,
-        activeSessions: accounts.filter(account => account.active).reduce((total, account) => total + account.activeSessions, 0),
+        waiting: count('WAITING'), serving: count('SERVING'), held: count('HELD'), activeAccounts: Number(this.db.prepare('SELECT COUNT(*) AS count FROM accounts WHERE active=1').get()!.count),
+        staffedWindows: accounts.length,
+        activeSessions: Number(this.db.prepare('SELECT COUNT(*) AS count FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE a.active=1 AND s.expires_at>?').get(now)!.count),
         averageWaitMinutes: averageMinutes(waits), averageServiceMinutes: averageMinutes(durations),
       },
       windows: registrarWindows.map(window => ({
@@ -313,16 +313,43 @@ export class Store {
       })),
     };
   }
-  adminView(): AdminData {
+  adminView(ownId?: string): AdminData {
     const now = Date.now();
     return {
       ...this.adminOverview(),
       accounts: this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
-        (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ORDER BY a.created_at`).all(now) as AdminAccount[],
-      services: this.services() as AdminService[], records: this.readAdminRecords(),
+        (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ${ownId ? 'WHERE a.id=?' : ''} ORDER BY a.created_at`).all(now, ...(ownId ? [ownId] : [])) as AdminAccount[],
+      services: this.services() as AdminService[], records: ownId ? [] : this.readAdminRecords(),
       counts: this.db.prepare('SELECT status,COUNT(*) AS count FROM tickets GROUP BY status').all() as AdminData['counts'],
-      audit: this.readAdminAudit(),
+      audit: ownId ? [] : this.readAdminAudit(),
     };
+  }
+  adminAccounts(user: Account, input: Record<string, unknown>): AdminAccountsPage {
+    this.requireAdmin(user);
+    const requested = pageFields(input);
+    const clauses: string[] = [];
+    const values: SQLInputValue[] = [];
+    if (input.role !== undefined && input.role !== '') {
+      check(['student', 'staff', 'admin'].includes(String(input.role)), 'Choose a valid account role.');
+      clauses.push('a.role=?'); values.push(String(input.role));
+    }
+    if (input.access !== undefined && input.access !== '') {
+      check(input.access === 'active' || input.access === 'disabled', 'Choose valid account access.');
+      clauses.push('a.active=?'); values.push(input.access === 'active' ? 1 : 0);
+    }
+    if (input.search !== undefined && input.search !== '') {
+      const query = field(input.search, 'search', 100).replace(/[\\%_]/g, '\\$&');
+      clauses.push("(a.name LIKE ? ESCAPE '\\' OR a.login LIKE ? ESCAPE '\\' OR a.email LIKE ? ESCAPE '\\')");
+      values.push(...Array<SQLInputValue>(3).fill(`%${query}%`));
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const total = Number(this.db.prepare(`SELECT COUNT(*) AS total FROM accounts a ${where}`).get(...values)!.total);
+    const { pageSize } = requested;
+    const page = Math.min(requested.page, Math.max(1, Math.ceil(total / pageSize)));
+    const accounts = this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
+      (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions
+      FROM accounts a ${where} ORDER BY a.created_at DESC,a.id DESC LIMIT ? OFFSET ?`).all(Date.now(), ...values, pageSize, (page - 1) * pageSize) as AdminAccount[];
+    return { accounts, total, page, pageSize };
   }
   adminHistory(user: Account, input: Record<string, unknown>): AdminHistoryPage {
     this.requireAdmin(user);
@@ -374,7 +401,7 @@ export class Store {
     const total = Number(this.db.prepare(`SELECT COUNT(*) AS total FROM admin_audit j JOIN accounts a ON a.id=j.actor_id ${where}`).get(...values)!.total);
     return { audit: this.readAdminAudit(where, values, pageSize, (page - 1) * pageSize), total, page, pageSize };
   }
-  async adminAction(user: Account, input: Record<string, unknown>, token?: string) {
+  async adminAction(user: Account, input: Record<string, unknown>, token?: string, workspace = false) {
     this.requireAdmin(user, token);
     let prepared: { values: ReturnType<typeof accountFields>; role: 'staff' | 'admin'; hash: string } | undefined;
     let resetHash: string | undefined;
@@ -444,6 +471,6 @@ export class Store {
       } else throw new RequestError(400, 'Unknown administrator action.');
       this.db.prepare('UPDATE queue_state SET revision=revision+1 WHERE id=1').run();
     });
-    return this.adminView();
+    return this.adminView(workspace ? user.id : undefined);
   }
 }

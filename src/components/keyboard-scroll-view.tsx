@@ -1,10 +1,11 @@
 import { createContext, useCallback, useEffect, useRef } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewProps, type TextInput } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, type ScrollViewProps, type TextInput, type View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const KeyboardFieldContext = createContext<{
   focus: (input: TextInput | null) => void;
   blur: (input: TextInput | null) => void;
+  reveal: (view: View | null) => void;
 } | null>(null);
 
 export function KeyboardScrollView({ children, onLayout, onScroll, style, ...props }: ScrollViewProps) {
@@ -13,6 +14,21 @@ export function KeyboardScrollView({ children, onLayout, onScroll, style, ...pro
   const focused = useRef<TextInput | null>(null);
   const offset = useRef(0);
   const frame = useRef<number | null>(null);
+  const reveal = useCallback((view: View | null) => {
+    if (!view) return;
+    if (Platform.OS === 'web') {
+      if (view instanceof HTMLElement) view.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+      return;
+    }
+    scroll.current?.getNativeScrollRef()?.measureInWindow((_x, top, _width, height) => {
+      view.measureInWindow((_viewX, viewTop, _viewWidth, viewHeight) => {
+        const bottom = Math.min(top + height, Keyboard.metrics()?.screenY ?? top + height);
+        const overlap = viewTop + viewHeight + 20 - bottom;
+        const above = viewTop - top - 20;
+        if (overlap > 0 || above < 0) scroll.current?.scrollTo({ y: Math.max(0, offset.current + (overlap > 0 ? overlap : above)), animated: true });
+      });
+    });
+  }, []);
 
   const revealFocusedInput = useCallback(() => {
     if (Platform.OS === 'web') return;
@@ -44,6 +60,7 @@ export function KeyboardScrollView({ children, onLayout, onScroll, style, ...pro
   return <KeyboardAvoidingView style={{ flex: 1 }} enabled={Platform.OS !== 'web'}
     behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={insets.top}>
     <KeyboardFieldContext.Provider value={{
+      reveal,
       focus: (input) => { focused.current = input; revealFocusedInput(); },
       blur: (input) => { if (focused.current === input) focused.current = null; },
     }}>

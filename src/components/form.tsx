@@ -1,7 +1,7 @@
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { PropsWithChildren, useContext, useRef, useState } from 'react';
+import { PropsWithChildren, useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Text, TextInput, TextInputProps, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotionButton, Reveal, settleSpring } from './motion';
@@ -57,8 +57,16 @@ export function ActionButton({ label, onPress, busy, disabled, secondary = false
 }
 export function Notice({ text, error = false }: { text: string; error?: boolean }) {
   const colors = useAppTheme();
+  const keyboard = useContext(KeyboardFieldContext);
+  const notice = useRef<View>(null);
+  const reveal = keyboard?.reveal;
+  useEffect(() => {
+    if (!error || !text || !reveal) return;
+    const timer = setTimeout(() => reveal(notice.current), 240);
+    return () => clearTimeout(timer);
+  }, [error, text, reveal]);
   if (!text) return null;
-  return <Reveal accessibilityRole={error ? 'alert' : undefined} style={{ padding: 14, borderRadius: 12, backgroundColor: error ? colors.warningSurface : colors.infoSurface }}>
+  return <View ref={notice}><Reveal accessibilityRole={error ? 'alert' : undefined} style={{ padding: 14, borderRadius: 12, backgroundColor: error ? colors.warningSurface : colors.infoSurface }}>
     <Text style={{ color: error ? colors.warningStrong : colors.textBody, lineHeight: 21 }}>{text}</Text>
-  </Reveal>;
+  </Reveal></View>;
 }

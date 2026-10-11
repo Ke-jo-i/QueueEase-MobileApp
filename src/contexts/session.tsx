@@ -1,10 +1,11 @@
 import { ApiError, request } from '@/data/api';
 import { demoLoginEnabled } from '@/constants/demo-mode';
+import { readProfilePhoto } from '@/data/profile-photo';
 import { createContext, PropsWithChildren, useCallback, useContext, useRef, useState } from 'react';
 
 export type Role = 'student' | 'staff' | 'admin';
 export type User = { id: string; login: string; name: string; email: string; role: Role; window: string | null };
-export type AuthTransition = { id: number; role: Role; direction: 'login' | 'logout' };
+export type AuthTransition = { id: number; role: Role; direction: 'login' | 'logout'; photoUri: string | null };
 type Session = {
   role: Role | null; studentId: string | null; signedOutRole: Role | null;
   user: User | null; token: string | null;
@@ -15,6 +16,7 @@ type Session = {
   cancelSignIn: () => void;
   transition: AuthTransition | null;
   finishTransition: (id: number) => void;
+  setProfilePhoto: (uri: string | null) => void;
 };
 const SessionContext = createContext<Session | null>(null);
 
@@ -25,13 +27,16 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const authRef = useRef(auth);
   const transitionId = useRef(0);
   const generation = useRef(0);
+  const photo = useRef<string | null>(null);
+  const setProfilePhoto = useCallback((uri: string | null) => { photo.current = uri; }, []);
   const clear = useCallback((animate = false) => {
     generation.current++;
     const previous = authRef.current;
     authRef.current = null;
     setSignedOutRole(previous?.user.role ?? null);
     setAuth(null);
-    setTransition(animate && previous ? { id: ++transitionId.current, role: previous.user.role, direction: 'logout' } : null);
+    setTransition(animate && previous ? { id: ++transitionId.current, role: previous.user.role, direction: 'logout', photoUri: photo.current } : null);
+    photo.current = null;
   }, []);
   const finishTransition = useCallback((id: number) => {
     setTransition(current => current?.id === id ? null : current);
@@ -43,19 +48,21 @@ export function SessionProvider({ children }: PropsWithChildren) {
   const authenticate = async (path: string, input: Record<string, unknown>) => {
     const version = ++generation.current;
     const result = await request<{ token: string; user: User }>(path, null, input);
+    const photoUri = await readProfilePhoto(`${result.user.role}:${result.user.id}`);
     if (version !== generation.current) {
       void request('/auth/logout', result.token, {}).catch(() => {});
       throw new ApiError('Sign-in was cancelled.');
     }
     authRef.current = result;
+    photo.current = photoUri;
     setSignedOutRole(null);
-    setTransition({ id: ++transitionId.current, role: result.user.role, direction: 'login' });
+    setTransition({ id: ++transitionId.current, role: result.user.role, direction: 'login', photoUri });
     setAuth(result);
     return result.user;
   };
   return <SessionContext.Provider value={{
     role: auth?.user.role ?? null, studentId: auth?.user.role === 'student' ? auth.user.login : null,
-    user: auth?.user ?? null, token: auth?.token ?? null, signedOutRole, transition, finishTransition, cancelSignIn,
+    user: auth?.user ?? null, token: auth?.token ?? null, signedOutRole, transition, finishTransition, cancelSignIn, setProfilePhoto,
     signIn: (portal, login, password) => authenticate('/auth/login', { portal, login, password }),
     quickSignIn: async (role) => {
       if (!demoLoginEnabled) throw new ApiError('Quick login is available only while testing.');

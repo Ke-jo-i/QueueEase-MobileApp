@@ -18,7 +18,7 @@ test('real registration rejects mismatched passwords and creates a usable accoun
   await page.getByLabel('Student ID or email', { exact: true }).fill('2026-00222');
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Log In', exact: true }).click();
-  await expect(page.getByText('Good day, New.')).toBeVisible();
+  await expect(page.getByText('Hello, New.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Academic Records Request', exact: true })).toBeEnabled();
 });
 
@@ -101,7 +101,7 @@ test('connection loss preserves a ticket and cancellation is saved after reconne
   await page.getByRole('button', { name: 'Academic Records Request', exact: true }).click();
   await page.getByRole('button', { name: 'Get Queue Number', exact: true }).click();
   await expect(page.getByRole('button', { name: 'View QR Ticket', exact: true })).toBeVisible();
-  const disconnect = '**/localhost:4100/queue';
+  const disconnect = /\/(?:api\/)?queue$/;
   await page.route(disconnect, (route) => route.abort('connectionrefused'));
   await expect(page.getByText(/Connection lost. Showing the last update/)).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId('student-tickets').getByText('R - 1', { exact: true }).filter({ visible: true }).first()).toBeVisible();

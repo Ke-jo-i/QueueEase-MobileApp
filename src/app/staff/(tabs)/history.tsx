@@ -1,4 +1,4 @@
-import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { Disclosure } from '@/components/disclosure';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
+import { GlassSurface } from '@/components/glass-surface';
 
 export default function StaffHistoryScreen() {
   const colors = useAppTheme();
@@ -55,16 +56,16 @@ export default function StaffHistoryScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.pageHeader}>
+        <Reveal style={styles.pageHeader}>
           <View>
-            <Text style={styles.kicker}>STAFF ACTIVITY</Text>
-            <Text style={styles.title}>Queue History</Text>
+            <Text accessibilityRole="header" style={styles.title}>Queue History</Text>
+            <Text style={styles.kicker}>A record of every visit.</Text>
           </View>
           <View style={styles.countBadge}>
             <Text style={styles.countText}>{filteredHistory.length}</Text>
             <Text style={styles.countLabel}>shown</Text>
           </View>
-        </View>
+        </Reveal>
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <Ionicons name="search-outline" size={17} color={colors.textMuted} />
@@ -96,7 +97,7 @@ export default function StaffHistoryScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        <Disclosure open={filtersOpen} style={styles.filterPanel}>
+        <Disclosure open={filtersOpen}><GlassSurface style={styles.filterPanel}>
           <View style={styles.filterPanelHeader}>
             <Text style={styles.filterPanelTitle}>Filter records</Text>
             <TouchableOpacity onPress={clearFilters}>
@@ -127,11 +128,15 @@ export default function StaffHistoryScreen() {
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </Disclosure>
+        </GlassSurface></Disclosure>
         {filteredHistory.length === 0 ? (
-          <Text style={styles.empty}>{staffHistory.length === 0 ? 'No queue activity yet.' : 'No tickets match the selected filters.'}</Text>
+          <GlassSurface style={styles.emptyCard}>
+            <View style={styles.emptyIcon}><Ionicons name="time-outline" size={30} color={colors.brandText} /></View>
+            <Text style={styles.emptyTitle}>{staffHistory.length === 0 ? 'No queue activity yet.' : 'No matching tickets'}</Text>
+            <Text style={styles.empty}>{staffHistory.length === 0 ? 'Completed and held tickets will appear here.' : 'Try another search or clear your filters.'}</Text>
+          </GlassSurface>
         ) : filteredHistory.map((ticket) => (
-          <View key={ticket.number} style={styles.card}>
+          <View key={ticket.id} style={styles.card}>
             <View style={styles.cardHeader}>
               <View>
                 <Text style={styles.number}>{ticket.number}</Text>
@@ -154,6 +159,7 @@ export default function StaffHistoryScreen() {
             {ticket.reason && <Text style={styles.reason}>{ticket.reason}</Text>}
             <TouchableOpacity style={styles.activityButton} accessibilityRole="button" accessibilityLabel={`Activity for ${ticket.number}`} accessibilityState={{ expanded: expandedHistory === ticket.id }} onPress={() => setExpandedHistory(expandedHistory === ticket.id ? null : ticket.id)}>
               <Text style={styles.activityButtonText}>{expandedHistory === ticket.id ? 'Hide activity' : 'View activity'}</Text>
+              <Ionicons name={expandedHistory === ticket.id ? 'chevron-up' : 'chevron-down'} size={15} color={colors.brandText} />
             </TouchableOpacity>
             <Disclosure open={expandedHistory === ticket.id}><TicketActivity ticket={ticket} /></Disclosure>
             {ticket.status !== 'COMPLETED' && (
@@ -170,39 +176,42 @@ export default function StaffHistoryScreen() {
 }
 
 const createStyles = (colors: AppPalette) => StyleSheet.create({
-  activityButton: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 12, backgroundColor: colors.surfaceMuted, borderRadius: 8, marginTop: 12 },
+  activityButton: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, minHeight: 44, marginTop: 6 },
   activityButtonText: { color: colors.brandText, fontSize: 12, fontWeight: '700' },
-  container: { flex: 1, backgroundColor: colors.surface },
-  content: { flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 24 },
+  container: { flex: 1, backgroundColor: 'transparent' },
+  content: { flexGrow: 1, paddingHorizontal: 22, paddingTop: 26, paddingBottom: 32, width: '100%', maxWidth: 600, alignSelf: 'center' },
   pageHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 },
-  kicker: { color: colors.textMuted, fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 4 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.brandText },
-  countBadge: { minWidth: 58, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, alignItems: 'center', backgroundColor: colors.blueSoft },
+  kicker: { color: colors.textMuted, fontSize: 14, marginTop: 5 },
+  title: { fontSize: 32, fontWeight: '700', letterSpacing: -1, color: colors.text },
+  countBadge: { minWidth: 54, paddingHorizontal: 10, paddingVertical: 9, borderRadius: 18, alignItems: 'center', backgroundColor: colors.infoSurface },
   countText: { color: colors.brandText, fontSize: 18, fontWeight: '800' },
   countLabel: { color: colors.textMuted, fontSize: 10, fontWeight: '700' },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 18 },
-  filterTrigger: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 9, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: colors.surface },
+  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
+  filterTrigger: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 13, borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
   filterTriggerActive: { borderColor: colors.brandText, backgroundColor: colors.blueSoft },
   filterTriggerText: { color: colors.textBody, fontSize: 12, fontWeight: '700' },
   filterTriggerTextActive: { color: colors.brandText },
-  filterPanel: { padding: 14, borderRadius: 14, marginBottom: 18, backgroundColor: colors.surfaceSubtle, borderWidth: 1, borderColor: colors.borderSubtle },
+  filterPanel: { padding: 18, borderRadius: 24, marginBottom: 18 },
   filterPanelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
   filterPanelTitle: { color: colors.text, fontSize: 14, fontWeight: '800' },
   clearFiltersText: { color: colors.brandText, fontSize: 11, fontWeight: '800' },
-  searchBox: { flex: 1, minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colors.borderStrong, borderRadius: 9, paddingHorizontal: 12, backgroundColor: colors.surface },
-  searchInput: { flex: 1, color: colors.text, fontSize: 13, paddingVertical: 10 },
+  searchBox: { flex: 1, minWidth: 0, minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 9, borderWidth: 1, borderColor: colors.border, borderRadius: 18, paddingHorizontal: 13, backgroundColor: colors.surface },
+  searchInput: { flex: 1, minWidth: 0, height: 48, color: colors.text, fontSize: 14, paddingVertical: 0, includeFontPadding: false, textAlignVertical: 'center' },
   filterLabel: { color: colors.textMuted, fontSize: 11, fontWeight: '800', marginBottom: 6, marginTop: 8, textTransform: 'uppercase' },
   filterRow: { flexDirection: 'row', gap: 8, paddingBottom: 4 },
-  filterButton: { borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: colors.surface },
+  filterButton: { minHeight: 40, justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, backgroundColor: colors.surface },
   filterButtonActive: { backgroundColor: colors.brand, borderColor: colors.brand },
   filterText: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
   filterTextActive: { color: '#FFFFFF' },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 40 },
-  card: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16, marginBottom: 12, backgroundColor: colors.surface },
+  emptyCard: { alignItems: 'center', gap: 12, paddingHorizontal: 24, paddingVertical: 36, borderRadius: 28, marginTop: 6 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.infoSurface },
+  emptyTitle: { color: colors.text, fontSize: 19, fontWeight: '600', textAlign: 'center' },
+  empty: { color: colors.textMuted, fontSize: 13, lineHeight: 20, textAlign: 'center' },
+  card: { borderWidth: 1, borderColor: colors.border, borderRadius: 24, padding: 20, marginBottom: 14, backgroundColor: `${colors.surface}E8` },
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  number: { fontSize: 18, fontWeight: '800', color: colors.brandText },
-  service: { color: colors.textBody, marginTop: 4, fontSize: 13, maxWidth: 190 },
-  statusBadge: { borderRadius: 7, paddingHorizontal: 8, paddingVertical: 5 },
+  number: { fontSize: 23, fontWeight: '700', letterSpacing: -0.7, fontVariant: ['tabular-nums'], color: colors.text },
+  service: { color: colors.textBody, marginTop: 5, fontSize: 13, lineHeight: 18, maxWidth: 190 },
+  statusBadge: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 7 },
   completedBadge: { backgroundColor: colors.successSurface },
   heldBadge: { backgroundColor: colors.warningSurface },
   exceptionBadge: { backgroundColor: colors.dangerSurface },
@@ -216,7 +225,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   detail: { color: colors.textMuted, fontSize: 12 },
   reason: { color: colors.textSecondary, fontSize: 12, lineHeight: 18, marginTop: 10 },
-  reopenButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.warningSoft, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 9, marginTop: 12 },
+  reopenButton: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', minHeight: 44, gap: 7, backgroundColor: colors.warningSoft, borderRadius: 15, paddingHorizontal: 13, paddingVertical: 10, marginTop: 6 },
   reopenText: { color: colors.warningStrong, fontSize: 11, fontWeight: '800' },
   bottomNav: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface, paddingVertical: 12 },
   navItem: { flex: 1, alignItems: 'center', justifyContent: 'center' },

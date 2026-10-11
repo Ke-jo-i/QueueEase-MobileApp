@@ -3,6 +3,7 @@ import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, ReduceMotion, runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { navigationSpring } from './motion';
+import { GlassBackdrop } from './glass-surface';
 
 type CardOverlayProps = { open: boolean; onClose: () => void; children: ReactNode };
 const timing = { duration: 210, easing: Easing.bezier(0.4, 0, 0.2, 1), reduceMotion: ReduceMotion.System };
@@ -31,8 +32,8 @@ export function CardOverlay({ open, onClose, children }: CardOverlayProps) {
       if (finished) runOnJS(finishClose)(version);
     }));
   }, [open, shown, progress, finishClose]);
-  const frame = useAnimatedStyle(() => ({ transform: [{ translateY: viewport.height * (1 - progress.get()) }] }));
-  const backdrop = useAnimatedStyle(() => ({ opacity: 0.18 * progress.get() }));
+  const frame = useAnimatedStyle(() => ({ borderTopLeftRadius: 28 * (1 - progress.get()), borderTopRightRadius: 28 * (1 - progress.get()), transform: [{ translateY: viewport.height * (1 - progress.get()) }, { scale: 0.965 + progress.get() * 0.035 }] }));
+  const backdrop = useAnimatedStyle(() => ({ opacity: 0.28 * progress.get() }));
   return <Modal visible={mounted} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onShow={() => setShown(true)} onRequestClose={onClose}>
     <View style={{ flex: 1, overflow: 'hidden' }} onLayout={event => {
       const { width, height } = event.nativeEvent.layout;
@@ -40,7 +41,7 @@ export function CardOverlay({ open, onClose, children }: CardOverlayProps) {
     }}>
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, backdrop]} />
       <Animated.View accessibilityViewIsModal testID="ticket-overlay" pointerEvents={open ? 'auto' : 'none'}
-        style={[{ width: viewport.width, height: viewport.height, backgroundColor: colors.surface }, frame]}>{children}</Animated.View>
+        style={[{ width: viewport.width, height: viewport.height, backgroundColor: colors.surfaceSubtle, overflow: 'hidden' }, frame]}><GlassBackdrop>{children}</GlassBackdrop></Animated.View>
     </View>
   </Modal>;
 }

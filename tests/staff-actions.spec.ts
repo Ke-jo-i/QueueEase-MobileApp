@@ -30,9 +30,9 @@ for (const item of [
     await expect(page.getByRole('button', { name: 'Recall', exact: true })).toHaveCount(0);
     if (item.status === 'HELD') {
       mkdirSync('.local/screenshots', { recursive: true });
-      await page.getByRole('button', { name: 'Profile', exact: true }).click();
+      await page.getByRole('tab', { name: 'Profile', exact: true }).click();
       await page.getByRole('switch', { name: 'Dark mode', exact: true }).click();
-      await page.getByRole('button', { name: 'Queue', exact: true }).click();
+      await page.getByRole('tab', { name: 'Queue', exact: true }).click();
       await expect.poll(async () => Math.round((await page.getByTestId('staff-dashboard').boundingBox())?.x ?? -1)).toBe(0);
       await page.screenshot({ path: '.local/screenshots/staff-idle-dark.png', animations: 'disabled' });
     }

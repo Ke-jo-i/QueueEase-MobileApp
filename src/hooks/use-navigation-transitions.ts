@@ -12,11 +12,12 @@ export function useTabTransitions() {
   const { width } = useWindowDimensions();
   return {
     headerShown: false,
-    sceneStyle: { backgroundColor: colors.surface },
+    sceneStyle: { backgroundColor: colors.surfaceSubtle },
     animation: reduced || booking ? 'none' as const : 'shift' as const,
-    transitionSpec: { animation: 'timing' as const, config: { duration: 260, easing: Easing.bezier(0.22, 1, 0.36, 1) } },
+    transitionSpec: { animation: 'spring' as const, config: { stiffness: 350, damping: 35, mass: 0.85, overshootClamping: true } },
     sceneStyleInterpolator: ({ current }: { current: { progress: Animated.Value } }) => ({ sceneStyle: {
-      transform: [{ translateX: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width], extrapolate: 'clamp' }) }],
+      transform: [{ translateX: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width], extrapolate: 'clamp' }) },
+        { scale: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [0.97, 1, 0.97], extrapolate: 'clamp' }) }],
     } }),
   };
 }
@@ -31,12 +32,15 @@ export function useVerticalTransitions(handoff = false): StackNavigationOptions 
     gestureDirection: 'vertical',
     gestureEnabled: Platform.OS === 'ios' && !reduced,
     detachPreviousScreen: false,
-    cardStyle: { backgroundColor: colors.surface, ...(Platform.OS === 'web' ? { height: '100%' } : {}) },
+    cardStyle: { backgroundColor: colors.surfaceSubtle, ...(Platform.OS === 'web' ? { height: '100%' } : {}) },
     transitionSpec: { open: reduced ? close : { animation: 'spring', config: navigationSpring }, close },
     cardStyleInterpolator: ({ current, next, layouts }) => ({ cardStyle: {
       transform: [{ translateY: Animated.add(
         current.progress.interpolate({ inputRange: [0, 1], outputRange: [handoff ? -layouts.screen.height : layouts.screen.height, 0], extrapolate: 'clamp' }),
         next ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [0, handoff ? layouts.screen.height : -layouts.screen.height * 0.035], extrapolate: 'clamp' }) : 0,
+      ) }, { scale: Animated.multiply(
+        current.progress.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1], extrapolate: 'clamp' }),
+        next ? next.progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.965], extrapolate: 'clamp' }) : 1,
       ) }],
     } }),
   };

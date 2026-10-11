@@ -1,4 +1,4 @@
-import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
 import { registrarWindows } from '@/constants/service-windows';
 import { ActionButton, Notice } from '@/components/form';
+import { GlassSurface } from '@/components/glass-surface';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -164,21 +165,25 @@ export default function StaffDashboardScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="staff-dashboard">
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Header Title */}
         <View style={styles.header}>
-          <Text style={styles.headerSubtitle}>{assignedWindow || 'Choose an available window in Profile'}</Text>
+          <View style={{ flex: 1, gap: 5 }}>
+            <Text accessibilityRole="header" style={styles.pageTitle}>Queue</Text>
+            <Text style={styles.headerSubtitle}>{assignedWindow || 'Choose an available window in Profile'}</Text>
+          </View>
+          <View style={styles.windowIcon}><Ionicons name="grid-outline" size={22} color={colors.brandText} /></View>
         </View>
         {!assignedWindow && <Notice text="All windows may already be assigned. Ask the administrator to review staff assignments." />}
 
-        {/* Currently Serving Display Box */}
-        <View style={styles.servingCard}>
+        <Reveal><GlassSurface variant="tinted" style={styles.servingCard}>
+          <View style={styles.servingStatus}><View style={[styles.statusDot, { backgroundColor: currentServing ? colors.success : colors.textDisabled }]} />
+            <Text style={styles.statusLabel}>{currentServing ? 'Service in progress' : 'Ready when you are'}</Text>
+          </View>
           <Text style={styles.servingLabel}>CURRENTLY SERVING</Text>
-          <Text style={[styles.ticketNumber, !currentServing && styles.emptyTitle]}>
-            {currentServing ? currentServing.number : 'No active ticket'}
-          </Text>
-          <Text style={styles.serviceText}>
-            {currentServing ? currentServing.service : windowWaiting.length ? 'Call the next student to begin.' : 'No students waiting at this window.'}
-          </Text>
+          <Reveal key={currentServing?.id ?? 'idle'} style={{ width: '100%', alignItems: 'center', gap: 7 }}>
+            {!currentServing && <View style={styles.emptyIcon}><Ionicons name={windowWaiting.length ? 'people-outline' : 'checkmark-outline'} size={30} color={colors.brandText} /></View>}
+            <Text style={[styles.ticketNumber, !currentServing && styles.emptyTitle]}>{currentServing ? currentServing.number : 'No active ticket'}</Text>
+            <Text style={styles.serviceText}>{currentServing ? currentServing.service : windowWaiting.length ? 'Call the next student to begin.' : 'No students waiting at this window.'}</Text>
+          </Reveal>
           {currentServing && (arrivalConfirmed ? <View style={styles.arrivalStatus}>
             <Ionicons name="checkmark-circle-outline" size={18} color={colors.successStrong} />
             <Text style={styles.arrivalStatusText}>Arrival confirmed</Text>
@@ -188,9 +193,8 @@ export default function StaffDashboardScreen() {
             <Text style={styles.verifyText}>Scan / verify ticket</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.brandText} />
           </TouchableOpacity>)}
-        </View>
+        </GlassSurface></Reveal>
 
-        {/* Action Buttons */}
         <View style={styles.actionContainer}>
           <ActionButton label={currentServing ? 'Mark as Done' : 'Call Next'} busy={busy}
             disabled={!connected || (!currentServing && (!assignedWindow || !windowWaiting.length))}
@@ -208,8 +212,7 @@ export default function StaffDashboardScreen() {
           </View>}
         </View>
 
-        {/* View Waiting Queue List Link */}
-        <TouchableOpacity
+        <GlassSurface style={{ borderRadius: 24 }}><TouchableOpacity
           style={styles.queueListBtn}
           accessibilityLabel={`View Waiting Queue List (${windowWaiting.length})`}
           activeOpacity={0.7}
@@ -222,12 +225,12 @@ export default function StaffDashboardScreen() {
           </View>
           <View style={styles.waitingBadge}><Text style={styles.waitingCount}>{windowWaiting.length}</Text></View>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
-        </TouchableOpacity>
+        </TouchableOpacity></GlassSurface>
       </ScrollView>
 
       <Modal visible={menuOpen || action !== null} transparent animationType="fade" onRequestClose={closeActions}>
         <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.modalOverlay, menuOpen && styles.menuOverlay]}>
-          {menuOpen ? <View style={[styles.modalCard, styles.menuCard]}>
+          {menuOpen ? <Reveal style={styles.modalFrame}><GlassSurface style={[styles.modalCard, styles.menuCard]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
                 <Text style={styles.modalEyebrow}>TICKET {currentServing?.number}</Text>
@@ -248,7 +251,7 @@ export default function StaffDashboardScreen() {
                 <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </TouchableOpacity>)}
             </ScrollView>
-          </View> : action && <View style={styles.modalCard}>
+          </GlassSurface></Reveal> : action && <Reveal style={styles.modalFrame}><GlassSurface style={styles.modalCard}>
             {currentServing?.id !== actionTicketId && <Notice text="This ticket changed while the dialog was open. Close it and review the current queue before taking another action." error />}
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
@@ -329,11 +332,10 @@ export default function StaffDashboardScreen() {
                 <Text style={styles.modalConfirmText}>Confirm</Text>
               </TouchableOpacity>
             </View>
-          </View>}
+          </GlassSurface></Reveal>}
         </SafeAreaView>
       </Modal>
 
-      {/* Standardized Bottom Navigation */}
     </SafeAreaView>
   );
 }
@@ -341,57 +343,65 @@ export default function StaffDashboardScreen() {
 const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
   },
   content: {
     flexGrow: 1,
     width: '100%',
-    maxWidth: 560,
+    maxWidth: 600,
     alignSelf: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 32,
-    paddingBottom: 24,
+    paddingHorizontal: 22,
+    paddingTop: 26,
+    paddingBottom: 32,
   },
   nextTicket: { color: colors.textMuted, fontSize: 12, lineHeight: 18, marginTop: 4 },
   header: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
     marginBottom: 24,
   },
+  pageTitle: { color: colors.text, fontSize: 34, fontWeight: '700', letterSpacing: -1 },
+  windowIcon: { width: 48, height: 48, borderRadius: 18, backgroundColor: colors.infoSurface, alignItems: 'center', justifyContent: 'center' },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: colors.textMuted,
     marginTop: 2,
   },
   servingCard: {
-    backgroundColor: colors.infoSurface,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 18,
-    paddingVertical: 24,
+    borderRadius: 32,
+    paddingHorizontal: 22,
+    paddingVertical: 26,
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 22,
   },
+  servingStatus: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 20, backgroundColor: colors.surface, paddingHorizontal: 11, paddingVertical: 7, marginBottom: 22 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusLabel: { fontSize: 11, fontWeight: '600', color: colors.textSecondary },
+  emptyIcon: { width: 64, height: 64, borderRadius: 24, backgroundColor: colors.infoSurface, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   servingLabel: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '600',
     color: colors.textMuted,
     letterSpacing: 1.2,
     marginBottom: 8,
   },
   ticketNumber: {
-    fontSize: 42,
-    fontWeight: '800',
+    fontSize: 62,
+    fontWeight: '700',
+    letterSpacing: -2.5,
+    fontVariant: ['tabular-nums'],
     color: colors.brandText,
-    marginBottom: 8,
+    marginBottom: 0,
   },
   serviceText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '400',
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  emptyTitle: { fontSize: 26, color: colors.text },
+  emptyTitle: { fontSize: 26, letterSpacing: -0.7, color: colors.text },
   disabled: { opacity: 0.45 },
   verifyButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44, marginTop: 14, width: '100%', borderTopWidth: 1, borderTopColor: colors.border },
   verifyText: { color: colors.brandText, fontSize: 13, fontWeight: '700' },
@@ -410,7 +420,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     minWidth: 0,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 18,
     minHeight: 48,
     flexDirection: 'row',
     gap: 8,
@@ -424,10 +434,8 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     textAlign: 'center',
   },
   queueListBtn: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 24,
+    padding: 19,
     minHeight: 64,
     flexDirection: 'row',
     gap: 12,
@@ -436,8 +444,8 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   queueListInfo: { flex: 1, minWidth: 0 },
   queueListBtnText: {
     color: colors.text,
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
   },
   waitingBadge: { minWidth: 28, minHeight: 28, paddingHorizontal: 7, borderRadius: 14, backgroundColor: colors.surfaceMuted, justifyContent: 'center', alignItems: 'center' },
   waitingCount: { color: colors.textSecondary, fontSize: 12, fontWeight: '700' },
@@ -448,15 +456,15 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     paddingHorizontal: 24,
   },
   modalCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 28,
+    padding: 22,
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',
   },
+  modalFrame: { width: '100%', maxWidth: 420, alignSelf: 'center', maxHeight: '90%', flexShrink: 1 },
   menuOverlay: { justifyContent: 'flex-end', paddingVertical: 16, paddingHorizontal: 12 },
-  menuCard: { maxHeight: '90%', borderRadius: 20 },
+  menuCard: { flexShrink: 1, borderRadius: 28 },
   menuList: { flexShrink: 1 },
   menuOption: { minHeight: 76, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 14, borderTopWidth: 1, borderTopColor: colors.borderSubtle },
   menuOptionInfo: { flex: 1, minWidth: 0, gap: 4 },
@@ -502,7 +510,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 16,
     backgroundColor: colors.dangerSubtle,
@@ -581,7 +589,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   transferOption: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: 16,
     padding: 12,
   },
   transferOptionSelected: {
@@ -600,7 +608,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: colors.surfaceMuted,
   },
   modalCancelText: {

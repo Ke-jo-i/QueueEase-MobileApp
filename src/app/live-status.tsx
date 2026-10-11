@@ -1,4 +1,4 @@
-import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
 import { TicketActivity } from '@/components/ticket-activity';
 import { ticketStatusLabels } from '@/constants/queue-labels';
@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { WindowQueues } from '@/components/window-queues';
+import { GlassSurface, translucent } from '@/components/glass-surface';
 
 export default function LiveQueueScreen() {
   const colors = useAppTheme();
@@ -23,18 +24,18 @@ export default function LiveQueueScreen() {
           <Ionicons name="arrow-back" size={20} color={colors.brandText} />
           <Text style={styles.headerTitle}>Live Queue</Text>
         </TouchableOpacity>
-        {!studentTicket ? <View style={styles.card}>
+        {!studentTicket ? <GlassSurface style={styles.card}>
           <Text style={styles.progressTitle}>No active ticket</Text>
           <Text style={styles.detail}>You can check all windows before choosing a registrar service.</Text>
           <TouchableOpacity style={styles.ticketButton} onPress={() => router.dismissTo('/home')}><Text style={styles.ticketButtonText}>Choose a service</Text></TouchableOpacity>
-        </View> : <>
-        <View style={styles.yourTicketCard}>
+        </GlassSurface> : <>
+        <Reveal><GlassSurface variant="tinted" style={styles.yourTicketCard}>
           <Text style={styles.label}>YOUR TICKET NUMBER</Text>
           <Text style={styles.ticketNumber}>{studentTicket.number}</Text>
           <Text style={styles.detail}>{studentTicket.service}</Text>
           <Text style={styles.window}>{studentTicket.window}</Text>
-        </View>
-        <View style={styles.card}>
+        </GlassSurface></Reveal>
+        <GlassSurface style={styles.card}>
           <Text style={styles.status}>{ticketStatusLabels[studentTicket.status]}</Text>
           {studentTicket.status === 'WAITING' && <>
             <View style={styles.statsRow}>
@@ -48,10 +49,10 @@ export default function LiveQueueScreen() {
             <Text style={styles.detail}>{studentTicket.reason}</Text>
             <Text style={styles.detail}>Speak with staff when you are ready. They can return this ticket to the waiting line.</Text>
           </>}
-        </View>
-        <View style={styles.card}>
+        </GlassSurface>
+        <GlassSurface style={styles.card}>
           <TicketActivity ticket={studentTicket} />
-        </View>
+        </GlassSurface>
         <TouchableOpacity style={styles.ticketButton} accessibilityRole="button" onPress={() => router.dismissTo('/tickets')}><Text style={styles.ticketButtonText}>Open my ticket</Text></TouchableOpacity>
         </>}
         <WindowQueues />
@@ -61,19 +62,19 @@ export default function LiveQueueScreen() {
 }
 
 const createStyles = (colors: AppPalette) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.surface },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 },
+  container: { flex: 1, backgroundColor: 'transparent' },
+  scrollContent: { width: '100%', maxWidth: 720, alignSelf: 'center', paddingHorizontal: 22, paddingTop: 20, paddingBottom: 32 },
   headerBtn: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: colors.brandText, marginLeft: 8 },
-  yourTicketCard: { backgroundColor: colors.surfaceMuted, borderRadius: 16, padding: 20, marginBottom: 16 },
-  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 16, padding: 20, marginBottom: 16 },
+  headerTitle: { fontSize: 28, letterSpacing: -0.7, fontWeight: '700', color: colors.textStrong, marginLeft: 8 },
+  yourTicketCard: { backgroundColor: colors.infoSurface, borderRadius: 30, padding: 24, marginBottom: 4 },
+  card: { backgroundColor: colors.surface, borderWidth: 1, borderColor: translucent(colors.border, 0.5), borderRadius: 26, padding: 24, marginBottom: 4 },
   label: { fontSize: 11, fontWeight: 'bold', color: colors.textMuted, letterSpacing: 0.8, marginBottom: 6 },
-  ticketNumber: { fontSize: 36, fontWeight: 'bold', color: colors.brandText },
+  ticketNumber: { fontSize: 48, letterSpacing: -1, fontWeight: '700', color: colors.brandText },
   window: { fontSize: 13, color: colors.brandText, fontWeight: '700', marginTop: 12 },
   statsRow: { flexDirection: 'row', gap: 12, marginVertical: 18 },
   stat: { flex: 1 },
   statValue: { color: colors.brandText, fontSize: 26, fontWeight: '800' },
-  ticketButton: { alignItems: 'center', borderRadius: 10, padding: 15, backgroundColor: colors.brand, marginTop: 8 },
+  ticketButton: { alignItems: 'center', borderRadius: 20, padding: 17, backgroundColor: colors.brand, marginTop: 8 },
   ticketButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   status: { fontSize: 22, fontWeight: 'bold', color: colors.brandText, marginBottom: 10 },
   progressTitle: { fontSize: 16, fontWeight: 'bold', color: colors.text, marginBottom: 12 },

@@ -1,11 +1,11 @@
 const light = {
   surface: '#FFFFFF',
-  surfaceSubtle: '#F8FAFC',
-  surfaceMuted: '#F1F5F9',
+  surfaceSubtle: '#F3F5F9',
+  surfaceMuted: '#EDEFF5',
   surfaceNeutral: '#FAFAFA',
-  brand: '#003366',
-  brandPressed: '#002855',
-  brandText: '#003366',
+  brand: '#176BE8',
+  brandPressed: '#1455B8',
+  brandText: '#155AC2',
   textStrong: '#0F172A',
   text: '#1E293B',
   textHeading: '#1A2A3A',
@@ -54,10 +54,10 @@ export type AppPalette = typeof light;
 
 const dark: AppPalette = {
   ...light,
-  surface: '#111827',
-  surfaceSubtle: '#0B1220',
-  surfaceMuted: '#1E293B',
-  surfaceNeutral: '#172033',
+  surface: '#171D2A',
+  surfaceSubtle: '#101622',
+  surfaceMuted: '#252E3E',
+  surfaceNeutral: '#202837',
   brandText: '#93C5FD',
   textStrong: '#F8FAFC',
   text: '#E2E8F0',
@@ -100,7 +100,7 @@ const dark: AppPalette = {
 };
 
 export const ThemeOptions = [
-  { id: 'classic', label: 'Classic Blue', swatch: '#003366' },
+  { id: 'classic', label: 'Classic Blue', swatch: '#176BE8' },
   { id: 'sage', label: 'Sage', swatch: '#496B58' },
   { id: 'clay', label: 'Soft Clay', swatch: '#8A5B49' },
   { id: 'lavender', label: 'Lavender', swatch: '#705A7D' },

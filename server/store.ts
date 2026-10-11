@@ -5,6 +5,7 @@ import { promisify } from 'node:util';
 import { registrarServices } from '../src/constants/registrar-services';
 import { getServiceWindow, registrarWindows } from '../src/constants/service-windows';
 import { applyQueueCommand, type Ticket, type QueueCommand, type QueueSnapshot } from '../src/data/queue-model';
+import type { AdminAccount, AdminAudit, AdminData, AdminHistoryPage, AdminAuditPage, AdminService } from '../src/data/admin-model';
 
 const derive = promisify(scrypt);
 export type Role = 'student' | 'staff' | 'admin';
@@ -34,6 +35,40 @@ async function matches(value: string, encoded: string) {
 }
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const publicAccount = ({ id, login, email, name, role, active, window }: Account): Account => ({ id, login, email, name, role, active, window });
+const statuses = ['WAITING', 'SERVING', 'HELD', 'COMPLETED', 'CANCELLED', 'SKIPPED', 'NO_SHOW'];
+const day = (value: string) => {
+  const date = new Date(value);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+const averageMinutes = (values: number[]) => values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length / 6000) / 10 : null;
+function accountFields(input: Record<string, unknown>) {
+  const name = field(input.name, 'full name', 80);
+  const login = field(input.login, 'ID', 40).toLowerCase();
+  const email = validEmail(input.email);
+  check(/^[a-z0-9][a-z0-9._-]{2,39}$/.test(login), 'Use 3–40 letters, numbers, dots, underscores or dashes for your ID.');
+  return { name, login, email };
+}
+function validEmail(value: unknown) {
+  const email = field(value, 'email', 160).toLowerCase();
+  check(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), 'Enter a valid email address.');
+  return email;
+}
+function pageFields(input: Record<string, unknown>) {
+  const integer = (value: unknown, fallback: number, max: number) => {
+    if (value === undefined || value === '') return fallback;
+    const number = Number(value);
+    check(Number.isInteger(number) && number >= 1 && number <= max, 'Choose a valid page and page size.');
+    return number;
+  };
+  return { page: integer(input.page, 1, 1000000), pageSize: integer(input.pageSize, 25, 100) };
+}
+function dateField(value: unknown, label: string) {
+  if (value === undefined || value === '') return undefined;
+  const date = field(value, label, 10);
+  const parsed = new Date(`${date}T00:00:00Z`);
+  check(/^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date, `Enter a valid ${label}.`);
+  return date;
+}
 
 export class Store {
   db: DatabaseSync;
@@ -50,15 +85,14 @@ export class Store {
     catch (error) { this.db.exec('ROLLBACK'); throw error; }
   }
   async createAccount(input: Record<string, unknown>, role: Role = 'student') {
-    const name = field(input.name, 'full name', 80);
-    const login = field(input.login, 'ID', 40).toLowerCase();
-    const email = field(input.email, 'email', 160).toLowerCase();
-    check(/^[a-z0-9][a-z0-9._-]{2,39}$/.test(login), 'Use 3–40 letters, numbers, dots, underscores or dashes for your ID.');
-    check(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), 'Enter a valid email address.');
+    const values = accountFields(input);
     const hash = await hashPassword(password(input.password));
+    return this.insertAccount(values, role, hash);
+  }
+  private insertAccount(values: ReturnType<typeof accountFields>, role: Role, hash: string, window: string | null = null) {
     const id = randomUUID();
-    try { this.db.prepare('INSERT INTO accounts(id,login,email,name,role,password_hash,created_at) VALUES(?,?,?,?,?,?,?)')
-      .run(id, login, email, name, role, hash, new Date().toISOString()); }
+    try { this.db.prepare('INSERT INTO accounts(id,login,email,name,role,password_hash,created_at,window) VALUES(?,?,?,?,?,?,?,?)')
+      .run(id, values.login, values.email, values.name, role, hash, new Date().toISOString(), window); }
     catch (error) { if (String(error).includes('UNIQUE')) throw new RequestError(409, 'That ID or email is already registered.'); throw error; }
     return this.account(id);
   }

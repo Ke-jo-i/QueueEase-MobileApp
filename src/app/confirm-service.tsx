@@ -1,4 +1,5 @@
-import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
+import { GlassSurface, translucent } from '@/components/glass-surface';
 import { AppPalette } from '@/constants/app-colors';
 import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -49,14 +50,15 @@ export default function ConfirmServiceScreen() {
         <Text style={styles.studentInfo}>Student: {studentId}</Text>
 
         {/* Selected Service Detail Card */}
-        <View style={styles.serviceDetailCard}>
+        <Reveal><GlassSurface variant="tinted" style={styles.serviceDetailCard}>
+          <Ionicons name="document-text-outline" size={30} color={colors.brandText} style={{ marginBottom: 18 }} />
           <Text style={styles.serviceNameTitle}>{serviceTitle}</Text>
           <Text style={styles.metaText}>{serviceDescriptions[serviceTitle]}</Text>
           <Text style={styles.metaText}>Queue window: {services.find((service) => service.name === serviceTitle)?.window ?? 'Connecting…'}</Text>
-        </View>
+        </GlassSurface></Reveal>
 
         {/* Important Reminders Box (Dynamic na nagbabago) */}
-        <View style={styles.remindersCard}>
+        <Reveal delay={60}><GlassSurface style={styles.remindersCard}>
           <Text style={styles.remindersTitle}>Important Reminders</Text>
 
           {registrarReminders.map((reminder) => (
@@ -66,7 +68,7 @@ export default function ConfirmServiceScreen() {
           ))}
 
           <Text style={styles.processingTime}>Your queue number is for your turn at the window, not a document release time.</Text>
-        </View>
+        </GlassSurface></Reveal>
 
         {/* Get Queue Number Button */}
         <View style={styles.footer}>
@@ -82,11 +84,12 @@ export default function ConfirmServiceScreen() {
 const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 20,
+    width: '100%', maxWidth: 720, alignSelf: 'center',
+    paddingHorizontal: 22,
     paddingTop: 16,
   },
   backButton: {
@@ -95,9 +98,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: colors.brandText,
+    fontSize: 28, letterSpacing: -0.7,
+    fontWeight: '700',
+    color: colors.textStrong,
     marginLeft: 4,
   },
   studentInfo: {
@@ -108,27 +111,27 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   serviceDetailCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 30,
+    padding: 24,
     borderWidth: 1,
     borderColor: colors.border,
     marginBottom: 16,
   },
   serviceNameTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 25, lineHeight: 32, letterSpacing: -0.5,
+    fontWeight: '700',
     color: colors.text,
     marginBottom: 8,
   },
   metaText: {
-    fontSize: 13,
+    fontSize: 14, lineHeight: 22,
     color: colors.textMuted,
     marginTop: 2,
   },
   remindersCard: {
     backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 26,
+    padding: 24,
     borderWidth: 1,
     borderColor: colors.border,
   },
@@ -159,8 +162,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   confirmButton: {
     backgroundColor: colors.brand,
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 22,
+    paddingVertical: 18,
+    boxShadow: `0 7px 18px ${translucent(colors.brand, 0.18)}`,
     alignItems: 'center',
   },
   confirmButtonText: {

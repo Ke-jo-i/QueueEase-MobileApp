@@ -1,0 +1,114 @@
+import { login, test, expect } from './fixtures';
+
+test('held navigation expands, follows the pointer and selects only on release', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page);
+  const indicator = page.getByTestId('navigation-indicator');
+  const home = page.getByRole('tab', { name: 'Home', exact: true });
+  const profile = page.getByRole('tab', { name: 'Profile', exact: true });
+  const initial = await indicator.boundingBox();
+  const start = await home.boundingBox();
+  const target = await profile.boundingBox();
+  expect(initial).not.toBeNull();
+  expect(start).not.toBeNull();
+  expect(target).not.toBeNull();
+  if (!initial || !start || !target) return;
+  const startX = start.x + start.width / 2;
+  const targetX = target.x + target.width / 2;
+  const y = start.y + start.height / 2;
+  await page.mouse.move(startX, y);
+  await page.mouse.down();
+  await expect.poll(async () => (await indicator.boundingBox())?.height ?? 0).toBeGreaterThan(initial.height + 2);
+  await page.mouse.move((startX + targetX) / 2, y, { steps: 8 });
+  await expect.poll(async () => {
+    const box = await indicator.boundingBox();
+    return Math.abs((box?.x ?? 0) + (box?.width ?? 0) / 2 - (startX + targetX) / 2);
+  }).toBeLessThan(3);
+  await expect(home).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/home$/);
+  await page.mouse.move(targetX, y, { steps: 8 });
+  await page.mouse.up();
+  await expect(profile).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/profile$/);
+  await expect.poll(async () => Math.abs(((await indicator.boundingBox())?.height ?? 0) - initial.height)).toBeLessThan(1);
+  await page.getByRole('tab', { name: 'Tickets', exact: true }).click();
+  await expect(page).toHaveURL(/\/tickets$/);
+  await home.focus();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/home$/);
+});
+
+test('staff navigation supports dragging between its three tabs', async ({ page }) => {
+  await login(page, 'staff');
+  const indicator = page.getByTestId('navigation-indicator');
+  const queue = page.getByRole('tab', { name: 'Queue', exact: true });
+  const history = page.getByRole('tab', { name: 'History', exact: true });
+  const start = await queue.boundingBox();
+  const target = await history.boundingBox();
+  const initial = await indicator.boundingBox();
+  expect(start).not.toBeNull();
+  expect(target).not.toBeNull();
+  expect(initial).not.toBeNull();
+  if (!start || !target || !initial) return;
+  await page.mouse.move(start.x + start.width / 2, start.y + start.height / 2);
+  await page.mouse.down();
+  await expect.poll(async () => (await indicator.boundingBox())?.height ?? 0).toBeGreaterThan(initial.height + 2);
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect(history).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByText('Queue History', { exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click();
+  await expect(page.getByText('Profile & Settings', { exact: true })).toBeVisible();
+});
+
+test('reduced motion keeps tab taps and held navigation usable without expansion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await login(page);
+  const indicator = page.getByTestId('navigation-indicator');
+  const home = await page.getByRole('tab', { name: 'Home', exact: true }).boundingBox();
+  const tickets = await page.getByRole('tab', { name: 'Tickets', exact: true }).boundingBox();
+  const initial = await indicator.boundingBox();
+  expect(home).not.toBeNull();
+  expect(tickets).not.toBeNull();
+  expect(initial).not.toBeNull();
+  if (!home || !tickets || !initial) return;
+  await page.mouse.move(home.x + home.width / 2, home.y + home.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(240);
+  await page.mouse.move(tickets.x + tickets.width / 2, tickets.y + tickets.height / 2, { steps: 8 });
+  await expect.poll(async () => {
+    const box = await indicator.boundingBox();
+    return Math.abs((box?.x ?? 0) + (box?.width ?? 0) / 2 - tickets.x - tickets.width / 2);
+  }).toBeLessThan(3);
+  expect((await indicator.boundingBox())?.height).toBe(initial.height);
+  await page.mouse.up();
+  await expect(page.getByRole('tab', { name: 'Tickets', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/tickets$/);
+  await page.getByRole('tab', { name: 'Profile', exact: true }).click();
+  await expect(page).toHaveURL(/\/profile$/);
+});
+
+test('cancelling a held touch restores the selected tab and leaves taps working', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page);
+  const indicator = page.getByTestId('navigation-indicator');
+  const home = await page.getByRole('tab', { name: 'Home', exact: true }).boundingBox();
+  const tickets = await page.getByRole('tab', { name: 'Tickets', exact: true }).boundingBox();
+  const initial = await indicator.boundingBox();
+  expect(home).not.toBeNull();
+  expect(tickets).not.toBeNull();
+  expect(initial).not.toBeNull();
+  if (!home || !tickets || !initial) return;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: home.x + home.width / 2, y: home.y + home.height / 2, id: 4 }] });
+  await expect.poll(async () => (await indicator.boundingBox())?.height ?? 0).toBeGreaterThan(initial.height + 2);
+  await session.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: tickets.x + tickets.width / 2, y: tickets.y + tickets.height / 2, id: 4 }] });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+  await session.detach();
+  await expect.poll(async () => Math.abs(((await indicator.boundingBox())?.x ?? 0) - initial.x)).toBeLessThan(1);
+  await expect.poll(async () => Math.abs(((await indicator.boundingBox())?.height ?? 0) - initial.height)).toBeLessThan(1);
+  await expect(page.getByRole('tab', { name: 'Home', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await expect(page).toHaveURL(/\/home$/);
+  await page.getByRole('tab', { name: 'Tickets', exact: true }).click();
+  await expect(page).toHaveURL(/\/tickets$/);
+});

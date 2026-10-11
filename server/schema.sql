@@ -61,3 +61,12 @@ CREATE TABLE IF NOT EXISTS requests (
   created_at INTEGER NOT NULL,
   PRIMARY KEY(account_id, request_id)
 );
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id TEXT PRIMARY KEY,
+  actor_id TEXT NOT NULL REFERENCES accounts(id),
+  action TEXT NOT NULL,
+  target TEXT NOT NULL,
+  details TEXT NOT NULL,
+  at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS admin_audit_by_date ON admin_audit(at);

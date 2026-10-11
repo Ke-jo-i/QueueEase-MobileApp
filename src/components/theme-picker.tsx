@@ -3,8 +3,9 @@ import { useAppearance } from '@/contexts/appearance';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { Disclosure } from './disclosure';
+import { MotionButton } from './motion';
 
 export function ThemePicker() {
   const { themeName, setThemeName, isReady } = useAppearance();
@@ -14,28 +15,29 @@ export function ThemePicker() {
 
   return (
     <View style={[styles.container, { borderColor: colors.border }]}>
-      <Pressable
+      <MotionButton
         style={styles.toggle}
         onPress={() => setExpanded((open) => !open)}
         accessibilityRole="button"
         accessibilityLabel="Color Theme"
         accessibilityState={{ expanded }}
       >
+        <View style={[styles.icon, { backgroundColor: colors.infoSurface }]}><Ionicons name="color-palette-outline" size={19} color={colors.brandText} /></View>
         <View style={styles.toggleLabel}>
           <Text style={[styles.title, { color: colors.text }]}>Color Theme</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>{currentTheme.label}</Text>
         </View>
         <View style={[styles.swatch, { backgroundColor: currentTheme.swatch, borderColor: colors.borderStrong }]} />
         <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
-      </Pressable>
+      </MotionButton>
       <Disclosure open={expanded} style={styles.options} accessibilityRole="radiogroup">
         {ThemeOptions.map((option) => {
           const selected = themeName === option.id;
           return (
-            <Pressable
+            <MotionButton
               key={option.id}
               style={[styles.option, {
-                backgroundColor: selected ? colors.blueSoft : colors.surface,
+                backgroundColor: selected ? colors.infoSurface : colors.surfaceSubtle,
                 borderColor: selected ? colors.brandText : colors.border,
               }]}
               onPress={() => {
@@ -52,7 +54,8 @@ export function ThemePicker() {
               <Text style={[styles.optionLabel, { color: selected ? colors.brandText : colors.textBody }]} numberOfLines={1}>
                 {option.label}
               </Text>
-            </Pressable>
+              {selected && <Ionicons name="checkmark-circle" size={18} color={colors.brandText} />}
+            </MotionButton>
           );
         })}
       </Disclosure>
@@ -61,13 +64,14 @@ export function ThemePicker() {
 }
 
 const styles = StyleSheet.create({
-  container: { borderBottomWidth: 1 },
-  toggle: { minHeight: 58, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 12 },
+  container: {},
+  toggle: { minHeight: 72, flexDirection: 'row', alignItems: 'center', gap: 13, paddingHorizontal: 18, paddingVertical: 12 },
+  icon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   toggleLabel: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '700' },
+  title: { fontSize: 15, fontWeight: '600' },
   subtitle: { fontSize: 12, marginTop: 3 },
-  options: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 18, paddingBottom: 16 },
-  option: { minWidth: '47%', flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 9, padding: 9, borderWidth: 1.5, borderRadius: 10 },
+  options: { gap: 8, paddingHorizontal: 18, paddingBottom: 18 },
+  option: { minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderRadius: 16 },
   swatch: { width: 22, height: 22, borderRadius: 11, borderWidth: 1 },
-  optionLabel: { fontSize: 12, fontWeight: '700', flexShrink: 1 },
+  optionLabel: { fontSize: 14, fontWeight: '600', flex: 1 },
 });

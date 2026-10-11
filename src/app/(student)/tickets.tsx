@@ -1,4 +1,6 @@
-import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
+import { GlassSurface, translucent } from '@/components/glass-surface';
+import { Ionicons } from '@expo/vector-icons';
 import { AppPalette } from '@/constants/app-colors';
 import { useThemedStyles } from '@/hooks/use-app-theme';
 import { useQueue } from '@/contexts/queue';
@@ -12,7 +14,7 @@ import { Disclosure } from '@/components/disclosure';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState } from 'react';
 import { useRouter } from 'expo-router';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 function formatTicketDate(value: string) {
@@ -54,9 +56,16 @@ export default function MyTicketsScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>My Queue Tickets</Text>
+          <Text accessibilityRole="header" style={styles.title}>My Queue Tickets</Text>
           <Text style={styles.subtitle}>Manage active and past tickets</Text>
         </View>
+
+        {!studentTicket && <Reveal><GlassSurface variant="tinted" style={{ padding: 24, gap: 14, marginBottom: 26 }}>
+          <Ionicons name="ticket-outline" size={32} color={styles.title.color} />
+          <Text style={{ fontSize: 24, fontWeight: '700', color: styles.title.color, letterSpacing: -0.5 }}>Your ticket appears here</Text>
+          <Text style={styles.activeWindowText}>Choose a registrar service to join a queue.</Text>
+          <TouchableOpacity style={[styles.viewQrContainer, { alignSelf: 'flex-start' }]} onPress={() => router.navigate('/home')}><Text style={styles.viewQrText}>Choose a service</Text></TouchableOpacity>
+        </GlassSurface></Reveal>}
 
         {/* NOW IN QUEUE Section (Ise-show lamang kapag may active ticket) */}
         {studentTicket && (
@@ -64,7 +73,7 @@ export default function MyTicketsScreen() {
             <Text style={styles.sectionLabel}>{studentTicket.status === 'HELD' ? 'ON HOLD' : 'NOW IN QUEUE'}</Text>
 
             {/* Active Ticket Card */}
-            <View style={styles.activeCard}>
+            <Reveal><GlassSurface variant="tinted" style={styles.activeCard}>
               <View style={styles.activeHeader}>
                 <Text style={styles.activeTicketNumber}>{studentTicket.number}</Text>
                 <View style={styles.activeBadge}>
@@ -77,21 +86,18 @@ export default function MyTicketsScreen() {
               {studentTicket.status === 'HELD' && <Text style={styles.activeWindowText}>{studentTicket.reason} · Speak with staff when ready.</Text>}
 
               {/* View QR Ticket Action */}
-              <Pressable
+              <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="View QR Ticket"
-                style={({ pressed }) => [
-                  styles.viewQrContainer,
-                  pressed && styles.pressedEffect,
-                ]}
+                style={styles.viewQrContainer}
                 onPress={() => { setLastPreview(studentTicket); setQrTicketId(studentTicket.id); }}
               >
                 <Text style={styles.viewQrText}>View QR Ticket</Text>
-              </Pressable>
+              </TouchableOpacity>
               <TouchableOpacity style={styles.activityButton} accessibilityLabel="View queue progress" onPress={() => router.push('/live-status')}>
                 <Text style={styles.activityButtonText}>{studentTicket.status === 'WAITING' ? `${studentProgress?.peopleAhead ?? 0} ${studentProgress?.peopleAhead === 1 ? 'person' : 'people'} ahead · View progress` : 'View queue progress'}</Text>
               </TouchableOpacity>
-            </View>
+            </GlassSurface></Reveal>
           </View>
         )}
 
@@ -137,24 +143,24 @@ export default function MyTicketsScreen() {
             </View>
 
             {/* Ticket Status Card */}
-            <View style={styles.card}>
+            <GlassSurface style={styles.card}>
               <Text style={styles.ticketNumber}>{preview?.number}</Text>
               <Text style={styles.statusLabel}>
                 Status: <Text style={styles.statusValue}>{preview ? ticketStatusLabels[preview.status] : ''}</Text>
               </Text>
               <Text style={styles.windowText}>{preview?.window}</Text>
-            </View>
+            </GlassSurface>
 
             {/* QR Code Card */}
-            <View style={styles.cardCenter}>
+            <GlassSurface style={styles.cardCenter}>
               {preview && <View style={{ padding: 16, backgroundColor: '#fff', borderRadius: 12 }}><QRCode value={`queueease:v1:${preview.id}`} size={160} /></View>}
               <Text style={styles.qrSubtext}>
                 Show this ticket when called at {preview?.window.split(' - ')[0]}. Staff can scan it to confirm your arrival. Scanning does not skip the line.
               </Text>
-            </View>
+            </GlassSurface>
 
             {/* Dynamic Important Reminders Card */}
-            <View style={styles.card}>
+            <GlassSurface style={styles.card}>
               <Text style={styles.remindersTitle}>Important Reminders</Text>
 
               {registrarReminders.map((reminder) => (
@@ -164,19 +170,16 @@ export default function MyTicketsScreen() {
               ))}
 
               <Text style={styles.processingTime}>Staff will confirm the document release time.</Text>
-            </View>
+            </GlassSurface>
 
             {/* Cancel Queue Ticket Button */}
             {preview?.status === 'WAITING' && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.cancelButton,
-                  pressed && styles.cancelButtonPressed,
-                ]}
+              <TouchableOpacity
+                style={styles.cancelButton}
                 onPress={() => { setCancelReason(''); setCancelTicketId(studentTicket?.id ?? null); }}
               >
                 <Text style={styles.cancelButtonText}>Cancel Queue Ticket</Text>
-              </Pressable>
+              </TouchableOpacity>
             )}
           </ScrollView>
         </SafeAreaView>
@@ -189,8 +192,8 @@ export default function MyTicketsScreen() {
         animationType="fade"
         onRequestClose={() => setCancelTicketId(null)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ width: '100%', maxWidth: 380, flexGrow: 0 }} contentContainerStyle={styles.modalCard}>
             <Text style={styles.modalTitle}>Cancel Queue Ticket?</Text>
             <Text style={styles.modalSubtext}>
               Are you sure you want to cancel your ticket ({studentTicket?.number})? This action cannot be undone.
@@ -198,6 +201,7 @@ export default function MyTicketsScreen() {
             <TextInput
               style={styles.reasonInput}
               placeholder="Reason for cancellation"
+              accessibilityLabel="Reason for cancellation"
               placeholderTextColor={styles.historyDate.color}
               value={cancelReason}
               onChangeText={setCancelReason}
@@ -220,22 +224,23 @@ export default function MyTicketsScreen() {
             >
               <Text style={styles.modalKeepBtnText}>No, Keep my ticket</Text>
             </TouchableOpacity>
-          </View>
-        </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );
 }
 
 const createStyles = (colors: AppPalette) => StyleSheet.create({
-  activityButton: { alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 8, backgroundColor: colors.surfaceMuted, marginTop: 12 },
+  activityButton: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: translucent(colors.surface, 0.7), marginTop: 12 },
   activityButtonText: { color: colors.brandText, fontSize: 12, fontWeight: '700' },
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
-    paddingHorizontal: 20,
+    width: '100%', maxWidth: 720, alignSelf: 'center',
+    paddingHorizontal: 22,
     paddingTop: 24,
     paddingBottom: 24,
   },
@@ -243,12 +248,12 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.brandText,
+    fontSize: 30, letterSpacing: -0.8,
+    fontWeight: '700',
+    color: colors.textStrong,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 14, lineHeight: 21,
     color: colors.textMuted,
     marginTop: 2,
   },
@@ -269,10 +274,10 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   activeCard: {
     backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.success,
-    borderRadius: 16,
-    padding: 18,
+    borderWidth: 1,
+    borderColor: translucent(colors.brandText, 0.18),
+    borderRadius: 30,
+    padding: 24,
   },
   activeHeader: {
     flexDirection: 'row',
@@ -281,7 +286,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     marginBottom: 4,
   },
   activeTicketNumber: {
-    fontSize: 32,
+    fontSize: 46, letterSpacing: -1,
     fontWeight: 'bold',
     color: colors.brandText,
   },
@@ -289,7 +294,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     backgroundColor: colors.successSurface,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 20,
   },
   activeBadgeText: {
     fontSize: 11,
@@ -308,10 +313,11 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     marginBottom: 12,
   },
   viewQrContainer: {
-    alignSelf: 'flex-end',
-    paddingVertical: 12,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingVertical: 16,
     paddingHorizontal: 18,
-    borderRadius: 10,
+    borderRadius: 20,
     backgroundColor: colors.brand,
   },
   viewQrText: {
@@ -330,11 +336,11 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     marginBottom: 12,
   },
   historyCard: {
-    backgroundColor: colors.surfaceNeutral,
+    backgroundColor: translucent(colors.surface, 0.7),
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 22,
+    padding: 20,
     marginBottom: 12,
   },
   historyHeader: {
@@ -398,7 +404,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 26,
     padding: 20,
     marginBottom: 16,
   },
@@ -406,7 +412,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 16,
+    borderRadius: 26,
     padding: 24,
     alignItems: 'center',
     marginBottom: 16,
@@ -461,7 +467,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   cancelButton: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: 20,
     paddingVertical: 14,
     alignItems: 'center',
     backgroundColor: colors.surface,
@@ -486,9 +492,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   },
   modalCard: {
     width: '100%',
-    maxWidth: 340,
+    maxWidth: 380,
     backgroundColor: colors.surface,
-    borderRadius: 20,
+    borderRadius: 28,
     padding: 24,
     alignItems: 'center',
   },

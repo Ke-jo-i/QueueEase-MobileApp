@@ -1,4 +1,8 @@
 import { ActionButton, Field, FormPage, Notice } from '@/components/form';
+import { GlassSurface } from '@/components/glass-surface';
+import { Reveal } from '@/components/motion';
+import { useAppTheme } from '@/hooks/use-app-theme';
+import { Ionicons } from '@expo/vector-icons';
 import { request } from '@/data/api';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -6,6 +10,7 @@ import { View } from 'react-native';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const colors = useAppTheme();
   const [name, setName] = useState(''); const [login, setLogin] = useState(''); const [email, setEmail] = useState('');
   const [password, setPassword] = useState(''); const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [done, setDone] = useState(false);
@@ -18,13 +23,16 @@ export default function RegisterScreen() {
     finally { setBusy(false); }
   };
   return <FormPage title={done ? 'You’re registered' : 'Create your account'} subtitle={done ? 'Sign in to request your first queue ticket.' : 'Use your student ID. Staff accounts are created by the administrator.'}>
-    {done ? <ActionButton label="Go to Log In" onPress={() => router.replace('/login')} /> : <View style={{ gap: 16 }}>
+    {done ? <Reveal><GlassSurface style={{ borderRadius: 28, padding: 24, gap: 22 }}>
+      <View style={{ alignSelf: 'center', width: 72, height: 72, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.successSurface }}><Ionicons name="checkmark" size={34} color={colors.successStrong} /></View>
+      <ActionButton label="Go to Log In" onPress={() => router.replace('/login')} />
+    </GlassSurface></Reveal> : <Reveal><GlassSurface style={{ borderRadius: 28, padding: 22, gap: 19 }}>
       <Field label="Full name" value={name} onChangeText={setName} autoComplete="name" maxLength={80} />
       <Field label="Student ID" value={login} onChangeText={setLogin} autoCapitalize="none" autoCorrect={false} maxLength={40} />
       <Field label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" autoComplete="email" maxLength={160} />
       <Field label="Password (at least 10 characters)" value={password} onChangeText={setPassword} secureTextEntry autoComplete="new-password" />
-      <Field label="Confirm password" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" />
+      <Field label="Confirm password" value={confirm} onChangeText={setConfirm} secureTextEntry autoComplete="new-password" returnKeyType="go" onSubmitEditing={() => void submit()} />
       <Notice text={error} error /><ActionButton label="Create Account" busy={busy} onPress={() => void submit()} />
-    </View>}
+    </GlassSurface></Reveal>}
   </FormPage>;
 }

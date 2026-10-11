@@ -1,14 +1,19 @@
 import { StaffNav } from '@/components/staff-nav';
-import { MotionButton as TouchableOpacity } from '@/components/motion';
+import { MotionButton as TouchableOpacity, Reveal } from '@/components/motion';
 import { AppPalette } from '@/constants/app-colors';
-import { useThemedStyles } from '@/hooks/use-app-theme';
+import { useAppTheme, useThemedStyles } from '@/hooks/use-app-theme';
 import { useState } from 'react';
 import { useQueue } from '@/contexts/queue';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { GlassSurface } from '@/components/glass-surface';
 
 export default function StaffQueueListScreen() {
   const styles = useThemedStyles(createStyles);
+  const colors = useAppTheme();
+  const router = useRouter();
   const [serviceFilter, setServiceFilter] = useState('All Services');
   const { waiting, assignedWindow } = useQueue();
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
@@ -20,11 +25,13 @@ export default function StaffQueueListScreen() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.content}>
-        {/* Header Title */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Waiting Queue</Text>
-          <Text style={styles.subtitle}>{windowWaiting.length} Customers Waiting · {assignedWindow}</Text>
-        </View>
+        <Reveal style={styles.header}>
+          <TouchableOpacity accessibilityLabel="Back to queue" style={styles.backButton} onPress={() => router.dismissTo('/staff/dashboard')}>
+            <Ionicons name="arrow-back" size={21} color={colors.text} />
+          </TouchableOpacity>
+          <Text accessibilityRole="header" style={styles.title}>Waiting Queue</Text>
+          <Text style={styles.subtitle}>{windowWaiting.length} {windowWaiting.length === 1 ? 'student' : 'students'} waiting · {assignedWindow.replace(' - Registrar', '') || 'No window assigned'}</Text>
+        </Reveal>
 
         <ScrollView horizontal style={styles.filterScroll} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabContainer}>
           {services.map((service) => (
@@ -40,9 +47,13 @@ export default function StaffQueueListScreen() {
           ))}
         </ScrollView>
 
-        {/* Queue Items List */}
         <FlatList
-          ListEmptyComponent={<Text style={{ color: styles.subtitle.color, textAlign: 'center', padding: 24 }}>No students waiting at this window.</Text>}
+          contentContainerStyle={{ paddingBottom: 24 }}
+          ListEmptyComponent={<GlassSurface style={{ padding: 32, borderRadius: 28, alignItems: 'center', gap: 14 }}>
+            <View style={styles.emptyIcon}><Ionicons name="people-outline" size={30} color={colors.brandText} /></View>
+            <Text style={{ color: colors.text, textAlign: 'center', fontSize: 18, fontWeight: '600' }}>No students waiting at this window.</Text>
+            <Text style={{ color: colors.textMuted, textAlign: 'center', fontSize: 13, lineHeight: 20 }}>New tickets will appear here automatically.</Text>
+          </GlassSurface>}
           data={filteredTickets}
           keyExtractor={(item) => item.number}
           showsVerticalScrollIndicator={false}
@@ -73,7 +84,6 @@ export default function StaffQueueListScreen() {
         />
       </View>
 
-      {/* Bottom Navigation */}
       <StaffNav active="Queue" />
     </SafeAreaView>
   );
@@ -82,29 +92,36 @@ export default function StaffQueueListScreen() {
 const createStyles = (colors: AppPalette) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    paddingHorizontal: 22,
+    paddingTop: 22,
   },
   header: {
     marginBottom: 20,
   },
+  backButton: { width: 44, height: 44, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, marginBottom: 18 },
+  emptyIcon: { width: 64, height: 64, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.infoSurface },
   title: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.brandText,
+    fontSize: 34,
+    letterSpacing: -1,
+    fontWeight: '700',
+    color: colors.text,
   },
   subtitle: {
     fontSize: 13,
     color: colors.textMuted,
-    marginTop: 2,
+    marginTop: 6,
+    lineHeight: 20,
   },
   filterScroll: {
     flexGrow: 0,
-    maxHeight: 44,
+    maxHeight: 48,
     marginBottom: 20,
   },
   tabContainer: {
@@ -113,13 +130,18 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     gap: 10,
   },
   tabBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.surfaceMuted,
+    paddingVertical: 10,
+    borderRadius: 16,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   activeTabBtn: {
     backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
   tabText: {
     fontSize: 12,
@@ -133,31 +155,35 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: `${colors.surface}E8`,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 12,
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 14,
+    gap: 12,
   },
   cardInfo: {
     flex: 1,
   },
   ticketNumber: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: colors.brandText,
-    marginBottom: 4,
+    fontSize: 25,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.7,
+    color: colors.text,
+    marginBottom: 6,
   },
   serviceName: {
     fontSize: 12,
-    fontWeight: '600',
+    lineHeight: 18,
+    fontWeight: '400',
     color: colors.textMuted,
   },
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 12,
   },
   nextBadge: {
     backgroundColor: colors.successSurface,

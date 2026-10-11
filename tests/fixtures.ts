@@ -17,8 +17,10 @@ export const test = base.extend<{ apiUrl: string; connect: (context: BrowserCont
   },
   connect: async ({ apiUrl }, provide) => {
     await provide(async (context) => {
-      await context.route('**/localhost:4100/**', async (route) => {
-        const url = route.request().url().replace('http://localhost:4100', apiUrl);
+      await context.route(/^http:\/\/localhost:4100\/|\/api\//, async (route) => {
+        const requested = new URL(route.request().url());
+        const path = requested.pathname.startsWith('/api/') ? requested.pathname.slice(4) : requested.pathname;
+        const url = `${apiUrl}${path}${requested.search}`;
         const response = await route.fetch({ url, headers: { ...route.request().headers(), origin: new URL(apiUrl).origin } });
         await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': route.request().headers().origin ?? '*' } });
       });
@@ -37,5 +39,6 @@ export async function login(page: Page, role: 'student' | 'staff' | 'admin' = 's
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: role === 'student' ? 'Log In' : 'LOG IN AS STAFF', exact: true }).click();
   await expect(page.getByText(role === 'student' ? 'Registrar Services' : role === 'admin' ? 'Administration' : 'CURRENTLY SERVING', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('auth-transition')).toHaveCount(0);
 }
 export { expect };

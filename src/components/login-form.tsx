@@ -1,40 +1,91 @@
 import { ActionButton, Field, FormPage, Notice } from '@/components/form';
+import { GlassSurface } from '@/components/glass-surface';
+import { MotionButton, Reveal } from '@/components/motion';
 import { useSession, type Role } from '@/contexts/session';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { useIsFocused, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { demoLoginEnabled } from '@/constants/demo-mode';
 
 export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
-  const { signIn, quickSignIn } = useSession(); const router = useRouter();
+  const { signIn, quickSignIn, cancelSignIn } = useSession();
+  const router = useRouter();
+  const focused = useIsFocused();
   const colors = useAppTheme();
   const quickRoles: Role[] = portal === 'student' ? ['student'] : ['staff', 'admin'];
-  const [login, setLogin] = useState(''); const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const pending = useRef(false);
+  const requestId = useRef(0);
+
+  useEffect(() => {
+    if (!focused && pending.current) {
+      pending.current = false;
+      requestId.current++;
+      cancelSignIn();
+      setBusy(false);
+    }
+  }, [cancelSignIn, focused]);
+
+  useEffect(() => () => {
+    if (pending.current) {
+      pending.current = false;
+      requestId.current++;
+      cancelSignIn();
+    }
+  }, [cancelSignIn]);
+
   const submit = async (quickRole?: Role) => {
-    if (busy) return;
+    if (pending.current) return;
     if (!quickRole && (!login.trim() || !password)) { setError('Enter your ID or email and password.'); return; }
-    setBusy(true); setError('');
+    const id = ++requestId.current;
+    pending.current = true;
+    setBusy(true);
+    setError('');
+    Keyboard.dismiss();
     try {
-      const user = quickRole ? await quickSignIn(quickRole) : await signIn(portal, login, password);
-      router.replace(user.role === 'student' ? '/(student)/home' : user.role === 'admin' ? '/admin' : '/staff/dashboard');
-    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not sign in.'); }
-    finally { setBusy(false); }
+      if (quickRole) await quickSignIn(quickRole);
+      else await signIn(portal, login, password);
+      if (id !== requestId.current) return;
+      pending.current = false;
+      setPassword('');
+    } catch (failure) {
+      if (id === requestId.current) setError(failure instanceof Error ? failure.message : 'Could not sign in.');
+    } finally {
+      if (id === requestId.current) { pending.current = false; setBusy(false); }
+    }
   };
+
   return <FormPage title={portal === 'student' ? 'Welcome back' : 'Staff sign in'} subtitle={portal === 'student' ? 'Your place in line, wherever you are on campus.' : 'Sign in with your registrar or administrator account.'}>
-    <View style={{ gap: 18 }}>
-      {demoLoginEnabled && <View style={{ gap: 8 }}>
-        <Text style={{ color: colors.textMuted, fontSize: 13, fontWeight: '600' }}>Quick login · demo accounts</Text>
-        {quickRoles.map((role) => <ActionButton key={role} label={`Quick login as ${role[0].toUpperCase()}${role.slice(1)}`} secondary disabled={busy}
-          onPress={() => void submit(role)} />)}
-      </View>}
-      <Field label={portal === 'student' ? 'Student ID or email' : 'Staff ID or email'} placeholder={portal === 'student' ? 'Enter your Student ID or Email' : 'Enter your Staff ID or Email'} value={login} onChangeText={setLogin} autoCapitalize="none" autoCorrect={false} autoComplete="username" />
-      <Field label="Password" placeholder="Enter your password" value={password} onChangeText={setPassword} secureTextEntry autoComplete="current-password" onSubmitEditing={() => void submit()} returnKeyType="go" />
+    {demoLoginEnabled && <Reveal><GlassSurface variant="tinted" style={{ borderRadius: 24, padding: 18, gap: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Ionicons name="flash-outline" size={16} color={colors.textMuted} />
+        <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: '600' }}>Quick login · demo accounts</Text>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
+        {quickRoles.map(role => <MotionButton key={role} accessibilityLabel={`Quick login as ${role[0].toUpperCase()}${role.slice(1)}`} disabled={busy} onPress={() => void submit(role)}
+          style={{ flex: 1, minHeight: 54, borderRadius: 17, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceNeutral, paddingHorizontal: 14, paddingVertical: 12, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.45 : 1 }}>
+          <Ionicons name={role === 'student' ? 'ticket-outline' : role === 'staff' ? 'people-outline' : 'options-outline'} size={20} color={role === 'staff' ? colors.successStrong : role === 'admin' ? colors.info : colors.brandText} />
+          <Text style={{ color: colors.text, fontWeight: '600', fontSize: 14 }}>{role[0].toUpperCase()}{role.slice(1)}</Text>
+          <Ionicons name="arrow-forward" size={15} color={colors.textMuted} />
+        </MotionButton>)}
+      </View>
+    </GlassSurface></Reveal>}
+    <Reveal><GlassSurface style={{ borderRadius: 28, padding: 22, gap: 20 }}>
+      <Field label={portal === 'student' ? 'Student ID or email' : 'Staff ID or email'} placeholder={portal === 'student' ? 'Your student ID or email' : 'Your staff ID or email'} value={login} onChangeText={setLogin} editable={!busy} autoCapitalize="none" autoCorrect={false} autoComplete="username" returnKeyType="next" />
+      <Field label="Password" placeholder="Your password" value={password} onChangeText={setPassword} editable={!busy} secureTextEntry autoComplete="current-password" onSubmitEditing={() => void submit()} returnKeyType="go" />
       <Notice text={error} error />
       <ActionButton label={portal === 'student' ? 'Log In' : 'LOG IN AS STAFF'} busy={busy} onPress={() => void submit()} />
-      <ActionButton label="Forgot password?" secondary onPress={() => router.push('/forgot-password')} />
-      {portal === 'student' && <ActionButton label="Create an account" secondary onPress={() => router.push('/register')} />}
-    </View>
+      <MotionButton onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'center', padding: 8 }}><Text style={{ fontSize: 14, color: colors.brandText, fontWeight: '600' }}>Forgot password?</Text></MotionButton>
+    </GlassSurface></Reveal>
+    {portal === 'student' && <MotionButton accessibilityLabel="Create an account" onPress={() => router.push('/register')} style={{ paddingVertical: 10, alignItems: 'center', gap: 5 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 13 }}>New to Queue Ease?</Text>
+      <Text style={{ color: colors.brandText, fontSize: 15, fontWeight: '700' }}>Create an account</Text>
+    </MotionButton>}
+
   </FormPage>;
 }

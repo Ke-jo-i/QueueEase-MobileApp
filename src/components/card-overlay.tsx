@@ -34,7 +34,7 @@ export function CardOverlay({ open, onClose, children }: CardOverlayProps) {
   }, [open, shown, progress, finishClose]);
   const frame = useAnimatedStyle(() => ({ borderTopLeftRadius: 28 * (1 - progress.get()), borderTopRightRadius: 28 * (1 - progress.get()), transform: [{ translateY: viewport.height * (1 - progress.get()) }, { scale: 0.965 + progress.get() * 0.035 }] }));
   const backdrop = useAnimatedStyle(() => ({ opacity: 0.28 * progress.get() }));
-  return <Modal visible={mounted} transparent animationType="none" statusBarTranslucent navigationBarTranslucent onShow={() => setShown(true)} onRequestClose={onClose}>
+  return <Modal visible={mounted} hardwareAccelerated transparent animationType="none" statusBarTranslucent navigationBarTranslucent onShow={() => setShown(true)} onRequestClose={onClose}>
     <View style={{ flex: 1, overflow: 'hidden' }} onLayout={event => {
       const { width, height } = event.nativeEvent.layout;
       setViewport(previous => previous.width === width && previous.height === height ? previous : { width, height });

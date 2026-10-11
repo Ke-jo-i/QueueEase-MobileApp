@@ -5,7 +5,7 @@ import { promisify } from 'node:util';
 import { registrarServices } from '../src/constants/registrar-services';
 import { getServiceWindow, registrarWindows } from '../src/constants/service-windows';
 import { applyQueueCommand, type Ticket, type QueueCommand, type QueueSnapshot } from '../src/data/queue-model';
-import type { AdminAccount, AdminAudit, AdminData, AdminHistoryPage, AdminAuditPage, AdminService } from '../src/data/admin-model';
+import type { AdminAccount, AdminAudit, AdminData, AdminOverviewData, AdminHistoryPage, AdminAuditPage, AdminService } from '../src/data/admin-model';
 
 const derive = promisify(scrypt);
 export type Role = 'student' | 'staff' | 'admin';
@@ -148,10 +148,16 @@ export class Store {
   snapshot(): QueueSnapshot {
     const state = this.db.prepare('SELECT * FROM queue_state WHERE id=1').get()!;
     const events = this.db.prepare('SELECT * FROM ticket_events ORDER BY rowid').all();
+    const timelines = new Map<string, typeof events>();
+    for (const event of events) {
+      const key = String(event.ticket_id);
+      const timeline = timelines.get(key) ?? [];
+      timeline.push(event); timelines.set(key, timeline);
+    }
     const tickets = this.db.prepare('SELECT * FROM tickets ORDER BY sequence').all().map((row) => ({
       id: row.id, sequence: row.sequence, number: row.number, service: row.service, window: row.window, status: row.status,
       ownerId: row.owner_id, createdAt: row.created_at, queueOrder: row.queue_order, date: row.finished_at ?? undefined, reason: row.reason ?? undefined,
-      events: events.filter((event) => event.ticket_id === row.id).map((event) => ({ id: event.id, type: event.type, at: event.at, window: event.window, reason: event.reason ?? undefined })),
+      events: (timelines.get(String(row.id)) ?? []).map((event) => ({ id: event.id, type: event.type, at: event.at, window: event.window, reason: event.reason ?? undefined })),
     })) as Ticket[];
     return { version: 1, tickets, nextNumber: Number(state.next_number), nextQueueOrder: Number(state.next_order), assignedWindow: registrarWindows[0] };
   }
@@ -262,31 +268,40 @@ export class Store {
       action: String(row.action), target: String(row.target), details: JSON.parse(String(row.details)), at: String(row.at),
     }));
   }
-  adminView(): AdminData {
+  adminOverview(): AdminOverviewData {
     const now = Date.now();
     const accounts = this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
       (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ORDER BY a.created_at`).all(now) as AdminAccount[];
-    const records = this.readAdminRecords();
     const today = day(new Date(now).toISOString());
-    const completed = records.filter(ticket => ticket.status === 'COMPLETED' && ticket.date && day(ticket.date) === today);
+    const start = new Date(`${today}T00:00:00`);
+    const end = new Date(start); end.setDate(end.getDate() + 1);
+    const bounds = [start.toISOString(), end.toISOString()];
+    const completed = this.db.prepare("SELECT id,created_at FROM tickets WHERE status='COMPLETED' AND finished_at>=? AND finished_at<?").all(...bounds);
+    const events = this.db.prepare("SELECT e.* FROM ticket_events e JOIN tickets t ON t.id=e.ticket_id WHERE t.status='COMPLETED' AND t.finished_at>=? AND t.finished_at<? ORDER BY e.rowid").all(...bounds);
+    const timelines = new Map<string, typeof events>();
+    for (const event of events) {
+      const key = String(event.ticket_id);
+      const timeline = timelines.get(key) ?? [];
+      timeline.push(event); timelines.set(key, timeline);
+    }
     const waits: number[] = [];
     const durations: number[] = [];
     for (const ticket of completed) {
-      const firstCall = ticket.events.find(event => event.type === 'CALLED');
-      const lastCompletion = ticket.events.findLastIndex(event => event.type === 'COMPLETED');
-      const finalCall = ticket.events.slice(0, lastCompletion).findLast(event => event.type === 'CALLED');
-      if (firstCall) waits.push(Math.max(0, Date.parse(firstCall.at) - Date.parse(ticket.createdAt)));
-      if (finalCall && lastCompletion >= 0) durations.push(Math.max(0, Date.parse(ticket.events[lastCompletion].at) - Date.parse(finalCall.at)));
+      const timeline = timelines.get(String(ticket.id)) ?? [];
+      const firstCall = timeline.find(event => event.type === 'CALLED');
+      const lastCompletion = timeline.findLastIndex(event => event.type === 'COMPLETED');
+      const finalCall = timeline.slice(0, lastCompletion).findLast(event => event.type === 'CALLED');
+      if (firstCall) waits.push(Math.max(0, Date.parse(String(firstCall.at)) - Date.parse(String(ticket.created_at))));
+      if (finalCall && lastCompletion >= 0) durations.push(Math.max(0, Date.parse(String(timeline[lastCompletion].at)) - Date.parse(String(finalCall.at))));
     }
-    const count = (status: string) => records.filter(ticket => ticket.status === status).length;
-    const finishedToday = (status: string) => records.filter(ticket => ticket.status === status && ticket.date && day(ticket.date) === today).length;
+    const loads = this.db.prepare(`SELECT window,status,COUNT(*) AS count FROM tickets WHERE status IN ('WAITING','SERVING','HELD') OR (finished_at>=? AND finished_at<?) GROUP BY window,status`).all(...bounds);
+    const count = (status: string, window?: string) => loads.filter(row => row.status === status && (!window || row.window === window)).reduce((total, row) => total + Number(row.count), 0);
+    const state = this.db.prepare('SELECT accepting,revision FROM queue_state WHERE id=1').get()!;
     return {
-      accounts, services: this.services() as AdminService[],
-      acceptingTickets: !!this.db.prepare('SELECT accepting FROM queue_state WHERE id=1').get()!.accepting,
-      records, counts: this.db.prepare('SELECT status,COUNT(*) AS count FROM tickets GROUP BY status').all() as AdminData['counts'],
+      revision: Number(state.revision), acceptingTickets: !!state.accepting,
       statistics: {
-        date: today, requestedToday: records.filter(ticket => day(ticket.createdAt) === today).length,
-        completedToday: completed.length, cancelledToday: finishedToday('CANCELLED'), noShowsToday: finishedToday('NO_SHOW'),
+        date: today, requestedToday: Number(this.db.prepare('SELECT COUNT(*) AS count FROM tickets WHERE created_at>=? AND created_at<?').get(...bounds)!.count),
+        completedToday: completed.length, cancelledToday: count('CANCELLED'), noShowsToday: count('NO_SHOW'),
         waiting: count('WAITING'), serving: count('SERVING'), held: count('HELD'), activeAccounts: accounts.filter(account => account.active).length,
         staffedWindows: accounts.filter(account => account.active && account.role === 'staff' && account.window).length,
         activeSessions: accounts.filter(account => account.active).reduce((total, account) => total + account.activeSessions, 0),
@@ -294,11 +309,18 @@ export class Store {
       },
       windows: registrarWindows.map(window => ({
         window, staff: accounts.find(account => account.active && account.role === 'staff' && account.window === window) ?? null,
-        waiting: records.filter(ticket => ticket.window === window && ticket.status === 'WAITING').length,
-        serving: records.filter(ticket => ticket.window === window && ticket.status === 'SERVING').length,
-        held: records.filter(ticket => ticket.window === window && ticket.status === 'HELD').length,
-        completedToday: completed.filter(ticket => ticket.window === window).length,
+        waiting: count('WAITING', window), serving: count('SERVING', window), held: count('HELD', window), completedToday: count('COMPLETED', window),
       })),
+    };
+  }
+  adminView(): AdminData {
+    const now = Date.now();
+    return {
+      ...this.adminOverview(),
+      accounts: this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
+        (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ORDER BY a.created_at`).all(now) as AdminAccount[],
+      services: this.services() as AdminService[], records: this.readAdminRecords(),
+      counts: this.db.prepare('SELECT status,COUNT(*) AS count FROM tickets GROUP BY status').all() as AdminData['counts'],
       audit: this.readAdminAudit(),
     };
   }

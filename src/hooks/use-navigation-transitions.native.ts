@@ -21,11 +21,11 @@ export function useTabTransitions() {
   };
 }
 
-export function useVerticalTransitions(_handoff = false): NativeStackNavigationOptions {
+export function useVerticalTransitions(handoff = false): NativeStackNavigationOptions {
   const colors = useAppTheme();
   const reduced = useReducedMotion();
   return {
-    headerShown: false, animation: reduced ? 'none' : 'slide_from_bottom', animationDuration: 360,
+    headerShown: false, animation: reduced || handoff ? 'none' : 'slide_from_bottom', animationDuration: 360,
     contentStyle: { backgroundColor: colors.surfaceSubtle }, gestureDirection: 'vertical',
     gestureEnabled: !reduced, fullScreenGestureEnabled: false,
   };

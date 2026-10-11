@@ -20,7 +20,7 @@ export function SceneResponses({ children }: PropsWithChildren) {
     const count = previous.key === key && at - previous.at < 4000 ? previous.count + 1 : 1;
     sequence.current = { key, at, count: count % 20 };
     if (count !== 20) return;
-    if (key === 'profile') {
+    if (key === 'profile' || key === 'identity') {
       reversed.current = !reversed.current;
       angle.set(reduced ? reversed.current ? 180 : 0 : withTiming(reversed.current ? 180 : 0, { duration: 650, easing: Easing.bezier(0.34, 1.08, 0.4, 1) }));
     } else {

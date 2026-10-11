@@ -20,6 +20,30 @@ async function fixture() {
   return { store, student, other, staff, admin, command };
 }
 
+test('student cancellation removes waiting and held tickets and protects later bookings from stale requests', async () => {
+  const { store, student, other, staff, command } = await fixture();
+  try {
+    const first = command(student, { type: 'BOOK', service: 'Academic Records Request' });
+    command(other, { type: 'BOOK', service: 'Academic Records Request' });
+    command(student, { type: 'CANCEL', reason: 'Changed plans', expectedTicketId: first.ticketId });
+    assert.equal(store.view(other).tickets.filter(ticket => ticket.status === 'WAITING').length, 1);
+    assert.equal(store.adminOverview().statistics.waiting, 1);
+    const next = command(student, { type: 'BOOK', service: 'Certificate of Grades' });
+    assert.throws(() => command(student, { type: 'CANCEL', reason: 'Late request', expectedTicketId: first.ticketId }), /changed/);
+    assert.equal(store.view(student).tickets.find(ticket => ticket.id === next.ticketId)?.status, 'WAITING');
+    command(student, { type: 'CANCEL', reason: 'Changed plans', expectedTicketId: next.ticketId });
+    command(staff, { type: 'CALL_NEXT' });
+    const serving = store.view(staff).tickets.find(ticket => ticket.status === 'SERVING')!;
+    assert.throws(() => command(other, { type: 'CANCEL', reason: 'Already called', expectedTicketId: serving.id }), /changed/);
+    command(staff, { type: 'ACT', action: 'HELD', reason: 'Missing document', expectedTicketId: serving.id });
+    command(other, { type: 'CANCEL', reason: 'Returning later', expectedTicketId: serving.id });
+    assert.equal(store.adminOverview().statistics.held, 0);
+    const cancelled = store.view(other).tickets.find(ticket => ticket.id === serving.id)!;
+    assert.equal(cancelled.status, 'CANCELLED');
+    assert.equal(cancelled.events.at(-1)?.reason, 'Returning later');
+  } finally { store.close(); }
+});
+
 test('password verification, portal roles, logout and password change revoke sessions', async () => {
   const { store, student } = await fixture();
   try {

@@ -85,7 +85,7 @@ test('administrator pauses bookings and creates staff accounts', async ({ page }
   await page.screenshot({ path: '.local/screenshots/administrator.png', fullPage: true, animations: 'disabled' });
   await page.getByRole('button', { name: 'Pause new tickets', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Open queue', exact: true })).toBeVisible();
-  await page.getByRole('radio', { name: 'Accounts', exact: true }).click();
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
   await page.getByRole('button', { name: 'Create staff account', exact: true }).click();
   await page.getByLabel('Staff name', { exact: true }).fill('Second Staff'); await page.getByLabel('Staff ID', { exact: true }).fill('staff2');
   await page.getByLabel('Staff email', { exact: true }).fill('staff2@example.test'); await page.getByLabel('Initial password (at least 10 characters)', { exact: true }).fill(password);

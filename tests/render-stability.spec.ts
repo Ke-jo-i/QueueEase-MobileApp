@@ -1,6 +1,6 @@
 import { test, expect, login } from './fixtures';
 
-test('unchanged queue polling leaves the student scene idle', async ({ page }) => {
+for (const role of ['student', 'admin'] as const) test(`unchanged polling leaves the ${role} scene idle`, async ({ page }) => {
   await page.addInitScript(() => {
     const samples: number[] = [];
     Reflect.set(window, '__queueRenderSamples', samples);
@@ -11,8 +11,8 @@ test('unchanged queue polling leaves the student scene idle', async ({ page }) =
     });
   });
   let polls = 0;
-  page.on('response', response => { if (new URL(response.url()).pathname.endsWith('/queue')) polls++; });
-  await login(page);
+  page.on('response', response => { if (new URL(response.url()).pathname.endsWith(role === 'admin' ? '/admin/overview' : '/queue')) polls++; });
+  await login(page, role);
   await expect.poll(() => polls).toBeGreaterThan(0);
   expect(await page.evaluate(() => Reflect.get(window, '__queueRenderSamples').length)).toBeGreaterThan(0);
   await page.waitForTimeout(1200);

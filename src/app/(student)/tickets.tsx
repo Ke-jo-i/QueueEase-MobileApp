@@ -9,6 +9,7 @@ import { useSession } from '@/contexts/session';
 import { ticketStatusLabels } from '@/constants/queue-labels';
 import { TicketActivity } from '@/components/ticket-activity';
 import { CardOverlay } from '@/components/card-overlay';
+import { TicketScene } from '@/components/ticket-scene';
 import { Disclosure } from '@/components/disclosure';
 import { Notice } from '@/components/form';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -53,7 +54,7 @@ export default function MyTicketsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="student-tickets">
+    <TicketScene><SafeAreaView style={styles.container} edges={['top', 'left', 'right']} testID="student-tickets">
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.header}>
@@ -221,7 +222,7 @@ export default function MyTicketsScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView></TicketScene>
   );
 }
 

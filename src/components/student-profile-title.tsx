@@ -23,7 +23,7 @@ export function StudentProfileTitle() {
   const title = <Text accessibilityRole="header" selectable={false} style={{ fontSize: 26, fontWeight: '800', color: colors.text }}>Student Profile</Text>;
   const active = focused && foreground;
   return <>
-    {active ? <Pressable delayLongPress={10000} onPress={() => respond('profile')} onLongPress={() => setOpen(true)} style={{ alignSelf: 'flex-start' }}>{title}</Pressable> : title}
+    {active ? <Pressable delayLongPress={10000} onPress={() => respond('identity')} onLongPress={() => setOpen(true)} style={{ alignSelf: 'flex-start' }}>{title}</Pressable> : title}
     {open && active && <ProfileMedia onClose={close} />}
   </>;
 }

@@ -1,4 +1,5 @@
 import { GlassSurface, translucent } from '@/components/glass-surface';
+import { BrandMark } from '@/components/brand-mark';
 import { type AuthTransition, useSession } from '@/contexts/session';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -94,7 +95,7 @@ function AuthTransitionOverlay({ transition, progress, reduced }: { transition: 
       <Animated.View style={[styles.opening, { borderColor: translucent(accent, 0.42), backgroundColor: translucent(accent, 0.04), borderRadius: transition.role === 'admin' ? 66 : 40 }, opening]} />
       <Animated.View style={[styles.emblem, emblem]}>
         {transition.role === 'student' ? <GlassSurface style={[styles.ticket, { backgroundColor: colors.infoSurface }]}>
-          <Ionicons name="ticket-outline" size={35} color={accent} />
+          <BrandMark size={45} color={accent} />
           <View style={[styles.ticketLine, { backgroundColor: translucent(accent, 0.35) }]} />
           <View style={[styles.ticketLine, { width: 26, backgroundColor: translucent(accent, 0.18) }]} />
         </GlassSurface> : transition.role === 'staff' ? <View style={styles.counter}>

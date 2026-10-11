@@ -173,11 +173,20 @@ test('admin history and audit HTTP endpoints require live administrator sessions
   try {
     await action({ type: 'SET_ACCEPTING', accepting: false });
     const studentSession = await store.login({ login: student.login, password, portal: 'student' });
-    for (const path of ['/admin/history', '/admin/audit']) {
+    for (const path of ['/admin/overview', '/admin/history', '/admin/audit']) {
       assert.equal((await fetch(`${url}${path}`)).status, 401);
       assert.equal((await fetch(`${url}${path}`, { headers: { Authorization: `Bearer ${studentSession.token}` } })).status, 403);
     }
     const headers = { Authorization: `Bearer ${session.token}` };
+    const overview = await fetch(`${url}/admin/overview`, { headers });
+    assert.equal(overview.status, 200);
+    const summary = await overview.json();
+    assert.deepEqual(summary.statistics, store.adminView().statistics);
+    assert.deepEqual(summary.windows, store.adminView().windows);
+    assert.equal(summary.acceptingTickets, false);
+    assert.equal(summary.records, undefined);
+    assert.equal(summary.audit, undefined);
+    assert.equal((await fetch(`${url}/admin/overview`, { method: 'POST', headers })).status, 405);
     const auditResponse = await fetch(`${url}/admin/audit?action=SET_ACCEPTING&pageSize=1`, { headers });
     assert.equal(auditResponse.status, 200);
     const audit = await auditResponse.json();

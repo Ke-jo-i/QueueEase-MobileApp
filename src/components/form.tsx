@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MotionButton, Reveal, settleSpring } from './motion';
 import { KeyboardFieldContext, KeyboardScrollView } from './keyboard-scroll-view';
 import { GlassSurface, translucent } from './glass-surface';
+import { BrandMark } from './brand-mark';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 export function FormPage({ title, subtitle, children, back = true, maxWidth = 520 }: PropsWithChildren<{ title: string; subtitle?: string; back?: boolean; maxWidth?: number }>) {
@@ -17,7 +18,7 @@ export function FormPage({ title, subtitle, children, back = true, maxWidth = 52
         if (router.canGoBack()) router.back();
         else router.replace('/landing');
       }} style={{ alignSelf: 'flex-start', borderRadius: 24, padding: 12, backgroundColor: translucent(colors.surface, 0.7) }}><Ionicons name="chevron-back" size={22} color={colors.text} /></MotionButton>}
-      <Reveal style={{ gap: 12 }}><GlassSurface variant="tinted" style={{ width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><Ionicons name="ticket-outline" size={29} color={colors.brandText} /></GlassSurface>
+      <Reveal style={{ gap: 12 }}><GlassSurface variant="tinted" style={{ width: 58, height: 58, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}><BrandMark size={37} color={colors.brandText} /></GlassSurface>
         <Text style={{ fontSize: 13, fontWeight: '600', color: colors.brandText }}>Queue Ease</Text>
         <Text accessibilityRole="header" style={{ fontSize: 36, lineHeight: 42, letterSpacing: -1.2, fontWeight: '700', color: colors.textStrong }}>{title}</Text>
         {!!subtitle && <Text style={{ fontSize: 15, lineHeight: 23, color: colors.textMuted }}>{subtitle}</Text>}

@@ -48,14 +48,18 @@ export type AdminWindow = {
   completedToday: number;
 };
 
-export type AdminData = {
-  accounts: AdminAccount[];
-  services: AdminService[];
+export type AdminOverviewData = {
+  revision: number;
   acceptingTickets: boolean;
-  records: Ticket[];
-  counts: { status: string; count: number }[];
   statistics: AdminStatistics;
   windows: AdminWindow[];
+};
+
+export type AdminData = AdminOverviewData & {
+  accounts: AdminAccount[];
+  services: AdminService[];
+  records: Ticket[];
+  counts: { status: string; count: number }[];
   audit: AdminAudit[];
 };
 

@@ -53,10 +53,10 @@ function QueueSession({ children }: PropsWithChildren) {
     }
     setConnected(true);
   }, []);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (showLoading = true) => {
     if (!token || role === 'admin') return;
     const version = generation.current;
-    if (revision.current < 0) setLoading(true);
+    if (showLoading && revision.current < 0) setLoading(true);
     try {
       const value = await request<QueueView>('/queue', token);
       if (active.current && version === generation.current) accept(value);
@@ -72,13 +72,14 @@ function QueueSession({ children }: PropsWithChildren) {
     generation.current++; active.current = true;
     if (!token || role === 'admin') return;
     let stopped = false;
+    let initial = true;
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
-      if (AppState.currentState !== 'background') await refresh();
+      if (AppState.currentState !== 'background') { await refresh(initial); initial = false; }
       if (!stopped) timer = setTimeout(poll, 2000);
     };
     timer = setTimeout(poll, 0);
-    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void refresh(); });
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void refresh(false); });
     return () => { stopped = true; active.current = false; clearTimeout(timer); listener.remove(); };
   }, [token, role, refresh]);
 

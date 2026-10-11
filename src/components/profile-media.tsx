@@ -18,7 +18,7 @@ export function ProfileMedia({ onClose }: { onClose: () => void }) {
   useEventListener(player, 'playToEnd', close);
   useEffect(() => { if (shown && status === 'readyToPlay') player.play(); }, [shown, status, player]);
   useEffect(() => () => { if (Platform.OS === 'web') player.pause(); }, [player]);
-  return <Modal visible animationType="fade" presentationStyle="fullScreen" onRequestClose={close} onShow={() => setShown(true)}>
+  return <Modal visible hardwareAccelerated animationType="fade" presentationStyle="fullScreen" onRequestClose={close} onShow={() => setShown(true)}>
     <StatusBar style="light" />
     <SafeAreaView style={styles.container}>
       <View style={styles.toolbar}>

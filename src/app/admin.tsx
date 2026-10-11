@@ -1,4 +1,9 @@
-import { ActionButton, Field, FormPage, Notice } from '@/components/form';
+import { ActionButton, Field, Notice } from '@/components/form';
+import { AdminShell } from '@/components/admin-shell';
+import { AdminOverview } from '@/components/admin-overview';
+import { CardOverlay } from '@/components/card-overlay';
+import { StateScreen } from '@/components/state-screen';
+import { KeyboardScrollView } from '@/components/keyboard-scroll-view';
 import { AdminChoices, AdminPager, AdminPanel, AdminSelect } from '@/components/admin-controls';
 import { DarkModeToggle } from '@/components/dark-mode-toggle';
 import { Disclosure } from '@/components/disclosure';
@@ -10,12 +15,13 @@ import { TicketActivity } from '@/components/ticket-activity';
 import { registrarWindows } from '@/constants/service-windows';
 import { useSession } from '@/contexts/session';
 import { ApiError, request } from '@/data/api';
-import type { AdminAccount, AdminAuditPage, AdminData, AdminHistoryPage, AdminService } from '@/data/admin-model';
+import type { AdminAccount, AdminAuditPage, AdminData, AdminOverviewData, AdminHistoryPage, AdminService } from '@/data/admin-model';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Section = 'Overview' | 'Accounts' | 'Services' | 'Records' | 'Activity';
 type Act = (body: Record<string, unknown>) => Promise<boolean>;
@@ -229,6 +235,8 @@ export default function AdminScreen() {
   const { token, user, signOut, expire } = useSession();
   const colors = useAppTheme();
   const [data, setData] = useState<AdminData | null>(null);
+  const dataRef = useRef(data);
+  useEffect(() => { dataRef.current = data; }, [data]);
   const [section, setSection] = useState<Section>('Overview');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -236,6 +244,7 @@ export default function AdminScreen() {
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -247,18 +256,36 @@ export default function AdminScreen() {
     if (value instanceof ApiError && value.status === 401) expire();
     else setError(value instanceof Error ? value.message : 'Could not complete this action.');
   }, [expire]);
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (overview = false) => {
     if (mutation.current) return;
     const version = ++generation.current;
+    if (!dataRef.current && !overview) setError('');
     try {
-      const result = await request<AdminData>('/admin', token);
-      if (mounted.current && generation.current === version) { setData(result); setError(''); }
+      if (overview && dataRef.current) {
+        const result = await request<AdminOverviewData>('/admin/overview', token);
+        if (mounted.current && generation.current === version) {
+          setData(previous => {
+            if (!previous) return previous;
+            const { revision, acceptingTickets, statistics, windows } = previous;
+            return JSON.stringify({ revision, acceptingTickets, statistics, windows }) === JSON.stringify(result) ? previous : { ...previous, ...result };
+          });
+          setError('');
+        }
+      } else {
+        const result = await request<AdminData>('/admin', token);
+        if (mounted.current && generation.current === version) { setData(result); setError(''); }
+      }
     } catch (value) { if (mounted.current && generation.current === version) failure(value); }
   }, [token, failure]);
   useFocusEffect(useCallback(() => {
-    void refresh();
-    const timer = section === 'Overview' ? setInterval(() => void refresh(), 15000) : undefined;
-    return () => { if (timer) clearInterval(timer); generation.current++; };
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async (initial = false) => {
+      if (AppState.currentState !== 'background') await refresh(!initial);
+      if (!stopped && section === 'Overview') timer = setTimeout(() => void poll(), 2000);
+    };
+    void poll(true);
+    return () => { stopped = true; clearTimeout(timer); generation.current++; };
   }, [refresh, section]));
   const act: Act = async body => {
     if (mutation.current) return false;
@@ -292,36 +319,20 @@ export default function AdminScreen() {
     }
     finally { mutation.current = false; if (mounted.current) setBusy(false); }
   };
-  const stats = data?.statistics;
-  return <FormPage title="Administration" back={false} maxWidth={900}>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 2 }}>
-      <AdminChoices label="Administration section" value={section} options={sections.map(value => ({ value, label: value }))} disabled={busy} onChange={value => { setSection(value); setError(''); setNotice(''); setActionError(null); }} />
-    </ScrollView>
-    <Notice text={error} error /><Notice text={notice} />
-    {!data && !error && <ActivityIndicator accessibilityLabel="Loading administration" color={colors.brandText} />}
-    {data && section === 'Overview' && <>
-      <AdminPanel title={data.acceptingTickets ? 'Accepting new tickets' : 'New tickets paused'}>
-        <Notice text={actionError?.type === 'SET_ACCEPTING' ? actionError.message : ''} error />
-        <ActionButton label={data.acceptingTickets ? 'Pause new tickets' : 'Open queue'} disabled={busy} onPress={() => void act({ type: 'SET_ACCEPTING', accepting: !data.acceptingTickets })} />
-      </AdminPanel>
-      {stats && <AdminPanel title="Today">
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>{[
-          ['Requested', stats.requestedToday], ['Completed', stats.completedToday], ['Cancelled', stats.cancelledToday], ['No-show', stats.noShowsToday],
-          ['Waiting', stats.waiting], ['Serving', stats.serving], ['Held', stats.held], ['Active accounts', stats.activeAccounts],
-          ['Staffed windows', stats.staffedWindows], ['Active sessions', stats.activeSessions],
-        ].map(([label, count]) => <View key={String(label)} style={{ minWidth: 110, flexGrow: 1, gap: 5 }}><Text style={{ color: colors.textStrong, fontSize: 27, fontWeight: '700', fontVariant: ['tabular-nums'] }}>{count}</Text><Text style={{ color: colors.textMuted, fontSize: 12 }}>{label}</Text></View>)}</View>
-        <Text style={{ color: colors.textMuted, fontSize: 13 }}>Average wait: {stats.averageWaitMinutes === null ? '—' : `${stats.averageWaitMinutes} min`} · Service: {stats.averageServiceMinutes === null ? '—' : `${stats.averageServiceMinutes} min`}</Text>
-      </AdminPanel>}
-      <AdminPanel title="Service windows">{data.windows.map(window => <View key={window.window} style={{ gap: 7, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.borderSubtle }}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}><Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{windowLabel(window.window)}</Text><Text style={{ color: colors.textMuted, fontSize: 13, flexShrink: 1 }}>{window.staff?.name ?? 'Unassigned'}</Text></View>
-        <Text style={{ color: colors.textMuted, fontSize: 12 }}>{window.waiting} waiting · {window.serving} serving · {window.held} held · {window.completedToday} completed today</Text>
-      </View>)}</AdminPanel>
-    </>}
+  const reload = () => { setRevision(value => value + 1); void refresh(); };
+  return <AdminShell section={section} name={data?.accounts.find(account => account.id === user?.id)?.name ?? user?.name} busy={busy} onRefresh={reload} onSettings={() => setSettingsOpen(true)} onSignOut={() => { if (!mutation.current) void signOut(); }}
+    onSelect={value => { const next = sections.find(item => item === value); if (next) { setSection(next); setError(''); setNotice(''); setActionError(null); } }}>
+    <Notice text={data ? error : ''} error /><Notice text={notice} />
+    {!data && <StateScreen compact loading={!error} title={error ? 'Administration is unavailable' : 'Loading administration'} message={error || undefined} onRetry={error ? reload : undefined} />}
+    {data && section === 'Overview' && <AdminOverview data={data} busy={busy} error={actionError?.type === 'SET_ACCEPTING' ? actionError.message : ''} toggle={() => void act({ type: 'SET_ACCEPTING', accepting: !data.acceptingTickets })} />}
     {data && section === 'Accounts' && <Accounts data={data} ownId={user?.id} busy={busy} act={act} error={actionError} />}
     {data && section === 'Services' && <Services services={data.services} busy={busy} act={act} error={actionError} />}
     {data && section === 'Records' && <Records services={data.services} token={token} expire={expire} revision={revision} />}
     {data && section === 'Activity' && <Activity token={token} expire={expire} revision={revision} />}
-    <ActionButton label="Refresh administration" secondary disabled={busy} onPress={() => { setRevision(value => value + 1); void refresh(); }} />
+    <CardOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)}><SafeAreaView style={{ flex: 1 }}>
+    <KeyboardScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20, width: '100%', maxWidth: 620, alignSelf: 'center' }}>
+    <ActionButton label="Close settings" secondary onPress={() => setSettingsOpen(false)} />
+    <Text accessibilityRole="header" style={{ fontSize: 29, fontWeight: '700', color: colors.textStrong }}>Administration settings</Text>
     <GlassSurface style={{ borderRadius: 25, overflow: 'hidden' }}><DarkModeToggle /><ThemePicker />
       <SettingsRow title="Change my password" icon="lock-closed-outline" expanded={passwordOpen} onPress={() => setPasswordOpen(!passwordOpen)} />
       <Disclosure open={passwordOpen} style={{ gap: 15, paddingHorizontal: 18, paddingBottom: 20 }}>
@@ -332,7 +343,7 @@ export default function AdminScreen() {
         <Notice text={actionError?.type === 'CHANGE_PASSWORD' ? actionError.message : ''} error />
         <ActionButton label="Change password and sign out" disabled={busy || !currentPassword || newPassword.length < 10 || !confirmPassword} onPress={() => void changePassword()} />
       </Disclosure>
-      <SettingsRow title="Log Out" icon="log-out-outline" danger onPress={() => { if (!mutation.current) void signOut(); }} />
     </GlassSurface>
-  </FormPage>;
+    </KeyboardScrollView></SafeAreaView></CardOverlay>
+  </AdminShell>;
 }

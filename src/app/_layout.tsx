@@ -5,7 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AppearanceProvider, useAppearance } from '@/contexts/appearance';
 import { SessionProvider, useSession } from '@/contexts/session';
 import { useAppTheme } from '@/hooks/use-app-theme';
-import { QueueProvider } from '@/contexts/queue';
+import { QueueProvider, useQueue } from '@/contexts/queue';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationMotionProvider, useNavigationMotion } from '@/contexts/navigation-motion';
 import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
@@ -16,7 +16,6 @@ import { setBackgroundColorAsync } from 'expo-system-ui';
 import { AuthTransitionFrame } from '@/components/auth-transition';
 import { GlassBackdrop } from '@/components/glass-surface';
 import { StateScreen, stateOverlay } from '@/components/state-screen';
-import { useQueue } from '@/contexts/queue';
 import { View } from 'react-native';
 
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {

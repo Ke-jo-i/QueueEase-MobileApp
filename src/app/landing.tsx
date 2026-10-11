@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { GlassSurface } from '@/components/glass-surface';
 import { MotionButton, Reveal } from '@/components/motion';
+import { BrandMark } from '@/components/brand-mark';
 
 export default function LandingScreen() {
   const colors = useAppTheme();
@@ -12,7 +13,7 @@ export default function LandingScreen() {
   return <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
     <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 26, paddingVertical: 40, gap: 30, maxWidth: 560, width: '100%', alignSelf: 'center' }}>
       <Reveal style={{ gap: 20 }}>
-        <GlassSurface style={{ alignSelf: 'flex-start', borderRadius: 24, width: 76, height: 76, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="ticket-outline" size={35} color={colors.brandText} /></GlassSurface>
+        <GlassSurface style={{ alignSelf: 'flex-start', borderRadius: 24, width: 76, height: 76, alignItems: 'center', justifyContent: 'center' }}><BrandMark size={48} color={colors.brandText} /></GlassSurface>
         <View style={{ gap: 10 }}>
           <Text accessibilityRole="header" style={{ fontSize: 42, lineHeight: 47, fontWeight: '700', letterSpacing: -1.9, color: colors.text }}>Queue Ease</Text>
           <Text style={{ fontSize: 15, color: colors.textMuted }}>Registrar queue</Text>

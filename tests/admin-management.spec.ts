@@ -12,7 +12,7 @@ async function session(apiUrl: string, role: 'student' | 'staff' | 'admin') {
 
 test('admin creates another administrator, edits staff identity, assigns a free window and resets credentials', async ({ page, browser, connect }) => {
   await login(page, 'admin');
-  await page.getByRole('radio', { name: 'Accounts', exact: true }).click();
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
   await page.getByRole('button', { name: 'Create staff account', exact: true }).click();
   await page.getByRole('radio', { name: 'Admin account', exact: true }).click();
   await page.getByLabel('Admin name', { exact: true }).fill('Second Admin');
@@ -56,7 +56,7 @@ test('account disable confirmation protects an active request and later revokes 
   const booking = await fetch(`${apiUrl}/queue/command`, { method: 'POST', headers, body: JSON.stringify({ type: 'BOOK', service: 'Academic Records Request' }) });
   expect(booking.status).toBe(200);
   await login(page, 'admin');
-  await page.getByRole('radio', { name: 'Accounts', exact: true }).click();
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
   const row = page.getByTestId('admin-account-student1');
   await row.getByRole('button', { name: 'student Test', exact: true }).click();
   await row.getByRole('button', { name: 'Disable student1', exact: true }).click();
@@ -78,7 +78,7 @@ test('account disable confirmation protects an active request and later revokes 
 
 test('new registrar services become bookable and retain their saved routing in admin records and activity', async ({ page, browser, connect }) => {
   await login(page, 'admin');
-  await page.getByRole('radio', { name: 'Services', exact: true }).click();
+  await page.getByRole('button', { name: 'Services', exact: true }).click();
   await page.getByRole('button', { name: 'Add service', exact: true }).click();
   await page.getByLabel('New service name', { exact: true }).fill('Graduation Clearance');
   await page.getByRole('button', { name: 'New service window: Window 1', exact: true }).click();
@@ -92,14 +92,14 @@ test('new registrar services become bookable and retain their saved routing in a
     await student.getByRole('button', { name: 'Graduation Clearance', exact: true }).click();
     await student.getByRole('button', { name: 'Get Queue Number', exact: true }).click();
     await expect(student.getByTestId('student-tickets').getByText('R - 1', { exact: true }).filter({ visible: true }).first()).toBeVisible();
-    await page.getByRole('radio', { name: 'Records', exact: true }).click();
+    await page.getByRole('button', { name: 'Records', exact: true }).click();
     await expect(page.getByTestId('admin-record-ticket-1').getByText(/Window 4/)).toBeVisible();
     await page.getByRole('button', { name: 'Filters', exact: true }).click();
     await page.getByRole('button', { name: 'Record service: All services', exact: true }).click();
     await page.getByRole('button', { name: 'Record service: select Graduation Clearance', exact: true }).click();
     await page.getByRole('button', { name: 'Apply filters', exact: true }).click();
     await expect(page.getByText('1 records · Page 1 of 1', { exact: true })).toBeVisible();
-    await page.getByRole('radio', { name: 'Activity', exact: true }).click();
+    await page.getByRole('button', { name: 'Activity', exact: true }).click();
     await page.getByLabel('Search account, service or administrator', { exact: true }).fill('Graduation');
     await expect(page.getByRole('heading', { name: 'Service added', exact: true })).toBeVisible();
     await expect(page.getByText('Window: Window 4', { exact: true })).toBeVisible();
@@ -117,7 +117,7 @@ test('admin records use server pagination and filters without overflowing a narr
   }
   await page.setViewportSize({ width: 360, height: 740 });
   await login(page, 'admin');
-  await page.getByRole('radio', { name: 'Records', exact: true }).click();
+  await page.getByRole('button', { name: 'Records', exact: true }).click();
   await expect(page.getByText('16 records · Page 1 of 2', { exact: true })).toBeVisible();
   await expect(page.getByTestId('admin-record-ticket-1')).toHaveCount(0);
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
@@ -134,7 +134,7 @@ test('admin records use server pagination and filters without overflowing a narr
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await page.getByLabel('Search ticket or student ID', { exact: true }).fill('does-not-exist');
   await expect(page.getByText('0 records · Page 1 of 1', { exact: true })).toBeVisible();
-  await page.getByRole('radio', { name: 'Accounts', exact: true }).click();
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
   await page.getByRole('button', { name: 'Create staff account', exact: true }).click();
   await expect(page.getByLabel('Staff email', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
@@ -143,6 +143,7 @@ test('admin records use server pagination and filters without overflowing a narr
 test('an administrator can change their own password and sign out all existing sessions', async ({ page, apiUrl }) => {
   const previous = await session(apiUrl, 'admin');
   await login(page, 'admin');
+  await page.getByRole('button', { name: 'Administration settings', exact: true }).click();
   await page.getByRole('button', { name: 'Change my password', exact: true }).click();
   await page.getByLabel('Current password', { exact: true }).fill(password);
   await page.getByLabel('New password (at least 10 characters)', { exact: true }).fill('new-admin-password-123');
@@ -177,7 +178,7 @@ test('a failed record filter clears stale results and manual refresh retries the
   });
   expect(response.status).toBe(200);
   await login(page, 'admin');
-  await page.getByRole('radio', { name: 'Records', exact: true }).click();
+  await page.getByRole('button', { name: 'Records', exact: true }).click();
   await expect(page.getByTestId('admin-record-ticket-1')).toBeVisible();
   const history = /\/admin\/history\?/;
   await page.route(history, async route => {

@@ -8,6 +8,7 @@ import { Keyboard, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { demoLoginEnabled } from '@/constants/demo-mode';
+import { ApiError } from '@/data/api';
 import { StateScreen, stateOverlay } from './state-screen';
 
 export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
@@ -20,8 +21,18 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [connectionError, setConnectionError] = useState('');
+  const lastAttempt = useRef<Role | undefined>(undefined);
+  const form = useRef<View>(null);
   const pending = useRef(false);
   const requestId = useRef(0);
+
+  useEffect(() => {
+    if (typeof HTMLElement === 'undefined' || !(form.current instanceof HTMLElement)) return;
+    const element = form.current;
+    element.inert = busy || !!connectionError;
+    return () => { element.inert = false; };
+  }, [busy, connectionError]);
 
   useEffect(() => {
     if (!focused && pending.current) {
@@ -45,9 +56,11 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
     if (!quickRole && (!login.trim() || !password)) { setError('Enter your ID or email and password.'); return; }
     if (!quickRole && login.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login.trim())) { setError('Enter a valid email address.'); return; }
     const id = ++requestId.current;
+    lastAttempt.current = quickRole;
     pending.current = true;
     setBusy(true);
     setError('');
+    setConnectionError('');
     Keyboard.dismiss();
     try {
       if (quickRole) await quickSignIn(quickRole);
@@ -56,13 +69,17 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
       pending.current = false;
       setPassword('');
     } catch (failure) {
-      if (id === requestId.current) setError(failure instanceof Error ? failure.message : 'Could not sign in.');
+      if (id === requestId.current) {
+        const message = failure instanceof Error ? failure.message : 'Could not sign in.';
+        if (failure instanceof ApiError && (!failure.status || failure.status >= 500)) setConnectionError(message);
+        else setError(message);
+      }
     } finally {
       if (id === requestId.current) { pending.current = false; setBusy(false); }
     }
   };
 
-  return <View style={{ flex: 1 }}><FormPage title={portal === 'student' ? 'Student sign in' : 'Staff sign in'}>
+  return <View style={{ flex: 1 }}><View ref={form} style={{ flex: 1 }} accessibilityElementsHidden={busy || !!connectionError} importantForAccessibility={busy || connectionError ? 'no-hide-descendants' : 'auto'} aria-hidden={busy || !!connectionError} pointerEvents={busy || connectionError ? 'none' : 'auto'}><FormPage title={portal === 'student' ? 'Student sign in' : 'Staff sign in'}>
     {demoLoginEnabled && <Reveal><GlassSurface variant="tinted" style={{ borderRadius: 24, padding: 18, gap: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Ionicons name="flash-outline" size={16} color={colors.textMuted} />
@@ -89,7 +106,8 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
       <Text style={{ color: colors.brandText, fontSize: 15, fontWeight: '700' }}>Create an account</Text>
     </MotionButton>}
 
-  </FormPage>
+  </FormPage></View>
     {busy && <View style={stateOverlay}><StateScreen loading title="Signing you in" onBack={() => { requestId.current++; pending.current = false; cancelSignIn(); setBusy(false); }} /></View>}
+    {!!connectionError && <View style={stateOverlay}><StateScreen title="Sign-in unavailable" message={connectionError} onRetry={() => void submit(lastAttempt.current)} onBack={() => setConnectionError('')} /></View>}
   </View>;
 }

@@ -28,7 +28,6 @@ export default function HomeScreen() {
   const { studentTicket, studentProgress, services, acceptingTickets } = useQueue();
   const { user } = useSession();
 
-  // Gamitin ang galing sa backend kung mayroon, kung wala ay gamitin agad ang fixed list
   const displayServices = services && services.length > 0 ? services : SERVICES_LIST;
   const isAccepting = acceptingTickets !== undefined ? acceptingTickets : true;
 
@@ -46,7 +45,7 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.brandTitle}>Queue Ease</Text>
-            <Text style={styles.campusLabel}>Registrar</Text>
+            <Text style={styles.campusLabel}>Registrar Portal</Text>
           </View>
           <TouchableOpacity style={styles.profileIconBtn} onPress={() => router.push('/profile')}>
             <Ionicons name="person-outline" size={22} color={colors.brandText} />
@@ -59,12 +58,13 @@ export default function HomeScreen() {
 
           <Reveal style={styles.queueBanner}>
             <Text style={styles.queueBannerLabel}>
-              {studentTicket ? ticketStatusLabels[studentTicket.status] : 'Ready when you are'}
+              {studentTicket ? ticketStatusLabels[studentTicket.status] : 'STATUS'}
             </Text>
             <Text style={styles.queueBannerTitle}>
-              {studentTicket ? studentTicket.number : 'No ticket yet'}
+              {studentTicket ? studentTicket.number : 'No active ticket'}
             </Text>
             {studentTicket && <Text style={styles.queueBannerSub}>{studentTicket.service}</Text>}
+            
             {studentTicket && (
               <>
                 <View style={styles.progressRow}>
@@ -78,28 +78,27 @@ export default function HomeScreen() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={styles.progressButton}
+                  style={styles.actionPillButton}
                   accessibilityRole="button"
                   accessibilityLabel="View queue progress"
                   onPress={() => router.push('/live-status')}
                 >
-                  <Text style={styles.progressButtonText}>View queue progress</Text>
-                  <Ionicons name="arrow-forward" size={16} color={colors.brandText} />
+                  <Text style={styles.actionPillText}>Track Progress</Text>
                 </TouchableOpacity>
               </>
             )}
+
             {!studentTicket && (
-              <Text style={styles.queueBannerSub}>Choose a service below to join the queue.</Text>
-            )}
-            {!studentTicket && (
-              <TouchableOpacity
-                style={styles.progressButton}
-                accessibilityLabel="View all window queues"
-                onPress={() => router.push('/live-status')}
-              >
-                <Text style={styles.progressButtonText}>View all window queues</Text>
-                <Ionicons name="arrow-up" size={16} color={colors.brandText} />
-              </TouchableOpacity>
+              <View style={styles.noTicketRow}>
+                <Text style={styles.queueBannerSub}>Choose a registrar service below to queue.</Text>
+                <TouchableOpacity
+                  style={styles.actionPillButton}
+                  accessibilityLabel="View all window queues"
+                  onPress={() => router.push('/live-status')}
+                >
+                  <Text style={styles.actionPillText}>View Live Status</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </Reveal>
         </View>
@@ -127,19 +126,16 @@ export default function HomeScreen() {
                 ]}
               >
                 {({ hovered }: { hovered?: boolean }) => (
-                  <>
-                    <View style={styles.serviceInfo}>
-                      <Text style={[styles.serviceName, hovered && styles.serviceNameHovered]}>
-                        {service}
-                      </Text>
-                      <Text style={styles.serviceDescription}>
-                        {enabled
-                          ? serviceDescriptions[service] || 'Select to request queue ticket'
-                          : 'Temporarily unavailable'}
-                      </Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                  </>
+                  <View style={styles.serviceInfo}>
+                    <Text style={[styles.serviceName, hovered && styles.serviceNameHovered]}>
+                      {service}
+                    </Text>
+                    <Text style={styles.serviceDescription}>
+                      {enabled
+                        ? serviceDescriptions[service] || 'Select to request queue ticket'
+                        : 'Temporarily unavailable'}
+                    </Text>
+                  </View>
                 )}
               </Pressable>
             </Reveal>
@@ -175,33 +171,31 @@ const createStyles = (colors: AppPalette) =>
     campusLabel: {
       fontSize: 12,
       color: colors.textMuted,
-      marginTop: 3,
+      marginTop: 2,
     },
     progressRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 12,
-      marginTop: 16,
+      marginTop: 12,
     },
     progressText: {
       fontSize: 12,
       color: colors.brandText,
       fontWeight: '700',
     },
-    progressButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+    actionPillButton: {
+      backgroundColor: colors.brandText,
+      paddingVertical: 10,
+      paddingHorizontal: 16,
+      borderRadius: 10,
+      alignSelf: 'flex-start',
       marginTop: 14,
-      paddingTop: 14,
-      minHeight: 44,
     },
-    progressButtonText: {
-      color: colors.brandText,
+    actionPillText: {
+      color: '#FFFFFF',
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '600',
     },
     serviceInfo: {
       flex: 1,
@@ -210,7 +204,7 @@ const createStyles = (colors: AppPalette) =>
       color: colors.textMuted,
       fontSize: 12,
       lineHeight: 18,
-      marginTop: 5,
+      marginTop: 4,
     },
     profileIconBtn: {
       width: 40,
@@ -233,21 +227,28 @@ const createStyles = (colors: AppPalette) =>
       backgroundColor: colors.bluePale,
       borderRadius: 16,
       padding: 20,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.brandText,
     },
     queueBannerLabel: {
-      fontSize: 12,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.5,
       color: colors.textMuted,
       marginBottom: 4,
     },
     queueBannerTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: 'bold',
       color: colors.brandText,
-      marginBottom: 4,
+      marginBottom: 2,
     },
     queueBannerSub: {
       fontSize: 13,
       color: colors.textMuted,
+    },
+    noTicketRow: {
+      marginTop: 4,
     },
     servicesSection: {
       marginTop: 8,
@@ -262,13 +263,12 @@ const createStyles = (colors: AppPalette) =>
       backgroundColor: colors.surface,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 14,
-      paddingVertical: 18,
-      paddingHorizontal: 16,
+      borderRadius: 12,
+      paddingVertical: 16,
+      paddingHorizontal: 18,
       marginBottom: 12,
-      flexDirection: 'row',
-      gap: 12,
-      alignItems: 'center',
+      borderLeftWidth: 4,
+      borderLeftColor: colors.brandText,
     },
     serviceCardHovered: {
       backgroundColor: colors.blueSoft,
@@ -281,7 +281,6 @@ const createStyles = (colors: AppPalette) =>
       fontSize: 15,
       fontWeight: '600',
       color: colors.text,
-      textAlign: 'left',
     },
     serviceNameHovered: {
       color: colors.brandText,

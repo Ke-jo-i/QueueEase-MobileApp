@@ -1,6 +1,7 @@
 import { demoLoginEnabled } from '@/constants/demo-mode';
 import { supabase } from '@/lib/supabase';
-import { createContext, PropsWithChildren, useCallback, useContext, useRef, useState } from 'react';
+import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 export type Role = 'student' | 'staff' | 'admin';
 export type User = { 
@@ -29,6 +30,7 @@ const SessionContext = createContext<Session | null>(null);
 export function SessionProvider({ children }: PropsWithChildren) {
   const [auth, setAuth] = useState<{ token: string; user: User } | null>(null);
   const [signedOutRole, setSignedOutRole] = useState<Role | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const generation = useRef(0);
 
   const clear = useCallback(() => { 
@@ -37,13 +39,65 @@ export function SessionProvider({ children }: PropsWithChildren) {
     setAuth(null); 
   }, [auth]);
 
-  // Direct Supabase Authentication with Specific Error Messages & Dual Login (ID / Email)
+  const fetchUserProfile = async (userId: string, userEmail: string, fallbackRole: Role): Promise<User> => {
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+
+    const userRole: Role = (userProfile?.role as Role) || fallbackRole;
+
+    return {
+      id: userId,
+      login: userProfile?.student_id || userEmail,
+      name: userProfile?.full_name || 'User',
+      email: userEmail,
+      role: userRole,
+      window: userProfile?.window || null,
+    };
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function restoreSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user && isMounted) {
+          const userProfile = await fetchUserProfile(session.user.id, session.user.email || '', 'student');
+          setAuth({ token: session.access_token, user: userProfile });
+        }
+      } catch (err) {
+        console.error('Error restoring session:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+
+    void restoreSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user && isMounted) {
+        const userProfile = await fetchUserProfile(session.user.id, session.user.email || '', 'student');
+        setAuth({ token: session.access_token, user: userProfile });
+      } else if (event === 'SIGNED_OUT' && isMounted) {
+        setAuth(null);
+      }
+      if (isMounted) setIsLoading(false);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const signIn = async (portal: 'student' | 'staff', loginInput: string, passwordInput: string): Promise<User> => {
     const version = ++generation.current;
     const cleanInput = loginInput.trim().toLowerCase();
     let targetEmail = cleanInput;
 
-    // 1. KUNG STUDENT ID (puro numero / walang '@') ANG INILAGAY:
     if (!cleanInput.includes('@')) {
       const { data: profileByStudentId } = await supabase
         .from('profiles')
@@ -57,54 +111,27 @@ export function SessionProvider({ children }: PropsWithChildren) {
       targetEmail = profileByStudentId.email;
     }
 
-    // 2. MAG-SIGN IN DIRECTLY SA SUPABASE AUTH GAMIT ANG EMAIL
     const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
       email: targetEmail,
       password: passwordInput,
     });
 
     if (authErr || !authData.user) {
-      const errMsg = authErr?.message || '';
-      if (errMsg.toLowerCase().includes('invalid login credentials')) {
-        // Titingnan natin sa profiles kung talagang wala ang account o mali lang ang password
-        const { data: checkProfile } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('email', targetEmail)
-          .maybeSingle();
-
-        if (!checkProfile && cleanInput.includes('@')) {
-          throw new Error('Unregistered Account. Please check your email or sign up.');
-        } else {
-          throw new Error('Incorrect Password. Please try again.');
-        }
-      }
-      throw new Error(errMsg || 'Could not sign in.');
+      throw new Error('Incorrect password. Please check and try again.');
     }
 
-    // 3. KUNIN ANG PROFILE DETAILS MULA SA DATABASE
-    const { data: userProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', authData.user.id)
-      .maybeSingle();
+    const sessionUser = await fetchUserProfile(authData.user.id, authData.user.email || targetEmail, portal);
 
-    const userRole: Role = (userProfile?.role as Role) || (portal === 'staff' ? 'staff' : 'student');
-
-    // Harangan kung magkaiba ang Portal at Role
-    if (portal === 'staff' && userRole === 'student') {
+    // RESTRICTION: DILI TUGOTAN ANG CROSS-PORTAL LOGIN
+    if (portal === 'student' && sessionUser.role === 'staff') {
       await supabase.auth.signOut();
-      throw new Error('Student accounts cannot log in to the Staff portal.');
+      throw new Error('STAFF_PORTAL_ONLY');
     }
 
-    const sessionUser: User = {
-      id: authData.user.id,
-      login: userProfile?.student_id || authData.user.email || targetEmail,
-      name: userProfile?.full_name || authData.user.user_metadata?.full_name || 'User',
-      email: authData.user.email || targetEmail,
-      role: userRole,
-      window: userProfile?.window || null,
-    };
+    if (portal === 'staff' && sessionUser.role === 'student') {
+      await supabase.auth.signOut();
+      throw new Error('STUDENT_PORTAL_ONLY');
+    }
 
     if (version !== generation.current) {
       throw new Error('Sign-in was cancelled.');
@@ -117,11 +144,8 @@ export function SessionProvider({ children }: PropsWithChildren) {
     return sessionUser;
   };
 
-  // Quick Demo Login (ginagamit para sa mabilisang testing at demo)
   const quickSignIn = async (role: Role): Promise<User> => {
-    if (!demoLoginEnabled) {
-      throw new Error('Quick login is available only while testing.');
-    }
+    if (!demoLoginEnabled) throw new Error('Quick login is available only while testing.');
 
     const demoUser: User = {
       id: `demo-${role}-id`,
@@ -141,6 +165,14 @@ export function SessionProvider({ children }: PropsWithChildren) {
     clear();
     await supabase.auth.signOut().catch(() => {});
   };
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <SessionContext.Provider

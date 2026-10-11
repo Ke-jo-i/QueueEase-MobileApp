@@ -52,13 +52,13 @@ export default function HomeScreen() {
         <Text accessibilityRole="header" style={{ fontSize: 22, letterSpacing: -0.4, fontWeight: '700', color: colors.textStrong }}>Registrar Services</Text>
         {ready && !acceptingTickets && <Notice text="New tickets are paused. Existing tickets remain in the queue. Please check again later." />}
         <GlassSurface style={{ borderRadius: 26 }}>
-          {services.map(({ name, enabled }, index) => <Reveal key={name} delay={Math.min(index * 25, 100)}>
-            <MotionButton accessibilityLabel={name} accessibilityState={{ disabled: !connected || !enabled || !acceptingTickets }} disabled={!connected || !enabled || !acceptingTickets}
+          {services.map(({ name, available, window, unavailableReason }, index) => <Reveal key={name} delay={Math.min(index * 25, 100)}>
+            <MotionButton accessibilityLabel={name} accessibilityState={{ disabled: !connected || !available || !acceptingTickets }} disabled={!connected || !available || !acceptingTickets}
               onPress={() => router.push({ pathname: '/confirm-service', params: { serviceName: name } })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, minHeight: 76, opacity: !enabled || !acceptingTickets ? 0.45 : 1 }}>
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, minHeight: 76, opacity: !available || !acceptingTickets ? 0.45 : 1 }}>
               <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: translucent(colors.infoSurface, 0.85), alignItems: 'center', justifyContent: 'center' }}><Ionicons name={serviceIcons[index % serviceIcons.length]} size={21} color={colors.brandText} /></View>
               <View style={{ flex: 1, gap: 5 }}><Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{name}</Text>
-                {!enabled && <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>Temporarily unavailable</Text>}
+                {!available && <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>{window.replace(' - Registrar', '')} · {unavailableReason || 'Temporarily unavailable'}</Text>}
               </View><Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </MotionButton>
             {index < services.length - 1 && <View style={{ height: 1, backgroundColor: translucent(colors.borderStrong, 0.35), marginLeft: 74, marginRight: 18 }} />}

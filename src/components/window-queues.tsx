@@ -5,18 +5,20 @@ import { GlassSurface, translucent } from './glass-surface';
 
 export function WindowQueues() {
   const colors = useAppTheme();
-  const { windowQueues, studentTicket, services, ready, connected } = useQueue();
+  const { windowQueues, windowAvailability, studentTicket, services, ready, connected } = useQueue();
   return <View style={{ gap: 12 }} testID="window-queues">
     <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>All registrar windows</Text>
     {(!ready || !connected) && <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textMuted }}>{!ready ? 'Loading window queues…' : 'Showing the last update. Reconnect to see current progress.'}</Text>}
     {ready && windowQueues.map(({ window, waitingCount, servingNumber, nextNumber }) => {
       const yours = studentTicket?.window === window;
+      const availability = windowAvailability.find(item => item.window === window);
       return <GlassSurface key={window} variant={yours ? 'tinted' : 'regular'} testID={`queue-${window.split(' - ')[0].replace(' ', '-').toLowerCase()}`} style={{ padding: 22, gap: 14, borderRadius: 26, backgroundColor: yours ? colors.infoSurface : colors.surface,
         borderWidth: 1, borderColor: translucent(yours ? colors.brandText : colors.border, 0.5) }}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <Text style={{ fontSize: 16, fontWeight: '800', color: colors.text }}>{window.split(' - ')[0]}</Text>
           {yours && <Text style={{ fontSize: 11, fontWeight: '700', color: colors.brandText }}>YOUR WINDOW</Text>}
         </View>
+        {availability && !availability.online && <Text style={{ fontSize: 12, lineHeight: 18, color: colors.warningStrong }}>Offline · {availability.reason}. Existing tickets remain in this queue.</Text>}
         <View style={{ flexDirection: 'row', gap: 16 }}>
           <View style={{ flex: 1, gap: 4 }}><Text style={{ fontSize: 11, color: colors.textMuted }}>NOW SERVING</Text>
             <Text style={{ fontSize: 23, fontWeight: '800', color: colors.brandText }}>{servingNumber ?? '—'}</Text>
@@ -26,7 +28,7 @@ export function WindowQueues() {
           </View>
         </View>
         <Text style={{ fontSize: 13, color: colors.textSecondary }}>{nextNumber ? `Next waiting: ${nextNumber}` : 'No tickets waiting'}</Text>
-        <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>{services.filter(service => service.window === window && service.enabled).map(service => service.name).join(' · ') || 'No services currently available at this window'}</Text>
+        <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>{services.filter(service => service.window === window && service.enabled).map(service => service.name).join(' · ') || 'No services assigned to this window'}</Text>
       </GlassSurface>;
     })}
   </View>;

@@ -6,6 +6,7 @@ import { registrarServices } from '../src/constants/registrar-services';
 import { getServiceWindow, registrarWindows } from '../src/constants/service-windows';
 import { applyQueueCommand, type Ticket, type QueueCommand, type QueueSnapshot } from '../src/data/queue-model';
 import type { AdminAccount, AdminAccountsPage, AdminAudit, AdminData, AdminOverviewData, AdminHistoryPage, AdminAuditPage, AdminService } from '../src/data/admin-model';
+import type { WindowAvailability } from '../src/data/window-availability';
 
 const derive = promisify(scrypt);
 export type Role = 'student' | 'staff' | 'admin';
@@ -77,6 +78,7 @@ export class Store {
     this.db = new DatabaseSync(path);
     this.db.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
     if (!this.db.prepare('PRAGMA table_info(accounts)').all().some(column => column.name === 'removed_at')) this.db.exec('ALTER TABLE accounts ADD COLUMN removed_at TEXT');
+    for (const window of registrarWindows) this.db.prepare('INSERT OR IGNORE INTO window_availability(window) VALUES(?)').run(window);
     for (const name of registrarServices) this.db.prepare('INSERT OR IGNORE INTO services(name,window) VALUES(?,?)').run(name, getServiceWindow(name));
   }
   close() { this.db.close(); }
@@ -145,7 +147,25 @@ export class Store {
       this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(user.id);
     });
   }
-  services() { return this.db.prepare('SELECT name,window,enabled FROM services ORDER BY rowid').all(); }
+  services() {
+    return this.db.prepare(`SELECT s.name,s.window,s.enabled,CASE WHEN s.enabled=1 AND w.online=1 THEN 1 ELSE 0 END AS available,
+      CASE WHEN w.online=0 THEN w.reason WHEN s.enabled=0 THEN 'Booking paused' ELSE '' END AS unavailableReason
+      FROM services s JOIN window_availability w ON w.window=s.window ORDER BY s.rowid`).all();
+  }
+  windows(): WindowAvailability[] {
+    return registrarWindows.map(window => {
+      const row = this.db.prepare('SELECT online,reason FROM window_availability WHERE window=?').get(window)!;
+      return { window, online: !!row.online, reason: String(row.reason) };
+    });
+  }
+  private setWindowAvailability(user: Account, input: Record<string, unknown>) {
+    const window = field(input.window, 'window');
+    check(registrarWindows.includes(window) && typeof input.online === 'boolean', 'Choose a listed window and availability.');
+    const reason = input.online ? '' : field(input.reason, 'offline reason', 160);
+    const previous = this.db.prepare('SELECT online FROM window_availability WHERE window=?').get(window)!;
+    this.db.prepare('UPDATE window_availability SET online=?,reason=? WHERE window=?').run(Number(input.online), reason, window);
+    this.audit(user, 'SET_WINDOW_AVAILABILITY', window, { online: input.online, reason, previousOnline: !!previous.online });
+  }
   snapshot(): QueueSnapshot {
     const state = this.db.prepare('SELECT * FROM queue_state WHERE id=1').get()!;
     const events = this.db.prepare('SELECT * FROM ticket_events ORDER BY rowid').all();
@@ -168,7 +188,7 @@ export class Store {
       .map((ticket) => user.role === 'student' && ticket.ownerId !== user.id
         ? { ...ticket, ownerId: undefined, events: [], reason: undefined }
         : { ...ticket, ownerId: this.account(ticket.ownerId!).login });
-    return { tickets, assignedWindow: this.account(user.id).window ?? '', services: this.services(), acceptingTickets: !!state.accepting, revision: Number(state.revision) };
+    return { tickets, assignedWindow: this.account(user.id).window ?? '', services: this.services(), windows: this.windows(), acceptingTickets: !!state.accepting, revision: Number(state.revision) };
   }
   command(user: Account, input: Record<string, unknown>, requestId: string) {
     check(requestId.length >= 8 && requestId.length <= 120, 'A request identifier is required.');
@@ -178,6 +198,13 @@ export class Store {
       const state = this.snapshot();
       const at = new Date().toISOString();
       const freshUser = this.account(user.id);
+      if (input.type === 'SET_WINDOW_AVAILABILITY') {
+        check(user.role === 'staff' && freshUser.window === input.window, 'Only the assigned staff member can change this window.', 403);
+        this.setWindowAvailability(freshUser, input);
+        this.db.prepare('UPDATE queue_state SET revision=revision+1 WHERE id=1').run();
+        this.db.prepare('INSERT INTO requests VALUES(?,?,?,?)').run(user.id, requestId, null, Date.now());
+        return { ...this.view(user), ticketId: undefined };
+      }
       let command: QueueCommand;
       if (input.type === 'BOOK' || input.type === 'CANCEL') {
         check(user.role === 'student', 'Only students can request or cancel their own ticket.', 403);
@@ -185,6 +212,8 @@ export class Store {
           const service = field(input.service, 'service');
           const configured = this.db.prepare('SELECT * FROM services WHERE name=? AND enabled=1').get(service);
           check(configured, 'This service is currently unavailable.');
+          const availability = this.db.prepare('SELECT online,reason FROM window_availability WHERE window=?').get(configured.window!);
+          check(availability?.online, `${String(configured.window).replace(' - Registrar', '')} is offline: ${availability?.reason || 'temporarily unavailable'}.`, 409);
           check(this.db.prepare('SELECT accepting FROM queue_state WHERE id=1').get()!.accepting, 'New tickets are paused. Please check again later.', 409);
           command = { type: 'BOOK', service, ownerId: user.id };
         } else {
@@ -212,7 +241,11 @@ export class Store {
         } else {
           const current = state.tickets.find((ticket) => ticket.status === 'SERVING' && ticket.window === window);
           check(current && current.id === input.expectedTicketId, 'This ticket has changed. Refresh and try again.', 409);
-          if (input.type === 'TRANSFER') command = { type: 'TRANSFER', window, targetWindow: field(input.targetWindow, 'target window') };
+          if (input.type === 'TRANSFER') {
+            const targetWindow = field(input.targetWindow, 'target window');
+            check(this.db.prepare('SELECT online FROM window_availability WHERE window=?').get(targetWindow)?.online, 'Choose an online window for transfer.', 409);
+            command = { type: 'TRANSFER', window, targetWindow };
+          }
           else {
             check(input.type === 'ACT' && ['RECALLED', 'CHECKED_IN', 'COMPLETED', 'HELD', 'SKIPPED', 'NO_SHOW'].includes(String(input.action)), 'Unknown queue action.');
             command = { type: 'ACT', window, action: input.action as 'COMPLETED', reason: input.reason === undefined ? undefined : field(input.reason, 'reason', 300) };
@@ -308,9 +341,9 @@ export class Store {
         activeSessions: Number(this.db.prepare('SELECT COUNT(*) AS count FROM sessions s JOIN accounts a ON a.id=s.account_id WHERE a.active=1 AND s.expires_at>?').get(now)!.count),
         averageWaitMinutes: averageMinutes(waits), averageServiceMinutes: averageMinutes(durations),
       },
-      windows: registrarWindows.map(window => ({
-        window, staff: accounts.find(account => account.active && account.role === 'staff' && account.window === window) ?? null,
-        waiting: count('WAITING', window), serving: count('SERVING', window), held: count('HELD', window), completedToday: count('COMPLETED', window),
+      windows: this.windows().map(availability => ({
+        ...availability, staff: accounts.find(account => account.active && account.role === 'staff' && account.window === availability.window) ?? null,
+        waiting: count('WAITING', availability.window), serving: count('SERVING', availability.window), held: count('HELD', availability.window), completedToday: count('COMPLETED', availability.window),
       })),
     };
   }
@@ -501,6 +534,8 @@ export class Store {
           this.db.prepare('UPDATE services SET window=?,enabled=? WHERE name=?').run(window, Number(input.enabled), name);
         }
         this.audit(actor, input.type, name, { window, enabled: input.enabled });
+      } else if (input.type === 'SET_WINDOW_AVAILABILITY') {
+        this.setWindowAvailability(actor, input);
       } else if (input.type === 'SET_ACCEPTING') {
         check(typeof input.accepting === 'boolean', 'Choose whether new tickets are allowed.');
         this.db.prepare('UPDATE queue_state SET accepting=? WHERE id=1').run(Number(input.accepting));

@@ -4,6 +4,10 @@ A registrar queue app, available on **Android/iOS through Expo** and as a **webs
 
 Each student can have **one active registrar ticket**, including a ticket on hold. Completing or cancelling it permits another booking; earlier tickets remain in history. Administrators can create staff/admin accounts, edit account details, assign available windows, reset passwords, disable access, configure services, and search queue records and administrator activity. Accounts with an active transaction cannot be disabled.
 
+**Window availability:** administrators can mark a window offline from Overview → Window workload; staff can manage their assigned window from Queue. Select a reason such as staff shortage or technical issues. Only that window’s services stop accepting new bookings. Existing tickets stay visible and can still be served, cancelled while waiting/on hold, or transferred to an online window. Reopening a window preserves individually paused services.
+
+**Spoken calls:** Call Next and Recall announce the ticket number and window on the staff device that performs the action. Use the speaker control on Queue to mute announcements. Audio depends on the device’s speech engine and volume; on iOS, turn off silent mode.
+
 ## Start the mobile app
 
 Install **Node.js 24.14 or newer**, npm and Expo Go on the phone. From the project folder, run:

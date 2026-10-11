@@ -8,11 +8,12 @@ import { MotionButton, Reveal, settleSpring } from './motion';
 import { KeyboardFieldContext, KeyboardScrollView } from './keyboard-scroll-view';
 import { GlassSurface, translucent } from './glass-surface';
 import { BrandMark } from './brand-mark';
+import { ServiceTransition } from './service-transition';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-export function FormPage({ title, subtitle, children, back = true, maxWidth = 520 }: PropsWithChildren<{ title: string; subtitle?: string; back?: boolean; maxWidth?: number }>) {
+export function FormPage({ title, subtitle, children, back = true, maxWidth = 520, sheet = false }: PropsWithChildren<{ title: string; subtitle?: string; back?: boolean; maxWidth?: number; sheet?: boolean }>) {
   const colors = useAppTheme(); const router = useRouter();
-  return <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
+  const content = <SafeAreaView testID={sheet ? 'auth-detail' : undefined} style={{ flex: 1, backgroundColor: 'transparent' }}>
     <KeyboardScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40, width: '100%', maxWidth, alignSelf: 'center', gap: 26 }}>
       {back && <MotionButton accessibilityLabel="Go back" onPress={() => {
         if (router.canGoBack()) router.back();
@@ -26,6 +27,7 @@ export function FormPage({ title, subtitle, children, back = true, maxWidth = 52
       {children}
     </KeyboardScrollView>
   </SafeAreaView>;
+  return sheet ? <ServiceTransition mode="form">{content}</ServiceTransition> : content;
 }
 export function Field({ label, secureTextEntry, error, ...props }: TextInputProps & { label: string; error?: string }) {
   const colors = useAppTheme(); const [visible, setVisible] = useState(false);

@@ -41,7 +41,7 @@ export function GlassBackdrop({ children }: PropsWithChildren) {
   </BlurTargetContext.Provider>;
 }
 
-export function GlassSurface({ children, style, variant = 'regular', interactive = false, ...props }: ViewProps & { variant?: 'regular' | 'tinted'; interactive?: boolean }) {
+export function GlassSurface({ children, style, variant = 'regular', interactive = false, solid = false, ...props }: ViewProps & { variant?: 'regular' | 'tinted'; interactive?: boolean; solid?: boolean }) {
   const colors = useAppTheme();
   const { colorScheme } = useAppearance();
   const target = useContext(BlurTargetContext);
@@ -57,8 +57,8 @@ export function GlassSurface({ children, style, variant = 'regular', interactive
   const dark = colorScheme === 'dark';
   const flattened = StyleSheet.flatten(style);
   const tint = variant === 'tinted' ? colors.infoSurface : typeof flattened?.backgroundColor === 'string' ? flattened.backgroundColor : colors.surface;
-  const material = translucent(tint, opaque ? 1 : native ? 0.28 : dark ? 0.82 : 0.76);
-  const blurred = !opaque && (Platform.OS !== 'android' || interactive);
+  const material = translucent(tint, solid || opaque ? 1 : native ? 0.28 : dark ? 0.82 : 0.76);
+  const blurred = !solid && !opaque && (Platform.OS !== 'android' || interactive);
   return <View {...props} style={[{
     borderRadius: 26, borderWidth: StyleSheet.hairlineWidth,
     borderColor: translucent(dark ? '#FFFFFF' : '#FFFFFF', dark ? 0.13 : 0.85),

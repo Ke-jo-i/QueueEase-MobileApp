@@ -8,15 +8,18 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { createContext, PropsWithChildren, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import type { AdminService } from '@/data/admin-model';
+import type { WindowAvailability } from '@/data/window-availability';
 
-export type Service = { name: string; window: string; enabled: number };
-type QueueView = { tickets: Ticket[]; assignedWindow: string; services: Service[]; acceptingTickets: boolean; revision: number; ticketId?: string };
+export type Service = AdminService;
+type QueueView = { tickets: Ticket[]; assignedWindow: string; services: Service[]; windows: WindowAvailability[]; acceptingTickets: boolean; revision: number; ticketId?: string };
 type QueueState = {
   studentTicket: Ticket | null; studentHistory: HistoryTicket[]; studentTickets: Ticket[];
   studentProgress: ReturnType<typeof ticketProgress> | null;
   windowQueues: ReturnType<typeof queueByWindow>;
   bookTicket: (service: string) => Promise<boolean>; cancelTicket: (reason: string) => Promise<boolean>;
   assignedWindow: string; setAssignedWindow: (window: string) => Promise<boolean>;
+  windowAvailability: WindowAvailability[]; setWindowAvailability: (online: boolean, reason: string) => Promise<boolean>;
   waiting: Ticket[]; currentServing: Ticket | null; staffHistory: HistoryTicket[];
   callNext: () => Promise<Ticket | null>; recallCurrent: () => Promise<boolean>; completeCurrent: () => Promise<boolean>;
   holdCurrent: (reason: string) => Promise<boolean>; skipCurrent: (reason: string) => Promise<boolean>;
@@ -25,7 +28,7 @@ type QueueState = {
   busy: boolean; connected: boolean; ready: boolean; loading: boolean; actionError: string; services: Service[]; acceptingTickets: boolean;
   refresh: () => Promise<void>;
 };
-const empty: QueueView = { tickets: [], assignedWindow: '', services: [], acceptingTickets: false, revision: -1 };
+const empty: QueueView = { tickets: [], assignedWindow: '', services: [], windows: [], acceptingTickets: false, revision: -1 };
 const QueueContext = createContext<QueueState | null>(null);
 
 export function QueueProvider({ children }: PropsWithChildren) {
@@ -127,13 +130,14 @@ function QueueSession({ children }: PropsWithChildren) {
     studentHistory: staffHistory.filter((ticket) => ticket.ownerId === studentId && ticket.status !== 'HELD'),
     bookTicket: async (service) => !!await run({ type: 'BOOK', service }), cancelTicket: async (reason) => !!await run({ type: 'CANCEL', reason, expectedTicketId: studentTicket?.id }),
     assignedWindow, setAssignedWindow: async (window) => !!await run({ type: 'ASSIGN', window }), waiting: waitingTickets(tickets), currentServing, staffHistory,
+    windowAvailability: snapshot.windows, setWindowAvailability: async (online, reason) => !!await run({ type: 'SET_WINDOW_AVAILABILITY', window: assignedWindow, online, reason }),
     callNext: async () => { const result = await run({ type: 'CALL_NEXT' }); return result?.tickets.find((ticket) => ticket.id === result.ticketId) ?? null; },
     recallCurrent: () => act('RECALLED'), completeCurrent: () => act('COMPLETED'), holdCurrent: (reason) => act('HELD', reason),
     skipCurrent: (reason) => act('SKIPPED', reason), noShowCurrent: (reason) => act('NO_SHOW', reason),
     transferCurrent: async (targetWindow) => !!await run({ type: 'TRANSFER', targetWindow, expectedTicketId: currentServing?.id }),
     reopenTicket: async (number) => !!await run({ type: 'REOPEN', number }),
     busy, connected, ready: snapshot.revision >= 0, loading, actionError: error, services: snapshot.services, acceptingTickets: snapshot.acceptingTickets, refresh,
-  }), [studentTicket, studentTickets, progress, tickets, staffHistory, studentId, assignedWindow, currentServing, run, act, busy, connected, loading, error, snapshot.revision, snapshot.services, snapshot.acceptingTickets, refresh]);
+  }), [studentTicket, studentTickets, progress, tickets, staffHistory, studentId, assignedWindow, currentServing, run, act, busy, connected, loading, error, snapshot.revision, snapshot.services, snapshot.windows, snapshot.acceptingTickets, refresh]);
   return <QueueContext.Provider value={value}><View style={{ flex: 1 }}>
     {(role === 'student' || role === 'staff') && snapshot.revision >= 0 && (!connected || !!error) && <SafeAreaView edges={['top']} style={{ backgroundColor: colors.warningSurface }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 8, gap: 4 }} accessibilityLiveRegion="polite">

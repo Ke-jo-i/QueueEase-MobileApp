@@ -1,4 +1,5 @@
 import type { Ticket } from './queue-model';
+import type { WindowAvailability } from './window-availability';
 
 export type AdminAccount = {
   id: string;
@@ -11,7 +12,7 @@ export type AdminAccount = {
   activeSessions: number;
 };
 
-export type AdminService = { name: string; window: string; enabled: number };
+export type AdminService = { name: string; window: string; enabled: number; available: number; unavailableReason: string };
 export type AdminAudit = {
   id: string;
   actorId: string;
@@ -39,8 +40,7 @@ export type AdminStatistics = {
   averageServiceMinutes: number | null;
 };
 
-export type AdminWindow = {
-  window: string;
+export type AdminWindow = WindowAvailability & {
   staff: AdminAccount | null;
   waiting: number;
   serving: number;

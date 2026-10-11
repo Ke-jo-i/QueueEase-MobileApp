@@ -34,7 +34,7 @@ export default function RegisterScreen() {
     catch (failure) { setError(failure instanceof Error ? failure.message : 'Registration failed.'); }
     finally { setBusy(false); }
   };
-  return <FormPage title={done ? 'You’re registered' : 'Create your account'}>
+  return <FormPage sheet title={done ? 'You’re registered' : 'Create your account'}>
     {done ? <Reveal><GlassSurface style={{ borderRadius: 28, padding: 24, gap: 22 }}>
       <View style={{ alignSelf: 'center', width: 72, height: 72, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.successSurface }}><Ionicons name="checkmark" size={34} color={colors.successStrong} /></View>
       <ActionButton label="Go to Log In" onPress={() => router.replace('/login')} />

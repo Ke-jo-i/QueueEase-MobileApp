@@ -8,9 +8,11 @@ import { registrarWindows } from '@/constants/service-windows';
 import { ActionButton, Notice } from '@/components/form';
 import { GlassSurface } from '@/components/glass-surface';
 import { AppDialog } from '@/components/app-dialog';
+import { WindowAvailabilityControl } from '@/components/window-availability-control';
+import { useQueueAnnouncements } from '@/hooks/use-queue-announcements';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const ACTION_REASONS = {
   hold: ['Student gathering documents', 'Student requested more time', 'System or payment verification', 'Other'],
@@ -28,6 +30,7 @@ export default function StaffDashboardScreen() {
   const colors = useAppTheme();
   const styles = useThemedStyles(createStyles);
   const router = useRouter();
+  const announcements = useQueueAnnouncements();
   const [action, setAction] = useState<'hold' | 'skip' | 'noShow' | 'transfer' | null>(null);
   const [actionTicketId, setActionTicketId] = useState('');
   const [reason, setReason] = useState('');
@@ -54,7 +57,11 @@ export default function StaffDashboardScreen() {
     connected,
     acceptingTickets,
     ready,
+    windowAvailability,
+    setWindowAvailability,
   } = useQueue();
+  const windowStatus = windowAvailability.find(item => item.window === assignedWindow);
+  const transferTargets = registrarWindows.filter(window => window !== assignedWindow && windowAvailability.some(item => item.window === window && item.online));
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
   const menuOpen = !!currentServing && menuTicketId === currentServing.id;
   if (menuTicketId && !menuOpen) setMenuTicketId(null);
@@ -81,7 +88,7 @@ export default function StaffDashboardScreen() {
 
     const nextTicket = await callNext();
     if (!nextTicket) return;
-
+    void announcements.announce(nextTicket);
   };
 
   // Handler para sa Recall
@@ -95,6 +102,7 @@ export default function StaffDashboardScreen() {
     }
 
     if (!await recallCurrent()) return;
+    void announcements.announce(currentServing);
   };
 
   const openAction = (nextAction: 'hold' | 'skip' | 'noShow' | 'transfer') => {
@@ -107,7 +115,7 @@ export default function StaffDashboardScreen() {
     setSelectedReason('');
     setReasonMenuOpen(false);
     setMenuTicketId(null);
-    if (nextAction === 'transfer') setTransferWindow(registrarWindows.find((window) => window !== assignedWindow)!);
+    if (nextAction === 'transfer') setTransferWindow(transferTargets[0] ?? '');
     setAction(nextAction);
   };
 
@@ -131,7 +139,7 @@ export default function StaffDashboardScreen() {
     setReasonMenuOpen(false);
   };
 
-  const hasValidReason = currentServing?.id === actionTicketId && (!(action === 'hold' || action === 'skip')
+  const hasValidReason = currentServing?.id === actionTicketId && (action !== 'transfer' || transferTargets.includes(transferWindow)) && (!(action === 'hold' || action === 'skip')
     || (!!selectedReason && (selectedReason !== 'Other' || !!reason.trim())));
 
   // Handler para sa Mark as Done
@@ -158,6 +166,18 @@ export default function StaffDashboardScreen() {
           <View style={styles.windowIcon}><Ionicons name="grid-outline" size={22} color={colors.brandText} /></View>
         </View>
         {!assignedWindow && <Notice text="All windows may already be assigned. Ask the administrator to review staff assignments." />}
+        {windowStatus && <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+          <View style={{ flex: 1 }}><WindowAvailabilityControl status={windowStatus} busy={busy} disabled={!connected} onSave={setWindowAvailability} /></View>
+          <TouchableOpacity accessibilityRole="switch" accessibilityLabel="Spoken announcements" accessibilityState={{ checked: announcements.enabled }} onPress={announcements.toggle}
+            style={{ minWidth: 48, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: colors.surfaceMuted }}>
+            <Ionicons name={announcements.enabled ? 'volume-high-outline' : 'volume-mute-outline'} size={20} color={announcements.enabled ? colors.brandText : colors.textMuted} />
+          </TouchableOpacity>
+        </View>}
+        {!!announcements.error && <View style={{ marginBottom: 20 }}><Notice text={announcements.error} /></View>}
+        {windowStatus && !windowStatus.online && <GlassSurface testID="staff-window-offline" accessibilityLiveRegion="polite" style={{ padding: 17, borderRadius: 22, gap: 7, marginBottom: 20, backgroundColor: colors.warningSurface }}>
+          <Text style={{ fontWeight: '700', fontSize: 15, color: colors.warningStrong }}>{assignedWindow.replace(' - Registrar', '')} is offline</Text>
+          <Text style={{ fontSize: 14, lineHeight: 21, color: colors.warningStrong }}>{windowStatus.reason}. New bookings are paused for this window. Serve or transfer existing tickets as needed.</Text>
+        </GlassSurface>}
         {ready && !acceptingTickets && <GlassSurface accessibilityLiveRegion="polite" testID="staff-queue-paused" style={{ padding: 17, borderRadius: 22, gap: 7, marginBottom: 20, backgroundColor: colors.warningSurface }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Ionicons name="pause-circle-outline" size={21} color={colors.warningStrong} /><Text style={{ fontWeight: '700', fontSize: 15, color: colors.warningStrong }}>New tickets paused</Text></View>
           <Text style={{ fontSize: 14, lineHeight: 21, color: colors.warningStrong }}>Continue serving all existing tickets. Students can request new numbers when the queue reopens.</Text>
@@ -219,7 +239,9 @@ export default function StaffDashboardScreen() {
 
       <Modal visible={menuOpen || action !== null} transparent animationType="fade" onRequestClose={closeActions}>
         <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={[styles.modalOverlay, menuOpen && styles.menuOverlay]}>
-          {menuOpen ? <Reveal style={styles.modalFrame}><GlassSurface style={[styles.modalCard, styles.menuCard]}>
+          <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingVertical: 12 }}>
+          {menuOpen ? <Reveal style={[styles.modalFrame, { marginBottom: 0 }]}><GlassSurface solid style={[styles.modalCard, styles.menuCard]}>
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
                 <Text style={styles.modalEyebrow}>TICKET {currentServing?.number}</Text>
@@ -229,7 +251,7 @@ export default function StaffDashboardScreen() {
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={styles.menuList}>
+            <View style={styles.menuList}>
               {TICKET_ACTIONS.map((item) => <TouchableOpacity key={item.id} style={[styles.menuOption, unavailable && styles.disabled]}
                 accessibilityLabel={item.label} disabled={unavailable} onPress={() => openAction(item.id)}>
                 <Ionicons name={item.icon} size={22} color={item.id === 'noShow' ? colors.dangerStrong : colors.textSecondary} />
@@ -239,8 +261,8 @@ export default function StaffDashboardScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
               </TouchableOpacity>)}
-            </ScrollView>
-          </GlassSurface></Reveal> : action && <Reveal style={styles.modalFrame}><GlassSurface style={styles.modalCard}>
+            </View>
+          </GlassSurface></Reveal> : action && <Reveal style={styles.modalFrame}><GlassSurface solid style={styles.modalCard}>
             {currentServing?.id !== actionTicketId && <Notice text="This ticket changed while the dialog was open. Close it and review the current queue before taking another action." error />}
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleGroup}>
@@ -253,14 +275,15 @@ export default function StaffDashboardScreen() {
             </View>
             {action === 'transfer' ? (
               <View style={styles.transferOptions}>
-                {registrarWindows.filter((window) => window !== assignedWindow).map((window) => (
+                {!transferTargets.length && <Notice text="No other windows are online. Ask an administrator to reopen a window before transferring." />}
+                {transferTargets.map((window) => (
                   <TouchableOpacity key={window} style={[styles.transferOption, transferWindow === window && styles.transferOptionSelected]} onPress={() => setTransferWindow(window)}>
                     <Text style={styles.transferOptionText}>{window}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             ) : action === 'hold' || action === 'skip' ? (
-              <View>
+              <View style={{ gap: 12 }}>
                 <Text style={styles.modalPrompt}>Select why this ticket is being {action === 'hold' ? 'held' : 'skipped'}.</Text>
                 <TouchableOpacity style={styles.dropdownButton} accessibilityLabel={selectedReason || 'Choose a reason'}
                   accessibilityState={{ expanded: reasonMenuOpen }} onPress={() => setReasonMenuOpen((open) => !open)}>
@@ -322,6 +345,8 @@ export default function StaffDashboardScreen() {
               </TouchableOpacity>
             </View>
           </GlassSurface></Reveal>}
+          </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
       <AppDialog open={completeOpen} title="Complete transaction" message={`Mark ticket ${currentServing?.number ?? ''} as completed?`} icon="checkmark-circle-outline" confirmLabel="Complete ticket" cancelLabel="Keep serving" busy={busy} disabled={!connected}
@@ -452,8 +477,9 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     width: '100%',
     maxWidth: 420,
     alignSelf: 'center',
+    backgroundColor: colors.surface,
   },
-  modalFrame: { width: '100%', maxWidth: 420, alignSelf: 'center', maxHeight: '90%', flexShrink: 1 },
+  modalFrame: { width: '100%', maxWidth: 420, alignSelf: 'center', marginVertical: 'auto' },
   menuOverlay: { justifyContent: 'flex-end', paddingVertical: 16, paddingHorizontal: 12 },
   menuCard: { flexShrink: 1, borderRadius: 28 },
   menuList: { flexShrink: 1 },
@@ -495,7 +521,6 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 13,
     lineHeight: 19,
-    marginBottom: 10,
   },
   noShowNotice: {
     flexDirection: 'row',
@@ -594,6 +619,7 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
   modalActionRow: {
     flexDirection: 'row',
     gap: 10,
+    marginTop: 24,
   },
   modalCancelButton: {
     flex: 1,
@@ -601,6 +627,8 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 16,
     backgroundColor: colors.surfaceMuted,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   modalCancelText: {
     color: colors.textBody,
@@ -610,8 +638,10 @@ const createStyles = (colors: AppPalette) => StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: colors.brand,
+    minHeight: 48,
+    justifyContent: 'center',
   },
   modalConfirmDisabled: {
     opacity: 0.45,

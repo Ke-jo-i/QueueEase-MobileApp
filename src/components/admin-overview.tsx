@@ -8,8 +8,9 @@ import { Disclosure } from './disclosure';
 import { ActionButton, Notice } from './form';
 import { GlassSurface } from './glass-surface';
 import { MotionButton } from './motion';
+import { WindowAvailabilityControl } from './window-availability-control';
 
-export function AdminOverview({ data, busy, error, toggle }: { data: AdminData; busy: boolean; error: string; toggle: () => void }) {
+export function AdminOverview({ data, busy, error, toggle, setWindowAvailability }: { data: AdminData; busy: boolean; error: string; toggle: () => void; setWindowAvailability: (window: string, online: boolean, reason: string) => Promise<boolean> }) {
   const colors = useAppTheme();
   const wide = useWindowDimensions().width >= 850;
   const [details, setDetails] = useState(false);
@@ -39,6 +40,8 @@ export function AdminOverview({ data, busy, error, toggle }: { data: AdminData; 
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}><Text style={{ color: colors.text, fontWeight: '600', fontSize: 15 }}>{window.window.replace(' - Registrar', '')}</Text><Text numberOfLines={1} style={{ color: colors.textMuted, fontSize: 12, flexShrink: 1 }}>{window.staff?.name ?? 'Unassigned'}</Text></View>
         <View style={{ height: 5, backgroundColor: colors.surfaceMuted, borderRadius: 3, overflow: 'hidden' }}><View style={{ height: 5, width: `${load ? window.waiting / load * 100 : 0}%`, backgroundColor: colors.brandText, borderRadius: 3 }} /></View>
         <Text style={{ color: colors.textMuted, fontSize: 12 }}>{window.waiting} waiting · {window.serving} serving · {window.held} held</Text>
+        {!window.online && <Text style={{ color: colors.warningStrong, fontSize: 12, lineHeight: 18 }}>{window.reason}</Text>}
+        <WindowAvailabilityControl status={window} busy={busy} onSave={(online, reason) => setWindowAvailability(window.window, online, reason)} />
       </View>)}
     </AdminPanel></View>
   </View>;

@@ -9,7 +9,7 @@ import Animated, { cancelAnimation, Easing, ReduceMotion, runOnJS, useAnimatedSt
 import { GlassBackdrop } from './glass-surface';
 import { navigationSpring } from './motion';
 
-export function ServiceTransition({ children }: PropsWithChildren) {
+export function ServiceTransition({ children, mode = 'service' }: PropsWithChildren<{ mode?: 'service' | 'form' }>) {
   const navigation = useNavigation();
   const { role, transition } = useSession();
   const { booking } = useNavigationMotion();
@@ -23,7 +23,7 @@ export function ServiceTransition({ children }: PropsWithChildren) {
     if (action) navigation.dispatch(action);
   }, [navigation]);
 
-  usePreventRemove(role === 'student' && !booking && !transition, ({ data }) => {
+  usePreventRemove(!transition && (mode === 'form' ? role === null : role === 'student' && !booking), ({ data }) => {
     if (pending.current) return;
     pending.current = data.action;
     setClosing(true);
@@ -41,7 +41,7 @@ export function ServiceTransition({ children }: PropsWithChildren) {
     transform: [{ translateY: booking ? 0 : height * (1 - progress.get()) }, { scale: booking ? 1 : 0.96 + progress.get() * 0.04 }],
   }));
 
-  return <Animated.View testID="service-transition" pointerEvents={closing ? 'none' : 'auto'}
+  return <Animated.View testID={mode === 'form' ? 'form-transition' : 'service-transition'} pointerEvents={closing ? 'none' : 'auto'}
     style={[StyleSheet.absoluteFill, { overflow: 'hidden', backgroundColor: colors.surfaceSubtle }, motion]}>
     <GlassBackdrop>{children}</GlassBackdrop>
   </Animated.View>;

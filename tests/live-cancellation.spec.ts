@@ -18,7 +18,7 @@ test('direct cancellation updates another student, a staff window and the admini
     await expect(other.getByTestId('auth-transition')).toHaveCount(0);
     await other.getByRole('button', { name: 'Academic Records Request', exact: true }).click();
     await other.getByRole('button', { name: 'Get Queue Number', exact: true }).click();
-    await expect(other.getByRole('button', { name: 'View queue progress', exact: true })).toHaveText('1 person ahead · View progress');
+    await expect(other.getByRole('button', { name: 'View queue progress', exact: true })).toContainText('1 person ahead');
     await login(staff, 'staff');
     await login(admin, 'admin');
     await expect(staff.getByRole('button', { name: 'View Waiting Queue List (2)', exact: true })).toBeVisible();
@@ -27,7 +27,7 @@ test('direct cancellation updates another student, a staff window and the admini
     await page.getByPlaceholder('Reason for cancellation').fill('Returning another day');
     await page.getByRole('button', { name: 'Yes, Cancel Ticket', exact: true }).click();
     await expect(page.getByTestId('student-tickets').getByText('CANCELLED', { exact: true }).filter({ visible: true })).toBeVisible();
-    await expect(other.getByRole('button', { name: 'View queue progress', exact: true })).toHaveText('0 people ahead · View progress', { timeout: 8000 });
+    await expect(other.getByRole('button', { name: 'View queue progress', exact: true })).toContainText('0 people ahead', { timeout: 8000 });
     await expect(staff.getByRole('button', { name: 'View Waiting Queue List (1)', exact: true })).toBeVisible({ timeout: 8000 });
     await expect(admin.getByText('1 waiting · 0 serving · 0 held', { exact: true })).toBeVisible({ timeout: 8000 });
     await staff.getByRole('button', { name: 'Call Next', exact: true }).click();

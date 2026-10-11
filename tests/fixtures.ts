@@ -3,6 +3,9 @@ import { spawn } from 'node:child_process';
 
 export const password = 'e2e-test-password-123';
 export const test = base.extend<{ apiUrl: string; connect: (context: BrowserContext) => Promise<void> }>({
+  baseURL: async ({ apiUrl, baseURL }, provide) => {
+    await provide(process.env.QUEUE_WEB_DIR ? apiUrl : baseURL);
+  },
   apiUrl: async ({}, provide) => {
     const child = spawn(process.execPath, ['--import', 'tsx', 'server/e2e.ts'], { cwd: process.cwd(), stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     let logs = '';

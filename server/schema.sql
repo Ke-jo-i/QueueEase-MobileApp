@@ -22,6 +22,11 @@ CREATE TABLE IF NOT EXISTS services (
   window TEXT NOT NULL,
   enabled INTEGER NOT NULL DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS window_availability (
+  window TEXT PRIMARY KEY,
+  online INTEGER NOT NULL DEFAULT 1 CHECK(online IN (0,1)),
+  reason TEXT NOT NULL DEFAULT ''
+);
 CREATE TABLE IF NOT EXISTS queue_state (
   id INTEGER PRIMARY KEY CHECK(id = 1),
   next_number INTEGER NOT NULL DEFAULT 1,

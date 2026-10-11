@@ -27,7 +27,7 @@ function formatTicketDate(value: string) {
 
 export default function MyTicketsScreen() {
   const styles = useThemedStyles(createStyles);
-  const { studentTicket, studentHistory, studentProgress, cancelTicket, busy, connected, actionError } = useQueue();
+  const { studentTicket, studentHistory, studentProgress, windowAvailability, cancelTicket, busy, connected, actionError } = useQueue();
   const { studentId } = useSession();
   const router = useRouter();
   const [qrTicketId, setQrTicketId] = useState<string | null>(null);
@@ -37,6 +37,7 @@ export default function MyTicketsScreen() {
   const [expandedHistory, setExpandedHistory] = useState<string | null>(null);
 
   const activeService = studentTicket?.service ?? 'Certificate of Enrollment';
+  const ticketWindow = windowAvailability.find(item => item.window === studentTicket?.window);
   const showQrModal = !!studentTicket && qrTicketId === studentTicket.id;
   const canCancel = !!studentTicket && ['WAITING', 'HELD'].includes(studentTicket.status);
   const showCancelModal = canCancel && cancelTicketId === studentTicket.id;
@@ -86,8 +87,11 @@ export default function MyTicketsScreen() {
               <Text style={styles.activeServiceName}>{activeService}</Text>
               <Text style={styles.activeWindowText}>{studentTicket.window}</Text>
               {studentTicket.status === 'HELD' && <Text style={styles.activeWindowText}>{studentTicket.reason} · Speak with staff when ready.</Text>}
-
-              {/* View QR Ticket Action */}
+              {ticketWindow && !ticketWindow.online && <View style={{ marginBottom: 16 }}><Notice text={`${ticketWindow.window.replace(' - Registrar', '')} is offline · ${ticketWindow.reason}. Your ticket remains active.`} /></View>}
+              <TouchableOpacity style={styles.progressRow} accessibilityRole="button" accessibilityLabel="View queue progress" onPress={() => router.push('/live-status')}>
+                <Text style={styles.progressCount}>{studentTicket.status === 'WAITING' ? `${studentProgress?.peopleAhead ?? 0} ${studentProgress?.peopleAhead === 1 ? 'person' : 'people'} ahead` : studentTicket.status === 'HELD' ? 'On hold' : 'Your turn'}</Text>
+                <View style={styles.progressLink}><Text style={styles.activityButtonText}>View progress</Text><Ionicons name="chevron-forward" size={15} color={styles.activityButtonText.color} /></View>
+              </TouchableOpacity>
               <TouchableOpacity
                 accessibilityRole="button"
                 accessibilityLabel="View QR Ticket"
@@ -96,10 +100,7 @@ export default function MyTicketsScreen() {
               >
                 <Text style={styles.viewQrText}>View QR Ticket</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.activityButton} accessibilityLabel="View queue progress" onPress={() => router.push('/live-status')}>
-                <Text style={styles.activityButtonText}>{studentTicket.status === 'WAITING' ? `${studentProgress?.peopleAhead ?? 0} ${studentProgress?.peopleAhead === 1 ? 'person' : 'people'} ahead · View progress` : 'View queue progress'}</Text>
-              </TouchableOpacity>
-              {canCancel && <TouchableOpacity accessibilityLabel="Cancel ticket" disabled={busy} style={styles.cancelButton} onPress={() => { setCancelReason(''); setCancelTicketId(studentTicket.id); }}>
+              {canCancel && <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel ticket" disabled={busy} style={styles.cancelLink} onPress={() => { setCancelReason(''); setCancelTicketId(studentTicket.id); }}>
                 <Text style={styles.cancelButtonText}>Cancel ticket</Text>
               </TouchableOpacity>}
             </GlassSurface></Reveal>
@@ -227,6 +228,10 @@ export default function MyTicketsScreen() {
 }
 
 const createStyles = (colors: AppPalette) => StyleSheet.create({
+  progressRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44, borderTopWidth: 1, borderColor: translucent(colors.brandText, 0.12), paddingVertical: 14, marginBottom: 14 },
+  progressCount: { color: colors.textSecondary, fontSize: 13, fontWeight: '600' },
+  progressLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  cancelLink: { alignSelf: 'center', minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20, marginTop: 8 },
   activityButton: { alignSelf: 'flex-start', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 18, backgroundColor: translucent(colors.surface, 0.7), marginTop: 12 },
   activityButtonText: { color: colors.brandText, fontSize: 12, fontWeight: '700' },
   container: {

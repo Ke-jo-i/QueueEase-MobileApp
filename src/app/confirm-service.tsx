@@ -24,7 +24,7 @@ export default function ConfirmServiceScreen() {
   const params = useLocalSearchParams<{ serviceName?: string }>();
   const requestedService = services.find(service => service.name === params.serviceName);
   const serviceTitle = studentTicket?.service ?? requestedService?.name ?? params.serviceName ?? 'Choose a service';
-  const disabled = busy || booking || (!studentTicket && (!connected || !acceptingTickets || !requestedService?.enabled));
+  const disabled = busy || booking || (!studentTicket && (!connected || !acceptingTickets || !requestedService?.available));
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('transitionEnd', event => {
@@ -54,6 +54,7 @@ export default function ConfirmServiceScreen() {
           {studentTicket ? <Text style={styles.ticketNumber}>{studentTicket.number}</Text> : <Ionicons name="document-text-outline" size={30} color={colors.brandText} style={{ marginBottom: 18 }} />}
           <Text style={styles.serviceNameTitle}>{serviceTitle}</Text>
           <Text style={styles.metaText}>{studentTicket?.window ?? requestedService?.window ?? 'Connecting…'}</Text>
+          {!studentTicket && requestedService && !requestedService.available && <Text style={[styles.metaText, { color: colors.warningStrong }]}>{requestedService.unavailableReason || 'This service is temporarily unavailable.'}</Text>}
           {studentTicket && <View style={styles.ticketPolicy}>
             <Text style={styles.policyTitle}>One active ticket at a time.</Text>
             <Text style={styles.metaText}>Finish your current request, or cancel it while waiting, before joining another queue.</Text>
@@ -62,7 +63,7 @@ export default function ConfirmServiceScreen() {
 
         <View style={styles.footer}>
           <TouchableOpacity disabled={disabled} style={[styles.confirmButton, disabled && { opacity: 0.5 }]} onPress={handleGetQueue} activeOpacity={0.8}>
-            <Text style={styles.confirmButtonText}>{busy ? 'Creating ticket…' : studentTicket ? 'View active ticket' : !acceptingTickets ? 'New tickets paused' : 'Get Queue Number'}</Text>
+            <Text style={styles.confirmButtonText}>{busy ? 'Creating ticket…' : studentTicket ? 'View active ticket' : !acceptingTickets ? 'New tickets paused' : requestedService && !requestedService.available ? 'Service unavailable' : 'Get Queue Number'}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

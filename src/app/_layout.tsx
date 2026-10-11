@@ -73,8 +73,8 @@ function RootNavigator() {
         <Stack.Protected guard={role === null}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
-          <Stack.Screen name="register" />
-          <Stack.Screen name="forgot-password" />
+          <Stack.Screen name="register" options={serviceTransitions} />
+          <Stack.Screen name="forgot-password" options={serviceTransitions} />
           <Stack.Screen name="(staff-auth)" />
         </Stack.Protected>
         <Stack.Screen name="landing" options={{ animationTypeForReplace: 'pop' }} />

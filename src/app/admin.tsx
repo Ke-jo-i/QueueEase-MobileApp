@@ -38,7 +38,7 @@ const auditNames: Record<string, string> = {
   CREATE_ACCOUNT: 'Account created', UPDATE_ACCOUNT: 'Account updated', SET_ACTIVE: 'Account access changed',
   ASSIGN_WINDOW: 'Window assigned', RELEASE_WINDOW: 'Window released', RESET_PASSWORD: 'Password reset',
   CREATE_SERVICE: 'Service added', SET_SERVICE: 'Service updated', SET_ACCEPTING: 'Queue availability changed',
-  REMOVE_ACCOUNT: 'Account removed', REVOKE_SESSIONS: 'Sessions ended',
+  REMOVE_ACCOUNT: 'Account removed', REVOKE_SESSIONS: 'Sessions ended', SET_WINDOW_AVAILABILITY: 'Window availability changed',
 };
 
 function useDebounced(value: string) {
@@ -259,7 +259,7 @@ function Services({ services, busy, act, error }: { services: AdminService[]; bu
       <Notice text={error?.type === 'SET_SERVICE' && error.name === service.name ? error.message : ''} error />
       <MotionButton accessibilityRole="switch" accessibilityLabel={`${service.name} enabled`} accessibilityState={{ checked: !!service.enabled, disabled: busy }} disabled={busy}
         onPress={() => void act({ type: 'SET_SERVICE', name: service.name, window: service.window, enabled: !service.enabled })} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, gap: 12 }}>
-        <Text style={{ color: colors.text, fontSize: 14 }}>{service.enabled ? 'Available for booking' : 'Booking paused'}</Text>
+        <Text style={{ color: colors.text, fontSize: 14 }}>{service.available ? 'Available for booking' : service.enabled ? 'Window offline' : 'Booking paused'}</Text>
         <View style={{ width: 44, height: 26, borderRadius: 15, padding: 3, backgroundColor: service.enabled ? colors.brand : colors.borderStrong, alignItems: service.enabled ? 'flex-end' : 'flex-start' }}><View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' }} /></View>
       </MotionButton>
     </AdminPanel>)}
@@ -430,7 +430,8 @@ export default function AdminScreen() {
   const pages = sections.map(id => ({ id, content: <>
     {id === section && <><Notice text={data ? error : ''} error /><Notice text={notice} />
     {!data && <StateScreen compact loading={!error} title={error ? 'Administration is unavailable' : 'Loading administration'} message={error || undefined} onRetry={error ? reload : undefined} />}</>}
-    {data && id === 'Overview' && <AdminOverview data={data} busy={busy} error={actionError?.type === 'SET_ACCEPTING' ? actionError.message : ''} toggle={() => void act({ type: 'SET_ACCEPTING', accepting: !data.acceptingTickets })} />}
+    {data && id === 'Overview' && <AdminOverview data={data} busy={busy} error={actionError && ['SET_ACCEPTING', 'SET_WINDOW_AVAILABILITY'].includes(actionError.type) ? actionError.message : ''} toggle={() => void act({ type: 'SET_ACCEPTING', accepting: !data.acceptingTickets })}
+      setWindowAvailability={(window, online, reason) => act({ type: 'SET_WINDOW_AVAILABILITY', window, online, reason })} />}
     {data && id === 'Accounts' && <Accounts data={data} ownId={user?.id} busy={busy} act={act} error={actionError} token={token} expire={expire} revision={revision} />}
     {data && id === 'Services' && <Services services={data.services} busy={busy} act={act} error={actionError} />}
     {data && id === 'Records' && <Records services={data.services} token={token} expire={expire} revision={revision} />}

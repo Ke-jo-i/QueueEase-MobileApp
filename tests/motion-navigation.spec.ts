@@ -21,6 +21,21 @@ async function motionFrames(page: Page, testId: string, action: () => Promise<un
   return frames;
 }
 
+test('service confirmation slides down over the preserved Home on both Back paths', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page);
+  const service = page.getByRole('button', { name: 'Academic Records Request', exact: true });
+  for (const back of [() => page.getByLabel('Back', { exact: true }).click(), () => page.goBack()]) {
+    await service.click();
+    await expect.poll(async () => Math.round((await page.getByTestId('confirm-service').boundingBox())?.y ?? -1)).toBe(0);
+    const frames = await motionFrames(page, 'confirm-service', back);
+    expect(frames.some(frame => frame.y > page.viewportSize()!.height * 0.5), JSON.stringify(frames)).toBeTruthy();
+    expect(frames.every(frame => frame.y >= 0)).toBeTruthy();
+    await expect(page).toHaveURL(/\/home$/);
+    await expect(service).toBeVisible();
+  }
+});
+
 test('tabs travel sideways and detail Back reverses vertically after booking', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await login(page);

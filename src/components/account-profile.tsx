@@ -4,7 +4,7 @@ import { request } from '@/data/api';
 import { registrarWindows } from '@/constants/service-windows';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { useState } from 'react';
-import { Platform, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DarkModeToggle } from './dark-mode-toggle';
 import { ThemePicker } from './theme-picker';
@@ -79,7 +79,7 @@ export function AccountProfile() {
           <Disclosure open={section === 'help'} style={detailStyle}><Notice text="For account recovery, contact an administrator. For service requirements, contact registrar staff." /></Disclosure>
         </GlassSurface>
       </View>
-      {role === 'student' && Platform.OS !== 'web' && <GlassSurface style={{ borderRadius: 25, padding: 18, gap: 10 }}>
+      {role === 'student' && <GlassSurface style={{ borderRadius: 25, padding: 18, gap: 10 }}>
         <ActionButton label={alerts.enabled ? 'Turn alerts: on' : 'Enable turn alerts'} secondary onPress={() => { void alerts.toggle().then((enabled) => { if (!enabled && !alerts.enabled) setMessage('Notification permission was not granted. You can still check Alerts in the app.'); }).catch(() => setMessage('Could not update notification settings.')); }} />
         <Text style={{ color: colors.textMuted, fontSize: 12, lineHeight: 18 }}>{turnAlertDelivery === 'in-app' ? 'Shows a pop-up inside the app when your turn is near or called.' : 'Shows a device notification when your turn is near or called.'} Keep Queue Ease open and connected to receive updates. Alerts are not delivered while the app is closed.</Text>
       </GlassSurface>}

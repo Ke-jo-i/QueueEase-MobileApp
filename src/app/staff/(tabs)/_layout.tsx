@@ -1,26 +1,13 @@
-import { NavigationBar } from '@/components/navigation-bar';
-import { useTabTransitions } from '@/hooks/use-navigation-transitions';
-import { type TabBarProps, useTabSelection } from '@/hooks/use-tab-selection';
-import { Tabs } from 'expo-router';
+import { FluidTabs } from '@/components/fluid-tabs';
+
+export const unstable_settings = { initialRouteName: 'dashboard' };
 
 const items = [
-  { id: 'dashboard', label: 'Queue', icon: 'list-outline', selectedIcon: 'list' },
-  { id: 'history', label: 'History', icon: 'time-outline', selectedIcon: 'time' },
-  { id: 'profile', label: 'Profile', icon: 'person-outline', selectedIcon: 'person' },
+  { id: 'dashboard', href: '/staff/dashboard', label: 'Queue', icon: 'list-outline', selectedIcon: 'list' },
+  { id: 'history', href: '/staff/history', label: 'History', icon: 'time-outline', selectedIcon: 'time' },
+  { id: 'profile', href: '/staff/profile', label: 'Profile', icon: 'person-outline', selectedIcon: 'person' },
 ] as const;
 
-function StaffNavigation({ state, navigation }: TabBarProps) {
-  const select = useTabSelection(navigation);
-  return <NavigationBar tabs items={items} selected={state.routes[state.index].name} onSelect={select} />;
-}
-
 export default function StaffTabs() {
-  const transitions = useTabTransitions();
-  return <Tabs initialRouteName="dashboard" backBehavior="initialRoute"
-    screenOptions={transitions}
-    tabBar={props => <StaffNavigation {...props} />}>
-    <Tabs.Screen name="dashboard" options={{ title: 'Queue' }} />
-    <Tabs.Screen name="history" options={{ title: 'History' }} />
-    <Tabs.Screen name="profile" options={{ title: 'Profile' }} />
-  </Tabs>;
+  return <FluidTabs items={items} />;
 }

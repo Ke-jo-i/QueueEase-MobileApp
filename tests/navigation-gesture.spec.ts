@@ -16,6 +16,7 @@ test('held navigation expands, follows the pointer and selects only on release',
   const startX = start.x + start.width / 2;
   const targetX = target.x + target.width / 2;
   const y = start.y + start.height / 2;
+  const windowWidth = page.viewportSize()!.width;
   await page.mouse.move(startX, y);
   await page.mouse.down();
   await expect.poll(async () => (await indicator.boundingBox())?.height ?? 0).toBeGreaterThan(initial.height + 2);
@@ -26,6 +27,13 @@ test('held navigation expands, follows the pointer and selects only on release',
   }).toBeLessThan(3);
   await expect(home).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(/\/home$/);
+  const ticketsScene = await page.getByTestId('student-tickets').boundingBox();
+  const homeScene = await page.getByTestId('student-home').boundingBox();
+  expect(ticketsScene).not.toBeNull();
+  expect(homeScene).not.toBeNull();
+  expect(ticketsScene!.x).toBeLessThan(-windowWidth / 4);
+  expect(homeScene!.x).toBeLessThan(-windowWidth);
+  expect(ticketsScene!.x - homeScene!.x).toBeCloseTo(windowWidth, 0);
   await page.mouse.move(targetX, y, { steps: 8 });
   await page.mouse.up();
   await expect(profile).toHaveAttribute('aria-selected', 'true');
@@ -59,6 +67,30 @@ test('staff navigation supports dragging between its three tabs', async ({ page 
   await expect(page.getByText('Queue History', { exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
   await expect(page.getByText('Profile & Settings', { exact: true })).toBeVisible();
+});
+
+test('admin screens follow the indicator before release and preserve the account directory', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page, 'admin');
+  const overview = await page.getByRole('button', { name: 'Overview', exact: true }).boundingBox();
+  const accounts = await page.getByRole('button', { name: 'Accounts', exact: true }).boundingBox();
+  expect(overview).not.toBeNull(); expect(accounts).not.toBeNull();
+  const y = overview!.y + overview!.height / 2;
+  await page.mouse.move(overview!.x + overview!.width / 2, y);
+  await page.mouse.down();
+  await page.waitForTimeout(230);
+  await page.mouse.move((overview!.x + overview!.width / 2 + accounts!.x + accounts!.width / 2) / 2, y, { steps: 8 });
+  const pane = await page.getByTestId('admin-section-accounts').boundingBox();
+  expect(pane!.x).toBeGreaterThan(20);
+  expect(pane!.x).toBeLessThan(page.viewportSize()!.width - 20);
+  await page.mouse.move(accounts!.x + accounts!.width / 2, y, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: 'Students', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Students', exact: true }).click();
+  await page.getByLabel('Search accounts', { exact: true }).fill('student1');
+  await page.getByRole('button', { name: 'Services', exact: true }).click();
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+  await expect(page.getByLabel('Search accounts', { exact: true })).toHaveValue('student1');
 });
 
 test('reduced motion keeps tab taps and held navigation usable without expansion', async ({ page }) => {

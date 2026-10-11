@@ -61,8 +61,10 @@ for (const platform of ['android', 'ios']) {
   test(`${platform} Expo Go can enable and deliver a turn alert without loading push code`, async () => {
     const { adapter, calls } = loadAdapter({ platform });
     assert.equal(await adapter.requestTurnAlerts(), true);
-    await adapter.notifyTurn('Your turn', 'Go to Window 1.');
-    assert.deepEqual(calls.alerts, [['Your turn', 'Go to Window 1.']]);
+    const notice = await adapter.notifyTurn('Your turn', 'Go to Window 1.');
+    assert.equal(notice.title, 'Your turn');
+    assert.equal(notice.body, 'Go to Window 1.');
+    assert.equal(calls.alerts.length, 0);
     assert.equal(calls.imports, 0);
     assert.equal(calls.prompts, 0);
   });
@@ -70,8 +72,9 @@ for (const platform of ['android', 'ios']) {
 
 test('a restored alert preference can deliver in Expo Go without requesting permission again', async () => {
   const { adapter, calls } = loadAdapter();
-  await adapter.notifyTurn('Almost your turn', 'Please stay nearby.');
-  assert.equal(calls.alerts.length, 1);
+  const notice = await adapter.notifyTurn('Almost your turn', 'Please stay nearby.');
+  assert.equal(notice.title, 'Almost your turn');
+  assert.equal(calls.alerts.length, 0);
   assert.equal(calls.imports, 0);
 });
 

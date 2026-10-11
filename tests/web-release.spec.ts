@@ -35,6 +35,7 @@ test('exported website supports desktop and phone browsers with a shared queue a
     await expect(staff.getByText(/Arrival confirmed and recorded/)).toBeVisible();
     await staff.getByRole('button', { name: 'Back to queue', exact: true }).click();
     await staff.getByRole('button', { name: 'Mark as Done', exact: true }).click();
+    await staff.getByRole('button', { name: 'Complete ticket', exact: true }).click();
     await expect(page.getByTestId('student-tickets').getByText('COMPLETED', { exact: true })).toBeVisible({ timeout: 10000 });
     await page.reload();
     await expect(page.getByText('Student Portal', { exact: true })).toBeVisible();

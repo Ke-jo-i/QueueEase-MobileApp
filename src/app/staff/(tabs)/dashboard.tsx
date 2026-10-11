@@ -7,14 +7,10 @@ import { useQueue } from '@/contexts/queue';
 import { registrarWindows } from '@/constants/service-windows';
 import { ActionButton, Notice } from '@/components/form';
 import { GlassSurface } from '@/components/glass-surface';
+import { AppDialog } from '@/components/app-dialog';
 import { useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-
-function showMessage(title: string, message: string) {
-  if (Platform.OS === 'web') globalThis.alert(`${title}\n${message}`);
-  else Alert.alert(title, message);
-}
+import { Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 const ACTION_REASONS = {
   hold: ['Student gathering documents', 'Student requested more time', 'System or payment verification', 'Other'],
@@ -39,6 +35,9 @@ export default function StaffDashboardScreen() {
   const [reasonMenuOpen, setReasonMenuOpen] = useState(false);
   const [transferWindow, setTransferWindow] = useState('Window 1 - Registrar');
   const [menuTicketId, setMenuTicketId] = useState<string | null>(null);
+  const [completeTicketId, setCompleteTicketId] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ title: string; body: string } | null>(null);
+  const showMessage = (title: string, body: string) => setMessage({ title, body });
 
   const {
     assignedWindow,
@@ -53,10 +52,14 @@ export default function StaffDashboardScreen() {
     transferCurrent,
     busy,
     connected,
+    acceptingTickets,
+    ready,
   } = useQueue();
   const windowWaiting = waiting.filter((ticket) => ticket.window === assignedWindow);
   const menuOpen = !!currentServing && menuTicketId === currentServing.id;
   if (menuTicketId && !menuOpen) setMenuTicketId(null);
+  const completeOpen = !!currentServing && completeTicketId === currentServing.id;
+  if (completeTicketId && !completeOpen) setCompleteTicketId(null);
   const unavailable = busy || !connected;
   const arrivalConfirmed = currentServing?.events.slice(currentServing.events.map((event) => event.type).lastIndexOf('CALLED'))
     .some((event) => event.type === 'CHECKED_IN');
@@ -141,25 +144,7 @@ export default function StaffDashboardScreen() {
       return;
     }
 
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(`Mark Ticket ${currentServing.number} as completed?`)) completeCurrent();
-      return;
-    }
-
-    Alert.alert(
-      'Complete Transaction',
-      `Are you sure you want to mark Ticket ${currentServing.number} as completed?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Yes, Complete',
-          onPress: completeCurrent,
-        },
-      ]
-    );
+    setCompleteTicketId(currentServing.id);
   };
 
   return (
@@ -173,6 +158,10 @@ export default function StaffDashboardScreen() {
           <View style={styles.windowIcon}><Ionicons name="grid-outline" size={22} color={colors.brandText} /></View>
         </View>
         {!assignedWindow && <Notice text="All windows may already be assigned. Ask the administrator to review staff assignments." />}
+        {ready && !acceptingTickets && <GlassSurface accessibilityLiveRegion="polite" testID="staff-queue-paused" style={{ padding: 17, borderRadius: 22, gap: 7, marginBottom: 20, backgroundColor: colors.warningSurface }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Ionicons name="pause-circle-outline" size={21} color={colors.warningStrong} /><Text style={{ fontWeight: '700', fontSize: 15, color: colors.warningStrong }}>New tickets paused</Text></View>
+          <Text style={{ fontSize: 14, lineHeight: 21, color: colors.warningStrong }}>Continue serving all existing tickets. Students can request new numbers when the queue reopens.</Text>
+        </GlassSurface>}
 
         <Reveal><GlassSurface variant="tinted" style={styles.servingCard}>
           <View style={styles.servingStatus}><View style={[styles.statusDot, { backgroundColor: currentServing ? colors.success : colors.textDisabled }]} />
@@ -335,7 +324,9 @@ export default function StaffDashboardScreen() {
           </GlassSurface></Reveal>}
         </SafeAreaView>
       </Modal>
-
+      <AppDialog open={completeOpen} title="Complete transaction" message={`Mark ticket ${currentServing?.number ?? ''} as completed?`} icon="checkmark-circle-outline" confirmLabel="Complete ticket" cancelLabel="Keep serving" busy={busy} disabled={!connected}
+        onClose={() => setCompleteTicketId(null)} onConfirm={() => { if (currentServing?.id === completeTicketId) void completeCurrent().then(ok => { if (ok) setCompleteTicketId(null); }); }} />
+      <AppDialog open={!!message} title={message?.title ?? ''} message={message?.body ?? ''} onClose={() => setMessage(null)} />
     </SafeAreaView>
   );
 }

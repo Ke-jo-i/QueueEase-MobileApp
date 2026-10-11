@@ -1,27 +1,11 @@
-import { useNavigationMotion } from '@/contexts/navigation-motion';
 import { navigationSpring } from '@/components/motion';
 import { useAppTheme } from './use-app-theme';
 import { type StackNavigationOptions } from 'expo-router/js-stack';
-import { Animated, Easing, Platform, useWindowDimensions } from 'react-native';
+import { Animated, Easing, Platform } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { useMemo } from 'react';
 
-export function useTabTransitions() {
-  const colors = useAppTheme();
-  const reduced = useReducedMotion();
-  const { booking } = useNavigationMotion();
-  const { width } = useWindowDimensions();
-  return useMemo(() => ({
-    headerShown: false,
-    sceneStyle: { backgroundColor: colors.surfaceSubtle },
-    animation: reduced || booking ? 'none' as const : 'shift' as const,
-    freezeOnBlur: true,
-    transitionSpec: { animation: 'timing' as const, config: { duration: 220, easing: Easing.bezier(0.2, 0.8, 0.2, 1) } },
-    sceneStyleInterpolator: ({ current }: { current: { progress: Animated.Value } }) => ({ sceneStyle: {
-      transform: [{ translateX: current.progress.interpolate({ inputRange: [-1, 0, 1], outputRange: [-width, 0, width], extrapolate: 'clamp' }) }],
-    } }),
-  }), [booking, colors.surfaceSubtle, reduced, width]);
-}
+export const serviceTransitions: StackNavigationOptions = {};
 
 export function useVerticalTransitions(handoff = false): StackNavigationOptions {
   const colors = useAppTheme();

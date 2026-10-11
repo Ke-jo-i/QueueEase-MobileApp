@@ -1,5 +1,5 @@
 import { isRunningInExpoGo } from 'expo';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 
 export const turnAlertDelivery = isRunningInExpoGo() ? 'in-app' : 'notification';
 let notifications: Promise<typeof import('expo-notifications')> | undefined;
@@ -37,8 +37,7 @@ export async function requestTurnAlerts() {
 
 export async function notifyTurn(title: string, body: string) {
   if (turnAlertDelivery === 'in-app') {
-    Alert.alert(title, body);
-    return;
+    return { title, body };
   }
   const sdk = await loadNotifications();
   const permission = await sdk.getPermissionsAsync();

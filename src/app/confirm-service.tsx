@@ -1,5 +1,6 @@
 import { GlassSurface, translucent } from '@/components/glass-surface';
 import { Reveal, MotionButton as TouchableOpacity } from '@/components/motion';
+import { ServiceTransition } from '@/components/service-transition';
 import { AppPalette } from '@/constants/app-colors';
 import { useNavigationMotion } from '@/contexts/navigation-motion';
 import { useQueue } from '@/contexts/queue';
@@ -40,7 +41,7 @@ export default function ConfirmServiceScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ServiceTransition><SafeAreaView style={styles.container} testID="confirm-service">
       <ScrollView contentContainerStyle={styles.content}>
         <TouchableOpacity style={styles.backButton} accessibilityLabel="Back" onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.brandText} />
@@ -65,7 +66,7 @@ export default function ConfirmServiceScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </SafeAreaView></ServiceTransition>
   );
 }
 

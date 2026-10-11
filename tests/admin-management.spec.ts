@@ -1,33 +1,63 @@
 import { test, expect, login, password } from './fixtures';
 import type { AdminData } from '../src/data/admin-model';
 
-test('account directory loads bounded pages, searches the database and edits a filtered account', async ({ page, apiUrl }) => {
+test('account directories rise on entry and reverse on return while navigation remains available', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await login(page, 'admin');
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+  async function sample(label: string) {
+    return page.evaluate(buttonLabel => new Promise<number[]>(resolve => {
+      const frames: number[] = [];
+      const start = performance.now();
+      const sampleFrame = (now: number) => {
+        const pane = document.querySelector('[data-testid="account-directory-transition"]');
+        if (pane) frames.push(new DOMMatrix(getComputedStyle(pane).transform).m42);
+        if (now - start > 500) resolve(frames); else requestAnimationFrame(sampleFrame);
+      };
+      requestAnimationFrame(sampleFrame);
+      document.querySelector<HTMLElement>(`[role="button"][aria-label="${buttonLabel}"]`)?.click();
+    }), label);
+  }
+  const entry = await sample('Students');
+  expect(entry.length).toBeGreaterThan(3);
+  expect(Math.max(...entry)).toBeGreaterThan(1);
+  expect(Math.abs(entry.at(-1)!)).toBeLessThan(0.5);
+  await expect(page.getByRole('button', { name: 'Services', exact: true })).toBeVisible();
+  const exit = await sample('Back to account groups');
+  expect(exit.length).toBeGreaterThan(3);
+  expect(Math.max(...exit)).toBeGreaterThan(10);
+  await expect(page.getByRole('button', { name: 'Students', exact: true })).toBeVisible();
+});
+
+test('role directories search, sort and page database accounts without a long list', async ({ page, apiUrl }) => {
   for (let i = 0; i < 23; i++) {
-    const response = await fetch(`${apiUrl}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: `directory${i}`, email: `directory${i}@example.test`, name: `Directory Person ${i}`, password }) });
+    const response = await fetch(apiUrl + '/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ login: 'directory' + i, email: 'directory' + i + '@example.test', name: 'Directory Person ' + i, password }) });
     expect(response.status).toBe(200);
   }
   await login(page, 'admin');
-  const workspace = await page.request.get(`${apiUrl}/health`);
-  expect(workspace.ok()).toBe(true);
   await page.getByRole('button', { name: 'Accounts', exact: true }).click();
-  await expect(page.getByText('26 accounts · Page 1 of 3', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Students', exact: true })).toContainText('24');
+  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Students', exact: true }).click();
+  await expect(page.getByRole('table', { name: 'Students account directory' })).toBeVisible();
+  await expect(page.getByText('24 accounts · Page 1 of 3', { exact: true })).toBeVisible();
   await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(10);
   await page.getByRole('button', { name: 'Next page', exact: true }).click();
-  await expect(page.getByText('26 accounts · Page 2 of 3', { exact: true })).toBeVisible();
-  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(10);
+  await expect(page.getByText('24 accounts · Page 2 of 3', { exact: true })).toBeVisible();
+  await page.getByRole('columnheader', { name: 'Sort accounts by ID', exact: true }).click();
+  await expect(page.getByText('24 accounts · Page 1 of 3', { exact: true })).toBeVisible();
   await page.getByLabel('Search accounts', { exact: true }).fill('directory0@');
   await expect(page.getByText('1 accounts · Page 1 of 1', { exact: true })).toBeVisible();
-  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(1);
-  const row = page.getByTestId('admin-account-directory0');
-  await row.getByRole('button', { name: 'Directory Person 0', exact: true }).click();
-  await row.getByLabel('Name for directory0', { exact: true }).fill('Updated Directory Person');
-  await row.getByRole('button', { name: 'Save details for directory0', exact: true }).click();
-  await expect(row.getByRole('button', { name: 'Updated Directory Person', exact: true })).toBeVisible();
-  await page.getByLabel('Search accounts', { exact: true }).fill('');
-  await page.getByRole('button', { name: 'Account role: All roles', exact: true }).click();
-  await page.getByRole('button', { name: 'Account role: select Admin', exact: true }).click();
-  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Manage directory0', exact: true }).click();
+  const editor = page.getByTestId('admin-account-editor');
+  await editor.getByLabel('Name for directory0', { exact: true }).fill('Updated Directory Person');
+  await editor.getByRole('button', { name: 'Save details for directory0', exact: true }).click();
+  await expect(editor.getByRole('heading', { name: 'Updated Directory Person', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Close account editor', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to account groups', exact: true }).click();
+  await page.getByRole('button', { name: 'Admins', exact: true }).click();
   await expect(page.getByTestId('admin-account-admin')).toBeVisible();
+  await expect(page.locator('[data-testid^="admin-account-"]')).toHaveCount(1);
 });
 
 async function session(apiUrl: string, role: 'student' | 'staff' | 'admin') {
@@ -39,6 +69,30 @@ async function session(apiUrl: string, role: 'student' | 'staff' | 'admin') {
   return response.json() as Promise<{ token: string }>;
 }
 
+test('directory removal requires confirmation and ends every session while retaining records', async ({ page, apiUrl }) => {
+  const student = await session(apiUrl, 'student');
+  const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${student.token}` };
+  for (const body of [{ type: 'BOOK', service: 'Academic Records Request' }, { type: 'CANCEL', reason: 'Changed plans' }]) {
+    const response = await fetch(`${apiUrl}/queue/command`, { method: 'POST', headers: { ...headers, 'X-Request-ID': crypto.randomUUID() }, body: JSON.stringify(body) });
+    expect(response.status).toBe(200);
+  }
+  await login(page, 'admin');
+  await page.getByRole('button', { name: 'Accounts', exact: true }).click();
+  await page.getByRole('button', { name: 'Students', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage student1', exact: true }).click();
+  const editor = page.getByTestId('admin-account-editor');
+  await editor.getByRole('button', { name: 'Remove student1', exact: true }).click();
+  const confirm = editor.getByRole('button', { name: 'Confirm removal student1', exact: true });
+  await expect(confirm).toBeDisabled();
+  await editor.getByLabel('Enter student1 to confirm removal', { exact: true }).fill('student1');
+  await confirm.click();
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByText('0 accounts · Page 1 of 1', { exact: true })).toBeVisible();
+  expect((await fetch(`${apiUrl}/auth/me`, { headers })).status).toBe(401);
+  await page.getByRole('button', { name: 'Records', exact: true }).click();
+  await expect(page.getByTestId('admin-record-ticket-1')).toBeVisible();
+});
+
 test('admin creates another administrator, edits staff identity, assigns a free window and resets credentials', async ({ page, browser, connect }) => {
   await login(page, 'admin');
   await page.getByRole('button', { name: 'Accounts', exact: true }).click();
@@ -49,13 +103,14 @@ test('admin creates another administrator, edits staff identity, assigns a free 
   await page.getByLabel('Admin email', { exact: true }).fill('admin2@example.test');
   await page.getByLabel('Initial password (at least 10 characters)', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Save admin account', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Accounts (4)' })).toBeVisible();
-  const staff = page.getByTestId('admin-account-staff1');
-  await staff.getByRole('button', { name: 'staff Test', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Admins', exact: true })).toContainText('2');
+  await page.getByRole('button', { name: 'Staff', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage staff1', exact: true }).click();
+  const staff = page.getByTestId('admin-account-editor');
   await staff.getByLabel('Name for staff1', { exact: true }).fill('Updated Staff');
   await staff.getByLabel('Email for staff1', { exact: true }).fill('updated.staff@example.test');
   await staff.getByRole('button', { name: 'Save details for staff1', exact: true }).click();
-  await expect(staff.getByRole('button', { name: 'Updated Staff', exact: true })).toBeVisible();
+  await expect(staff.getByRole('heading', { name: 'Updated Staff', exact: true })).toBeVisible();
   await staff.getByRole('button', { name: 'Window for staff1: Unassigned', exact: true }).click();
   await staff.getByRole('button', { name: 'Window for staff1: select Window 2', exact: true }).click();
   await expect(staff.getByRole('button', { name: 'Window for staff1: Window 2', exact: true })).toBeVisible();
@@ -63,9 +118,12 @@ test('admin creates another administrator, edits staff identity, assigns a free 
   await staff.getByLabel('Replacement password for staff1', { exact: true }).fill('new-staff-password-123');
   await staff.getByRole('button', { name: 'Confirm password reset for staff1', exact: true }).click();
   await expect(staff.getByLabel('Replacement password for staff1', { exact: true })).toHaveCount(0);
-  const own = page.getByTestId('admin-account-admin');
-  await own.getByRole('button', { name: 'admin Test', exact: true }).click();
-  await expect(own.getByRole('button', { name: 'Disable admin', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: 'Close account editor', exact: true }).click();
+  await page.getByRole('button', { name: 'Back to account groups', exact: true }).click();
+  await page.getByRole('button', { name: 'Admins', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage admin', exact: true }).click();
+  const own = page.getByTestId('admin-account-editor');
+  await expect(own.getByRole('button', { name: 'Suspend admin', exact: true })).toHaveCount(0);
   await expect(own.getByRole('button', { name: 'Reset password for admin', exact: true })).toHaveCount(0);
   const context = await browser.newContext(); await connect(context);
   try {
@@ -86,22 +144,23 @@ test('account disable confirmation protects an active request and later revokes 
   expect(booking.status).toBe(200);
   await login(page, 'admin');
   await page.getByRole('button', { name: 'Accounts', exact: true }).click();
-  const row = page.getByTestId('admin-account-student1');
-  await row.getByRole('button', { name: 'student Test', exact: true }).click();
-  await row.getByRole('button', { name: 'Disable student1', exact: true }).click();
-  await expect(row.getByRole('button', { name: 'Confirm disable student1', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Students', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage student1', exact: true }).click();
+  const row = page.getByTestId('admin-account-editor');
+  await row.getByRole('button', { name: 'Suspend student1', exact: true }).click();
+  await expect(row.getByRole('button', { name: 'Confirm suspension student1', exact: true })).toBeVisible();
   expect((await fetch(`${apiUrl}/auth/me`, { headers })).status).toBe(200);
-  await row.getByRole('button', { name: 'Confirm disable student1', exact: true }).click();
+  await row.getByRole('button', { name: 'Confirm suspension student1', exact: true }).click();
   const protection = row.getByText('Finish or cancel this student’s active ticket before disabling the account.', { exact: true });
   await expect(protection).toBeVisible();
   await expect(protection).toBeInViewport();
   const cancelled = await fetch(`${apiUrl}/queue/command`, { method: 'POST', headers: { ...headers, 'X-Request-ID': crypto.randomUUID() }, body: JSON.stringify({ type: 'CANCEL', reason: 'No longer needed' }) });
   expect(cancelled.status).toBe(200);
-  await row.getByRole('button', { name: 'Confirm disable student1', exact: true }).click();
-  await expect(row.getByRole('button', { name: 'Enable student1', exact: true })).toBeVisible();
+  await row.getByRole('button', { name: 'Confirm suspension student1', exact: true }).click();
+  await expect(row.getByRole('button', { name: 'Restore student1', exact: true })).toBeVisible();
   expect((await fetch(`${apiUrl}/auth/me`, { headers })).status).toBe(401);
-  await row.getByRole('button', { name: 'Enable student1', exact: true }).click();
-  await expect(row.getByRole('button', { name: 'Disable student1', exact: true })).toBeVisible();
+  await row.getByRole('button', { name: 'Restore student1', exact: true }).click();
+  await expect(row.getByRole('button', { name: 'Suspend student1', exact: true })).toBeVisible();
   expect((await fetch(`${apiUrl}/auth/me`, { headers })).status).toBe(401);
 });
 
@@ -162,7 +221,7 @@ test('admin records use server pagination and filters without overflowing a narr
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBeTruthy();
   await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
   await page.getByLabel('Search ticket or student ID', { exact: true }).fill('does-not-exist');
-  await expect(page.getByText('0 records · Page 1 of 1', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('admin-section-records').getByText('0 records · Page 1 of 1', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Accounts', exact: true }).click();
   await page.getByRole('button', { name: 'Create staff account', exact: true }).click();
   await expect(page.getByLabel('Staff email', { exact: true })).toBeVisible();

@@ -50,7 +50,6 @@
           "imageWidth": 76
         }
       ],
-      "expo-video",
       ["expo-audio", { "microphonePermission": false, "enableBackgroundPlayback": false, "enableBackgroundRecording": false }]
     ],
     "experiments": {

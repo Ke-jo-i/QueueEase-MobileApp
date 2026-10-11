@@ -1,10 +1,11 @@
-import { type Tabs, useIsFocused } from 'expo-router';
-import { type ComponentProps, useCallback, useEffect, useRef } from 'react';
+import { useIsFocused } from 'expo-router';
+import { type useTabsWithTriggers } from 'expo-router/ui';
+import { useCallback, useEffect, useRef } from 'react';
 import { useReducedMotion } from 'react-native-reanimated';
 
-export type TabBarProps = Parameters<NonNullable<ComponentProps<typeof Tabs>['tabBar']>>[0];
+export type TabNavigation = ReturnType<typeof useTabsWithTriggers>['navigation'];
 
-export function useTabSelection(navigation: TabBarProps['navigation']) {
+export function useTabSelection(navigation: TabNavigation) {
   const reduced = useReducedMotion();
   const focused = useIsFocused();
   const gate = useRef<{ timer?: ReturnType<typeof setTimeout>; pending: string | null }>({ pending: null });
@@ -14,7 +15,7 @@ export function useTabSelection(navigation: TabBarProps['navigation']) {
     gate.current.pending = null;
   }, []);
   useEffect(() => { if (!focused) cancel(); return cancel; }, [focused, cancel]);
-  return useCallback((id: string) => {
+  return useCallback((id: string, immediate = false) => {
     const commit = (target: string) => {
       const state = navigation.getState();
       const route = state.routes.find(route => route.name === target);
@@ -29,7 +30,8 @@ export function useTabSelection(navigation: TabBarProps['navigation']) {
       }, 250);
       navigation.navigate(route.name, route.params);
     };
-    if (gate.current.timer !== undefined) gate.current.pending = id;
+    if (immediate) { cancel(); commit(id); }
+    else if (gate.current.timer !== undefined) gate.current.pending = id;
     else commit(id);
-  }, [navigation, reduced]);
+  }, [cancel, navigation, reduced]);
 }

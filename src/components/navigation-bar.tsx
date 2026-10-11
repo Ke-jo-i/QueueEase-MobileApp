@@ -8,8 +8,9 @@ import Animated, { type SharedValue, cancelAnimation, runOnJS, useAnimatedReacti
 import { GlassSurface } from './glass-surface';
 import { MotionButton, settleSpring } from './motion';
 
-type NavItem = { id: string; label: string; icon: ComponentProps<typeof Ionicons>['name']; selectedIcon: ComponentProps<typeof Ionicons>['name'] };
-type NavProps = { items: readonly NavItem[]; selected: string; onSelect: (id: string) => void; onLongPress?: (id: string) => void; tabs?: boolean };
+export type NavItem = { id: string; label: string; icon: ComponentProps<typeof Ionicons>['name']; selectedIcon: ComponentProps<typeof Ionicons>['name'] };
+type NavProps = { items: readonly NavItem[]; selected: string; onSelect: (id: string, immediate?: boolean) => void; onLongPress?: (id: string) => void; tabs?: boolean;
+  disabled?: boolean; scrub?: { position: SharedValue<number>; active: SharedValue<boolean>; prepare: () => void; settle: () => void } };
 
 function createTouchGate() {
   let startedAt = 0;
@@ -33,7 +34,7 @@ function NavIcon({ item, selected, position, held, index, reduced }: { item: Nav
   return <Animated.View style={motion}><Ionicons name={selected ? item.selectedIcon : item.icon} size={22} color={selected ? colors.brandText : colors.textMuted} /></Animated.View>;
 }
 
-export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = false }: NavProps) {
+export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = false, scrub, disabled = false }: NavProps) {
   const colors = useAppTheme();
   const insets = useSafeAreaInsets();
   const reduced = useReducedMotion();
@@ -41,7 +42,8 @@ export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = f
   const count = items.length;
   const width = useSharedValue(0);
   const [barWidth, setBarWidth] = useState(0);
-  const position = useSharedValue(index);
+  const ownPosition = useSharedValue(index);
+  const position = scrub?.position ?? ownPosition;
   const selectedPosition = useSharedValue(index);
   const held = useSharedValue(0);
   const stretch = useSharedValue(0);
@@ -54,8 +56,8 @@ export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = f
     selectedPosition.set(index);
   }, [index, selectedPosition]);
   useAnimatedReaction(() => selectedPosition.get(), next => {
-    if (!dragging.get()) position.set(reduced ? next : withSpring(next, settleSpring));
-  }, [reduced]);
+    if (!scrub && !dragging.get()) position.set(reduced ? next : withSpring(next, settleSpring));
+  }, [reduced, scrub]);
 
   const beginTouch = touch.begin;
   const setDragging = touch.drag;
@@ -63,10 +65,10 @@ export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = f
     const item = items[target];
     if (!item) return;
     if (stationaryHold && touch.elapsed() >= 500) onLongPress?.(item.id);
-    else onSelect(item.id);
+    else onSelect(item.id, true);
   }, [items, onLongPress, onSelect, touch]);
 
-  const pan = Gesture.Pan().activateAfterLongPress(180).maxPointers(1).shouldCancelWhenOutside(false)
+  const pan = Gesture.Pan().enabled(!disabled).activateAfterLongPress(180).maxPointers(1).shouldCancelWhenOutside(false)
     .onTouchesDown((event, manager) => {
       const touch = event.allTouches[0];
       const cell = width.get() / count;
@@ -75,12 +77,14 @@ export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = f
         return;
       }
       runOnJS(beginTouch)();
+      if (scrub) runOnJS(scrub.prepare)();
       distance.set(0);
     })
     .onStart(() => {
       cancelAnimation(position);
       startPosition.set(position.get());
       dragging.set(true);
+      if (scrub) scrub.active.set(true);
       held.set(reduced ? 0 : withSpring(1, settleSpring));
       runOnJS(setDragging)(true);
     })
@@ -96,12 +100,16 @@ export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = f
     .onEnd((_event, success) => {
       if (!success) return;
       const target = Math.max(0, Math.min(count - 1, Math.round(position.get())));
-      position.set(reduced ? target : withSpring(target, settleSpring));
+      position.set(reduced ? target : withSpring(target, settleSpring, finished => { if (finished && scrub) runOnJS(scrub.settle)(); }));
+      if (reduced && scrub) runOnJS(scrub.settle)();
       runOnJS(commit)(target, distance.get() < 7);
     })
     .onFinalize((_event, success) => {
-      if (!dragging.get()) return;
-      if (!success) position.set(reduced ? selectedPosition.get() : withSpring(selectedPosition.get(), settleSpring));
+      if (!dragging.get()) { if (scrub) runOnJS(scrub.settle)(); return; }
+      if (!success) {
+        position.set(reduced ? selectedPosition.get() : withSpring(selectedPosition.get(), settleSpring, finished => { if (finished && scrub) runOnJS(scrub.settle)(); }));
+        if (reduced && scrub) runOnJS(scrub.settle)();
+      }
       held.set(reduced ? 0 : withSpring(0, settleSpring));
       stretch.set(reduced ? 0 : withSpring(0, settleSpring));
       dragging.set(false);
@@ -122,7 +130,7 @@ export function NavigationBar({ items, selected, onSelect, onLongPress, tabs = f
       <GestureDetector gesture={pan}>
         <Animated.View testID="navigation-bar" accessibilityRole={tabs ? 'tablist' : undefined} onLayout={event => { const next = event.nativeEvent.layout.width; width.set(next); setBarWidth(next); }} style={styles.bar}>
           <Animated.View testID="navigation-indicator" pointerEvents="none" style={[styles.indicator, { width: Math.max(0, barWidth / count - 4), backgroundColor: colors.infoSurface, borderColor: `${colors.brandText}24` }, indicator]} />
-          {items.map((item, itemIndex) => <MotionButton key={item.id} accessibilityLabel={item.label} accessibilityRole={tabs ? 'tab' : 'button'} accessibilityState={{ selected: item.id === selected }}
+          {items.map((item, itemIndex) => <MotionButton key={item.id} disabled={disabled} accessibilityLabel={item.label} accessibilityRole={tabs ? 'tab' : 'button'} accessibilityState={{ selected: item.id === selected, disabled }}
             accessibilityHint={item.id === selected ? 'Hold and drag to another tab.' : undefined}
             onPressIn={touch.reset}
             onPress={() => { if (touch.allowsPress()) onSelect(item.id); }}

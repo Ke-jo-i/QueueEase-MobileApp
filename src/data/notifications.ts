@@ -1,3 +1,3 @@
-export const turnAlertDelivery: 'in-app' | 'notification' | 'unavailable' = 'unavailable';
-export async function requestTurnAlerts() { return false; }
-export async function notifyTurn(_title: string, _body: string) {}
+export const turnAlertDelivery: 'in-app' | 'notification' | 'unavailable' = 'in-app';
+export async function requestTurnAlerts() { return true; }
+export async function notifyTurn(title: string, body: string) { return { title, body }; }

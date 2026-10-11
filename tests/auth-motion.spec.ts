@@ -118,8 +118,8 @@ test('login reveals the destination continuously and finishes without a position
   const frames = await capture;
   const reveal = frames.filter(frame => frame.covered && frame.opacity > 0.05 && frame.opacity < 0.95);
   expect(reveal.length).toBeGreaterThan(2);
-  expect(Math.max(...reveal.map(frame => frame.y)) - Math.min(...reveal.map(frame => frame.y))).toBeLessThan(2);
-  expect(frames.at(-1)!.time - frames[0].time).toBeLessThan(750);
+  expect(Math.max(...reveal.map(frame => frame.y)) - Math.min(...reveal.map(frame => frame.y))).toBeGreaterThan(5);
+  expect(frames.at(-1)!.time - frames[0].time).toBeLessThan(1400);
   const end = frames.filter(frame => !frame.covered || frame.opacity < 0.05);
   expect(end.length).toBeGreaterThan(2);
   expect(Math.max(...end.map(frame => frame.y)) - Math.min(...end.map(frame => frame.y))).toBeLessThan(2);

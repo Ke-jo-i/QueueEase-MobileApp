@@ -8,7 +8,7 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { QueueProvider, useQueue } from '@/contexts/queue';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationMotionProvider, useNavigationMotion } from '@/contexts/navigation-motion';
-import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
+import { serviceTransitions, useVerticalTransitions } from '@/hooks/use-navigation-transitions';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TurnAlertsProvider } from '@/contexts/turn-alerts';
 import { useEffect } from 'react';
@@ -63,6 +63,7 @@ function RootNavigator() {
         card: colors.surfaceSubtle,
         text: colors.text,
         border: colors.border,
+        notification: colors.brandText,
       },
     }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
@@ -79,8 +80,8 @@ function RootNavigator() {
         <Stack.Screen name="landing" options={{ animationTypeForReplace: 'pop' }} />
         <Stack.Protected guard={role === 'admin'}><Stack.Screen name="admin" /></Stack.Protected>
         <Stack.Protected guard={role === 'student'}>
-          <Stack.Screen name="(student)" />
-          <Stack.Screen name="confirm-service" />
+          <Stack.Screen name="(student)" options={{ freezeOnBlur: false }} />
+          <Stack.Screen name="confirm-service" options={serviceTransitions} />
           <Stack.Screen name="live-status" />
         </Stack.Protected>
         <Stack.Protected guard={role === 'staff'}><Stack.Screen name="staff" /></Stack.Protected>

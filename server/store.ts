@@ -76,6 +76,7 @@ export class Store {
   constructor(path: string) {
     this.db = new DatabaseSync(path);
     this.db.exec(readFileSync(new URL('./schema.sql', import.meta.url), 'utf8'));
+    if (!this.db.prepare('PRAGMA table_info(accounts)').all().some(column => column.name === 'removed_at')) this.db.exec('ALTER TABLE accounts ADD COLUMN removed_at TEXT');
     for (const name of registrarServices) this.db.prepare('INSERT OR IGNORE INTO services(name,window) VALUES(?,?)').run(name, getServiceWindow(name));
   }
   close() { this.db.close(); }
@@ -318,7 +319,7 @@ export class Store {
     return {
       ...this.adminOverview(),
       accounts: this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
-        (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a ${ownId ? 'WHERE a.id=?' : ''} ORDER BY a.created_at`).all(now, ...(ownId ? [ownId] : [])) as AdminAccount[],
+        (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions FROM accounts a WHERE a.removed_at IS NULL ${ownId ? 'AND a.id=?' : ''} ORDER BY a.created_at`).all(now, ...(ownId ? [ownId] : [])) as AdminAccount[],
       services: this.services() as AdminService[], records: ownId ? [] : this.readAdminRecords(),
       counts: this.db.prepare('SELECT status,COUNT(*) AS count FROM tickets GROUP BY status').all() as AdminData['counts'],
       audit: ownId ? [] : this.readAdminAudit(),
@@ -327,7 +328,7 @@ export class Store {
   adminAccounts(user: Account, input: Record<string, unknown>): AdminAccountsPage {
     this.requireAdmin(user);
     const requested = pageFields(input);
-    const clauses: string[] = [];
+    const clauses: string[] = ['a.removed_at IS NULL'];
     const values: SQLInputValue[] = [];
     if (input.role !== undefined && input.role !== '') {
       check(['student', 'staff', 'admin'].includes(String(input.role)), 'Choose a valid account role.');
@@ -342,14 +343,25 @@ export class Store {
       clauses.push("(a.name LIKE ? ESCAPE '\\' OR a.login LIKE ? ESCAPE '\\' OR a.email LIKE ? ESCAPE '\\')");
       values.push(...Array<SQLInputValue>(3).fill(`%${query}%`));
     }
+    if (input.window !== undefined && input.window !== '') {
+      check(input.window === 'unassigned' || registrarWindows.includes(String(input.window)), 'Choose a listed registrar window.');
+      if (input.window === 'unassigned') clauses.push('a.window IS NULL');
+      else { clauses.push('a.window=?'); values.push(String(input.window)); }
+    }
+    const sorts: Record<string, string> = { created: 'a.created_at', name: 'a.name COLLATE NOCASE', login: 'a.login COLLATE NOCASE', email: 'a.email COLLATE NOCASE', access: 'a.active', sessions: 'activeSessions' };
+    const sort = String(input.sort || 'created');
+    const order = String(input.order || 'desc');
+    check(Object.hasOwn(sorts, sort) && ['asc', 'desc'].includes(order), 'Choose a valid account sort order.');
     const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
     const total = Number(this.db.prepare(`SELECT COUNT(*) AS total FROM accounts a ${where}`).get(...values)!.total);
     const { pageSize } = requested;
     const page = Math.min(requested.page, Math.max(1, Math.ceil(total / pageSize)));
     const accounts = this.db.prepare(`SELECT a.id,a.login,a.email,a.name,a.role,a.active,a.window,
       (SELECT COUNT(*) FROM sessions s WHERE s.account_id=a.id AND s.expires_at>?) AS activeSessions
-      FROM accounts a ${where} ORDER BY a.created_at DESC,a.id DESC LIMIT ? OFFSET ?`).all(Date.now(), ...values, pageSize, (page - 1) * pageSize) as AdminAccount[];
-    return { accounts, total, page, pageSize };
+      FROM accounts a ${where} ORDER BY ${sorts[sort]} ${order},a.id DESC LIMIT ? OFFSET ?`).all(Date.now(), ...values, pageSize, (page - 1) * pageSize) as AdminAccount[];
+    const groups: AdminAccountsPage['groups'] = { student: { total: 0, active: 0 }, staff: { total: 0, active: 0 }, admin: { total: 0, active: 0 } };
+    for (const row of this.db.prepare('SELECT role,COUNT(*) AS total,SUM(active) AS active FROM accounts WHERE removed_at IS NULL GROUP BY role').all()) groups[row.role as Role] = { total: Number(row.total), active: Number(row.active) };
+    return { accounts, total, page, pageSize, groups };
   }
   adminHistory(user: Account, input: Record<string, unknown>): AdminHistoryPage {
     this.requireAdmin(user);
@@ -401,13 +413,18 @@ export class Store {
     const total = Number(this.db.prepare(`SELECT COUNT(*) AS total FROM admin_audit j JOIN accounts a ON a.id=j.actor_id ${where}`).get(...values)!.total);
     return { audit: this.readAdminAudit(where, values, pageSize, (page - 1) * pageSize), total, page, pageSize };
   }
+  private managedAccount(id: string) {
+    const account = this.account(id);
+    check(!this.db.prepare('SELECT removed_at FROM accounts WHERE id=?').get(id)?.removed_at, 'This account has been removed.', 409);
+    return account;
+  }
   async adminAction(user: Account, input: Record<string, unknown>, token?: string, workspace = false) {
     this.requireAdmin(user, token);
-    let prepared: { values: ReturnType<typeof accountFields>; role: 'staff' | 'admin'; hash: string } | undefined;
+    let prepared: { values: ReturnType<typeof accountFields>; role: Role; hash: string } | undefined;
     let resetHash: string | undefined;
     if (input.type === 'CREATE_STAFF' || input.type === 'CREATE_ACCOUNT') {
       const role = input.type === 'CREATE_STAFF' ? 'staff' : input.role;
-      check(role === 'staff' || role === 'admin', 'Choose a staff or administrator account.');
+      check(role === 'staff' || role === 'admin' || role === 'student', 'Choose a valid account role.');
       const values = accountFields(input);
       prepared = { values, role, hash: await hashPassword(password(input.password)) };
     } else if (input.type === 'RESET_PASSWORD') {
@@ -417,19 +434,27 @@ export class Store {
     this.transaction(() => {
       const actor = this.requireAdmin(user, token);
       if (prepared) {
-        check(prepared.role === 'staff' || !input.window, 'Administrator accounts do not have a window assignment.');
+        check(prepared.role === 'staff' || !input.window, 'Only staff accounts have a window assignment.');
         const window = input.window ? this.availableWindow(input.window) : null;
         const account = this.insertAccount(prepared.values, prepared.role, prepared.hash, window);
         this.audit(actor, 'CREATE_ACCOUNT', account.login, { role: account.role, window });
       } else if (input.type === 'UPDATE_ACCOUNT') {
-        const account = this.account(field(input.id, 'account'));
-        const name = field(input.name, 'full name', 80);
-        const email = validEmail(input.email);
-        try { this.db.prepare('UPDATE accounts SET name=?,email=? WHERE id=?').run(name, email, account.id); }
-        catch (error) { if (String(error).includes('UNIQUE')) throw new RequestError(409, 'That email is already registered.'); throw error; }
-        this.audit(actor, 'UPDATE_ACCOUNT', account.login, { name, email });
+        const account = this.managedAccount(field(input.id, 'account'));
+        const { name, email, login } = accountFields({ ...input, login: input.login ?? account.login });
+        const role = input.role ?? account.role;
+        check(role === 'student' || role === 'staff' || role === 'admin', 'Choose a valid account role.');
+        if (role !== account.role) {
+          check(account.id !== actor.id, 'You cannot change your own account role.', 409);
+          if (account.role === 'admin' && account.active) check(Number(this.db.prepare("SELECT COUNT(*) AS count FROM accounts WHERE role='admin' AND active=1").get()!.count) > 1, 'Keep at least one active administrator.', 409);
+          if (account.role === 'staff') this.idleWindow(account);
+          if (account.role === 'student') check(!this.db.prepare("SELECT id FROM tickets WHERE owner_id=? AND status IN ('WAITING','SERVING','HELD')").get(account.id), 'Finish or cancel this student’s active ticket before changing their role.', 409);
+        }
+        try { this.db.prepare('UPDATE accounts SET name=?,email=?,login=?,role=?,window=CASE WHEN role!=? THEN NULL ELSE window END WHERE id=?').run(name, email, login, role, role, account.id); }
+        catch (error) { if (String(error).includes('UNIQUE')) throw new RequestError(409, 'That ID or email is already registered.'); throw error; }
+        if (role !== account.role) this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(account.id);
+        this.audit(actor, 'UPDATE_ACCOUNT', login, { name, email, role, previousRole: account.role });
       } else if (input.type === 'SET_ACTIVE') {
-        const account = this.account(field(input.id, 'account'));
+        const account = this.managedAccount(field(input.id, 'account'));
         check(typeof input.active === 'boolean', 'Choose an account status.');
         if (!input.active) {
           check(account.id !== actor.id, 'You cannot disable your own account.', 409);
@@ -441,17 +466,29 @@ export class Store {
         this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(account.id);
         this.audit(actor, 'SET_ACTIVE', account.login, { active: input.active });
       } else if (input.type === 'ASSIGN_WINDOW' || input.type === 'RELEASE_WINDOW') {
-        const account = this.account(field(input.id, 'account'));
+        const account = this.managedAccount(field(input.id, 'account'));
         check(account.role === 'staff' && account.active, 'Select an active staff account.');
         this.idleWindow(account);
         const window = input.type === 'RELEASE_WINDOW' ? null : this.availableWindow(input.window, account.id);
         this.db.prepare('UPDATE accounts SET window=? WHERE id=?').run(window, account.id);
         this.audit(actor, input.type, account.login, { window, previousWindow: account.window });
       } else if (input.type === 'RESET_PASSWORD' && resetHash) {
-        const account = this.account(field(input.id, 'account'));
+        const account = this.managedAccount(field(input.id, 'account'));
         this.db.prepare('UPDATE accounts SET password_hash=? WHERE id=?').run(resetHash, account.id);
         this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(account.id);
         this.audit(actor, 'RESET_PASSWORD', account.login, { sessionsRevoked: true });
+      } else if (input.type === 'REVOKE_SESSIONS' || input.type === 'REMOVE_ACCOUNT') {
+        const account = this.managedAccount(field(input.id, 'account'));
+        check(account.id !== actor.id, 'Use Profile to sign out your own account.', 409);
+        if (input.type === 'REMOVE_ACCOUNT') {
+          check(input.confirmation === account.login, 'Enter the account ID to confirm removal.');
+          if (account.role === 'admin' && account.active) check(Number(this.db.prepare("SELECT COUNT(*) AS count FROM accounts WHERE role='admin' AND active=1").get()!.count) > 1, 'Keep at least one active administrator.', 409);
+          if (account.role === 'staff') this.idleWindow(account);
+          check(!this.db.prepare("SELECT id FROM tickets WHERE owner_id=? AND status IN ('WAITING','SERVING','HELD')").get(account.id), 'Finish or cancel this student’s active ticket before removing the account.', 409);
+          this.db.prepare('UPDATE accounts SET active=0,window=NULL,removed_at=? WHERE id=?').run(new Date().toISOString(), account.id);
+        }
+        const sessions = this.db.prepare('DELETE FROM sessions WHERE account_id=?').run(account.id).changes;
+        this.audit(actor, input.type, account.login, { role: account.role, sessionsRevoked: Number(sessions) });
       } else if (input.type === 'CREATE_SERVICE' || input.type === 'SET_SERVICE') {
         const name = field(input.name, 'service');
         const window = field(input.window, 'window');

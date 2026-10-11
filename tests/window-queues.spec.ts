@@ -39,6 +39,7 @@ test('students see every window and their own place updates when another device 
     await expect(window1.getByText('Next waiting: R - 3', { exact: true })).toBeVisible();
     await expect(progress.getByText('1', { exact: true })).toBeVisible();
     await staff.getByRole('button', { name: 'Mark as Done', exact: true }).click();
+    await staff.getByRole('button', { name: 'Complete ticket', exact: true }).click();
     await expect(progress.getByText('0', { exact: true })).toBeVisible();
     await expect(window1.getByText('R - 1', { exact: true })).not.toBeVisible();
     await expect(window2.getByText('Next waiting: R - 2', { exact: true })).toBeVisible();

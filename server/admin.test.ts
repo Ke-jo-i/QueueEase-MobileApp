@@ -18,7 +18,7 @@ async function fixture() {
 }
 
 test('admin-created accounts, identity edits and exclusive window assignments preserve history', async () => {
-  const { store, staff, action } = await fixture();
+  const { store, staff, admin, action } = await fixture();
   try {
     await action({ type: 'ASSIGN_WINDOW', id: staff.id, window: registrarWindows[0] });
     const before = store.adminView();
@@ -27,13 +27,14 @@ test('admin-created accounts, identity edits and exclusive window assignments pr
     assert.equal(store.adminView().audit.length, before.audit.length);
     await action({ type: 'CREATE_ACCOUNT', role: 'staff', login: 'staff2', name: 'Second Staff', email: 'staff2@example.test', password, window: registrarWindows[1] });
     await action({ type: 'CREATE_ACCOUNT', role: 'admin', login: 'admin2', name: 'Second Admin', email: 'admin2@example.test', password });
-    await action({ type: 'UPDATE_ACCOUNT', id: staff.id, name: 'Updated Staff', email: 'updated@example.test', login: 'forged-new-login' });
+    await action({ type: 'UPDATE_ACCOUNT', id: staff.id, name: 'Updated Staff', email: 'updated@example.test', login: 'updated-staff-id' });
     assert.equal(store.account(staff.id).name, 'Updated Staff');
-    assert.equal(store.account(staff.id).login, 'staff1');
+    assert.equal(store.account(staff.id).login, 'updated-staff-id');
     assert.equal(store.adminView().windows[1].staff?.login, 'staff2');
     await assert.rejects(action({ type: 'UPDATE_ACCOUNT', id: staff.id, name: 'Invalid', email: 'admin2@example.test' }), /already registered/);
     assert.equal(store.account(staff.id).name, 'Updated Staff');
-    await assert.rejects(action({ type: 'CREATE_ACCOUNT', role: 'student', login: 'student2', name: 'Student', email: 'student2@example.test', password }), /staff or administrator/);
+    await action({ type: 'CREATE_ACCOUNT', role: 'student', login: 'student2', name: 'Student', email: 'student2@example.test', password });
+    assert.equal(store.adminAccounts(admin, { role: 'student', search: 'student2' }).total, 1);
   } finally { store.close(); }
 });
 

@@ -1,6 +1,7 @@
 import { useSession } from '@/contexts/session';
 import { ApiError, request } from '@/data/api';
 import { notifyTurn } from '@/data/notifications';
+import { AppDialog } from '@/components/app-dialog';
 import { useTurnAlerts } from './turn-alerts';
 import { HistoryTicket, isActiveTicket, isHistoryTicket, Ticket, ticketProgress, waitingTickets, queueByWindow } from '@/data/queue-model';
 import { useAppTheme } from '@/hooks/use-app-theme';
@@ -37,6 +38,7 @@ function QueueSession({ children }: PropsWithChildren) {
   const colors = useAppTheme();
   const { enabled: turnAlertsEnabled } = useTurnAlerts();
   const lastAlert = useRef<string | null>(null);
+  const [turnNotice, setTurnNotice] = useState<{ title: string; body: string; key: string } | null>(null);
   const [snapshot, setSnapshot] = useState<QueueView>(empty);
   const [connected, setConnected] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -109,8 +111,13 @@ function QueueSession({ children }: PropsWithChildren) {
     if (snapshot.revision < 0) { lastAlert.current = null; return; }
     const previous = lastAlert.current; lastAlert.current = alertKey;
     if (!turnAlertsEnabled || !studentTicket || previous === null || previous === alertKey) return;
-    if (studentTicket.status === 'SERVING' && ['CALLED', 'RECALLED'].includes(studentTicket.events.at(-1)?.type ?? '')) void notifyTurn('Your turn', `${studentTicket.number}: proceed to ${studentTicket.window}.`).catch(() => {});
-    else if (progress?.nextInLine) void notifyTurn('You’re next in line', `${studentTicket.number}: stay near ${studentTicket.window}.`).catch(() => {});
+    const deliver = (title: string, body: string) => {
+      void notifyTurn(title, body).then(notice => {
+        if (notice && active.current && lastAlert.current === alertKey) setTurnNotice({ ...notice, key: alertKey });
+      }).catch(() => {});
+    };
+    if (studentTicket.status === 'SERVING' && ['CALLED', 'RECALLED'].includes(studentTicket.events.at(-1)?.type ?? '')) deliver('Your turn', `${studentTicket.number}: proceed to ${studentTicket.window}.`);
+    else if (progress?.nextInLine) deliver('You’re next in line', `${studentTicket.number}: stay near ${studentTicket.window}.`);
   }, [alertKey, turnAlertsEnabled, studentTicket, progress?.nextInLine, snapshot.revision]);
   const staffHistory = useMemo(() => tickets.filter(isHistoryTicket).sort((a, b) => b.date.localeCompare(a.date)), [tickets]);
   const currentServing = tickets.find((ticket) => ticket.status === 'SERVING' && ticket.window === assignedWindow) ?? null;
@@ -135,6 +142,7 @@ function QueueSession({ children }: PropsWithChildren) {
       </View>
     </SafeAreaView>}
     {children}
+    <AppDialog open={!!turnNotice && turnAlertsEnabled && turnNotice.key === alertKey} title={turnNotice?.title ?? ''} message={turnNotice?.body ?? ''} icon="ticket-outline" onClose={() => setTurnNotice(null)} />
   </View></QueueContext.Provider>;
 }
 export function useQueue() {

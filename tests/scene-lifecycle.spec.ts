@@ -77,19 +77,15 @@ test('scene responses isolate playback and reset with the student session', asyn
   })).toBe(false);
 });
 
-test('profile media begins after readiness and releases on close', async ({ page }) => {
+test('profile heading retains account controls after a hold', async ({ page }) => {
   await login(page);
   await page.getByRole('tab', { name: 'Profile', exact: true }).click();
   const title = page.getByRole('heading', { name: 'Student Profile', exact: true });
-  const box = await title.boundingBox();
-  expect(box).toBeTruthy();
-  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await title.hover();
   await page.mouse.down();
   await page.waitForTimeout(10200);
   await page.mouse.up();
-  await expect(page.getByRole('button', { name: 'Close video', exact: true })).toBeVisible();
-  await expect.poll(() => page.locator('video').evaluate(video => (video as HTMLVideoElement).currentTime), { timeout: 10000 }).toBeGreaterThan(0.1);
-  await page.getByRole('button', { name: 'Close video', exact: true }).click();
-  await expect(page.locator('video')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Log Out', exact: true })).toBeEnabled();
   await expect(title).toBeVisible();
 });

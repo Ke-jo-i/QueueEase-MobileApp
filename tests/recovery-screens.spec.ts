@@ -44,5 +44,6 @@ test('admin initial failure is recoverable and section navigation remains usable
   await page.getByRole('button', { name: 'Try again', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Pause new tickets', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Accounts', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Accounts (3)', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Account directories', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Students', exact: true })).toBeVisible();
 });

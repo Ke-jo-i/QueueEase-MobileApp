@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS accounts (
   password_hash TEXT NOT NULL,
   active INTEGER NOT NULL DEFAULT 1,
   window TEXT UNIQUE,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  removed_at TEXT
 );
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY,

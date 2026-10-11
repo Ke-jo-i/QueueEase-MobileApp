@@ -1,4 +1,4 @@
-import { test, expect, login } from './fixtures';
+import { test, expect, login, password } from './fixtures';
 
 for (const role of ['student', 'staff', 'admin'] as const) {
   test(`${role} quick login and logout animate without waiting for server signout`, async ({ page }) => {
@@ -7,6 +7,8 @@ for (const role of ['student', 'staff', 'admin'] as const) {
     await page.getByRole('button', { name: `Quick login as ${role[0].toUpperCase()}${role.slice(1)}`, exact: true }).click();
     const transition = page.getByTestId('auth-transition');
     await expect(transition).toHaveAttribute('aria-label', `${role[0].toUpperCase()}${role.slice(1)} signed in`);
+    await page.keyboard.press('Tab');
+    expect(await page.evaluate(() => !!document.activeElement?.closest('[aria-hidden="true"]'))).toBe(false);
     await expect(transition).toHaveCount(0);
     await expect(page).toHaveURL(role === 'student' ? /\/home$/ : role === 'staff' ? /\/staff\/dashboard$/ : /\/admin$/);
     if (role !== 'admin') await page.getByLabel('Profile', { exact: true }).click();
@@ -62,4 +64,42 @@ test('reduced motion keeps account handoff and signout usable', async ({ page })
   await expect(page).toHaveURL(/\/landing$/);
   await expect(page.getByTestId('auth-transition')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Staff Portal', exact: true })).toBeVisible();
+});
+
+test('login reveals the destination continuously and finishes without a position jump', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/login');
+  await page.getByLabel('Student ID or email', { exact: true }).fill('student1');
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  const capture = page.evaluate(() => new Promise<{ covered: boolean; opacity: number; y: number; width: number; time: number }[]>(resolve => {
+    const frames: { covered: boolean; opacity: number; y: number; width: number; time: number }[] = [];
+    const start = performance.now();
+    let seen = false;
+    let cleared = 0;
+    const sample = () => {
+      const overlay = document.querySelector('[data-testid="auth-transition"]');
+      const veil = document.querySelector('[data-testid="auth-transition-veil"]') ?? overlay;
+      const scene = document.querySelector('[data-testid="student-home"]');
+      const now = performance.now();
+      if (overlay) seen = true;
+      if (seen && !overlay && !cleared) cleared = now;
+      if (seen && scene) {
+        const bounds = scene.getBoundingClientRect();
+        frames.push({ covered: !!overlay, opacity: veil ? Number(getComputedStyle(veil).opacity) : 0, y: bounds.y, width: bounds.width, time: now });
+      }
+      if ((cleared && now - cleared > 160) || now - start > 2400) resolve(frames);
+      else requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  }));
+  await page.getByRole('button', { name: 'Log In', exact: true }).click();
+  const frames = await capture;
+  const reveal = frames.filter(frame => frame.covered && frame.opacity > 0.05 && frame.opacity < 0.95);
+  expect(reveal.length).toBeGreaterThan(2);
+  expect(Math.max(...reveal.map(frame => frame.y)) - Math.min(...reveal.map(frame => frame.y))).toBeGreaterThan(2);
+  const end = frames.filter(frame => !frame.covered || frame.opacity < 0.05);
+  expect(end.length).toBeGreaterThan(2);
+  expect(Math.max(...end.map(frame => frame.y)) - Math.min(...end.map(frame => frame.y))).toBeLessThan(2);
+  expect(Math.max(...end.map(frame => frame.width)) - Math.min(...end.map(frame => frame.width))).toBeLessThan(2);
+  await expect(page).toHaveURL(/\/home$/);
 });

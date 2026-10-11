@@ -9,10 +9,10 @@ import { KeyboardFieldContext, KeyboardScrollView } from './keyboard-scroll-view
 import { GlassSurface, translucent } from './glass-surface';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-export function FormPage({ title, subtitle, children, back = true }: PropsWithChildren<{ title: string; subtitle?: string; back?: boolean }>) {
+export function FormPage({ title, subtitle, children, back = true, maxWidth = 520 }: PropsWithChildren<{ title: string; subtitle?: string; back?: boolean; maxWidth?: number }>) {
   const colors = useAppTheme(); const router = useRouter();
   return <SafeAreaView style={{ flex: 1, backgroundColor: 'transparent' }}>
-    <KeyboardScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40, width: '100%', maxWidth: 520, alignSelf: 'center', gap: 26 }}>
+    <KeyboardScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, paddingBottom: 40, width: '100%', maxWidth, alignSelf: 'center', gap: 26 }}>
       {back && <MotionButton accessibilityLabel="Go back" onPress={() => {
         if (router.canGoBack()) router.back();
         else router.replace('/landing');
@@ -26,7 +26,7 @@ export function FormPage({ title, subtitle, children, back = true }: PropsWithCh
     </KeyboardScrollView>
   </SafeAreaView>;
 }
-export function Field({ label, secureTextEntry, ...props }: TextInputProps & { label: string }) {
+export function Field({ label, secureTextEntry, error, ...props }: TextInputProps & { label: string; error?: string }) {
   const colors = useAppTheme(); const [visible, setVisible] = useState(false);
   const input = useRef<TextInput>(null);
   const keyboard = useContext(KeyboardFieldContext);
@@ -34,14 +34,16 @@ export function Field({ label, secureTextEntry, ...props }: TextInputProps & { l
   const focus = useSharedValue(0);
   const emphasis = useAnimatedStyle(() => ({ transform: [{ scale: 1 + focus.get() * 0.008 }] }));
   return <View style={{ gap: 7 }}><Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>{label}</Text>
-    <Animated.View style={emphasis}><View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: focused ? colors.brandText : translucent(colors.borderStrong, 0.6), borderRadius: 18, backgroundColor: translucent(colors.surface, 0.75) }}>
+    <Animated.View style={emphasis}><View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: error ? colors.dangerStrong : focused ? colors.brandText : translucent(colors.borderStrong, 0.6), borderRadius: 18, backgroundColor: translucent(colors.surface, 0.75) }}>
       <TextInput {...props} ref={input} accessibilityLabel={label} secureTextEntry={secureTextEntry && !visible} placeholderTextColor={colors.textDisabled}
         autoCapitalize={secureTextEntry ? 'none' : props.autoCapitalize} autoCorrect={secureTextEntry ? false : props.autoCorrect}
         onFocus={(event) => { setFocused(true); focus.set(withSpring(1, settleSpring)); keyboard?.focus(input.current); props.onFocus?.(event); }}
         onBlur={(event) => { setFocused(false); focus.set(withSpring(0, settleSpring)); keyboard?.blur(input.current); props.onBlur?.(event); }}
         style={[{ flex: 1, minWidth: 0, fontSize: 16, minHeight: 52, paddingHorizontal: 14, paddingVertical: 12, color: colors.text }, Platform.OS === 'web' && { outlineWidth: 0 }, props.style]} />
       {secureTextEntry && <MotionButton accessibilityLabel={visible ? 'Hide password' : 'Show password'} onPress={() => setVisible(!visible)} style={{ padding: 14 }}><Ionicons name={visible ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} /></MotionButton>}
-    </View></Animated.View></View>;
+    </View></Animated.View>
+    {!!error && <Text accessibilityRole="alert" style={{ color: colors.dangerStrong, fontSize: 12, lineHeight: 18 }}>{error}</Text>}
+    </View>;
 }
 export function ActionButton({ label, onPress, busy, disabled, secondary = false }: { label: string; onPress: () => void; busy?: boolean; disabled?: boolean; secondary?: boolean }) {
   const colors = useAppTheme();

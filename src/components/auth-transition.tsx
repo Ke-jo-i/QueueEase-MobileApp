@@ -1,75 +1,128 @@
+import { GlassSurface, translucent } from '@/components/glass-surface';
 import { type AuthTransition, useSession } from '@/contexts/session';
 import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import Animated, { cancelAnimation, Easing, interpolate, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { type PropsWithChildren, useEffect, useRef } from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
+import Animated, { cancelAnimation, Easing, interpolate, type SharedValue, ReduceMotion, useAnimatedStyle, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
+import { scheduleOnRN } from 'react-native-worklets';
 
-export function AuthTransitionOverlay({ transition }: { transition: AuthTransition }) {
-  const colors = useAppTheme();
-  const { finishTransition } = useSession();
+export function AuthTransitionFrame({ children }: PropsWithChildren) {
+  const { transition, finishTransition } = useSession();
   const reduced = useReducedMotion();
-  const progress = useSharedValue(0);
-  const entering = transition.direction === 'login';
-  const duration = reduced ? 160 : entering ? 720 : 520;
-  const accent = transition.role === 'staff' ? colors.successStrong : transition.role === 'admin' ? colors.info : colors.brandText;
-  const name = transition.role[0].toUpperCase() + transition.role.slice(1);
+  const progress = useSharedValue(transition ? 0 : 1);
+  const entering = transition?.direction === 'login';
+  const role = transition?.role;
+  const id = transition?.id;
+  const sceneRef = useRef<View>(null);
 
   useEffect(() => {
-    progress.set(withTiming(1, { duration, easing: Easing.linear }));
-    const timer = setTimeout(() => finishTransition(transition.id), duration);
-    return () => { clearTimeout(timer); cancelAnimation(progress); };
-  }, [duration, finishTransition, progress, transition.id]);
+    if (Platform.OS !== 'web' || !(sceneRef.current instanceof HTMLElement)) return;
+    const element = sceneRef.current;
+    element.inert = id !== undefined;
+    return () => { element.inert = false; };
+  }, [id]);
 
-  const backdrop = useAnimatedStyle(() => ({ opacity: reduced ? 1 : interpolate(progress.get(), [0, 0.76, 1], [1, 1, 0]) }));
-  const content = useAnimatedStyle(() => {
-    const p = progress.get();
-    const eased = 1 - Math.pow(1 - p, 3);
-    const phase = entering ? eased : 1 - eased;
+  useEffect(() => {
+    if (id === undefined) { progress.set(1); return; }
+    progress.set(0);
+    progress.set(withTiming(1, {
+      duration: reduced ? 100 : entering ? 560 : 440,
+      easing: Easing.bezier(0.22, 0.8, 0.2, 1),
+      reduceMotion: ReduceMotion.Never,
+    }, finished => {
+      if (finished) scheduleOnRN(finishTransition, id);
+    }));
+    return () => cancelAnimation(progress);
+  }, [entering, finishTransition, id, progress, reduced]);
+
+  const scene = useAnimatedStyle(() => {
+    const remainder = Math.pow(1 - progress.get(), 2);
     return {
-      opacity: reduced ? 1 : interpolate(p, [0, 0.1, 0.8, 1], [entering ? 0 : 1, 1, 1, 0]),
+      opacity: interpolate(progress.get(), [0, 0.3, 1], [0.01, 1, 1], 'clamp'),
       transform: [
-        { translateY: reduced || transition.role !== 'student' ? 0 : interpolate(phase, [0, 1], [52, 0]) },
-        { translateX: reduced || transition.role !== 'staff' ? 0 : interpolate(phase, [0, 1], [-42, 0]) },
-        { scale: reduced ? 1 : interpolate(phase, [0, 1], [0.88, 1]) },
+        { translateY: reduced ? 0 : remainder * (entering ? role === 'student' ? 52 : 16 : -22) },
+        { translateX: reduced || role !== 'staff' ? 0 : remainder * (entering ? 34 : -26) },
+        { scale: reduced ? 1 : 1 - remainder * (role === 'admin' ? 0.065 : 0.028) },
       ],
     };
   });
-  const ring = useAnimatedStyle(() => {
-    const eased = 1 - Math.pow(1 - progress.get(), 3);
-    const phase = entering ? eased : 1 - eased;
-    return { transform: [{ scale: reduced ? 1 : interpolate(phase, [0, 1], [0.5, 1.16]) }], opacity: 0.16 };
-  });
-  const alignment = useAnimatedStyle(() => {
-    const eased = 1 - Math.pow(1 - progress.get(), 3);
-    const phase = entering ? eased : 1 - eased;
-    return { transform: [{ translateX: reduced ? 0 : interpolate(phase, [0, 1], [48, 0]) }] };
-  });
 
-  return <Animated.View testID="auth-transition" accessibilityViewIsModal accessibilityRole="alert" accessibilityLabel={`${name} ${entering ? 'signed in' : 'signed out'}`} style={[StyleSheet.absoluteFill, { zIndex: 100, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface }, backdrop]}>
-    <Animated.View style={[{ alignItems: 'center', gap: 24, padding: 32 }, content]}>
-      <View style={{ width: 180, height: 164, justifyContent: 'center', alignItems: 'center' }}>
-        {transition.role === 'admin' && <>
-          <Animated.View style={[{ position: 'absolute', width: 156, height: 156, borderRadius: 78, borderWidth: 1.5, borderColor: accent }, ring]} />
-          <View style={{ position: 'absolute', width: 118, height: 118, borderRadius: 59, borderWidth: 1, borderColor: accent, opacity: 0.22 }} />
-        </>}
-        {transition.role === 'student' ? <View style={{ width: 112, height: 144, borderRadius: 28, backgroundColor: colors.infoSurface, alignItems: 'center', justifyContent: 'center', gap: 16, borderWidth: 1, borderColor: colors.border }}>
-          <Ionicons name="ticket-outline" size={42} color={accent} />
-          <View style={{ width: 56, height: 3, borderRadius: 2, backgroundColor: accent, opacity: 0.25 }} />
-          <View style={{ width: 36, height: 3, borderRadius: 2, backgroundColor: accent, opacity: 0.15 }} />
-          <View style={{ position: 'absolute', left: -7, bottom: 26, height: 14, width: 14, borderRadius: 7, backgroundColor: colors.surface }} />
-          <View style={{ position: 'absolute', right: -7, bottom: 26, height: 14, width: 14, borderRadius: 7, backgroundColor: colors.surface }} />
-        </View> : transition.role === 'staff' ? <View style={{ width: 172, alignItems: 'center', gap: 18 }}>
-          <View style={{ width: 82, height: 82, borderRadius: 27, backgroundColor: colors.successSurface, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="people-outline" size={38} color={accent} /></View>
-          <Animated.View style={[{ flexDirection: 'row', gap: 6 }, alignment]}>
-            {[0, 1, 2].map(index => <View key={index} style={{ width: index === 1 ? 72 : 28, height: 7, borderRadius: 4, backgroundColor: accent, opacity: index === 1 ? 0.7 : 0.2 }} />)}
-          </Animated.View>
-        </View> : <View style={{ width: 86, height: 86, borderRadius: 43, backgroundColor: colors.infoSurface, alignItems: 'center', justifyContent: 'center' }}><Ionicons name="options-outline" size={36} color={accent} /></View>}
-      </View>
-      <View style={{ gap: 7, alignItems: 'center' }}>
-        <Text style={{ fontSize: 12, letterSpacing: 1.8, textTransform: 'uppercase', fontWeight: '700', color: accent }}>{name}</Text>
-        <Text style={{ fontSize: 28, fontWeight: '700', letterSpacing: -0.7, color: colors.text }}>{entering ? transition.role === 'student' ? 'Welcome back.' : transition.role === 'staff' ? 'Ready to serve.' : 'Administration.' : 'Signed out.'}</Text>
-      </View>
+  return <View style={styles.frame}>
+    <Animated.View ref={sceneRef} accessibilityElementsHidden={!!transition} importantForAccessibility={transition ? 'no-hide-descendants' : 'auto'} aria-hidden={!!transition} pointerEvents={transition ? 'none' : 'auto'} style={[styles.scene, scene]}>
+      {children}
     </Animated.View>
-  </Animated.View>;
+    {transition && <AuthTransitionOverlay transition={transition} progress={progress} reduced={reduced} />}
+  </View>;
 }
+
+function AuthTransitionOverlay({ transition, progress, reduced }: { transition: AuthTransition; progress: SharedValue<number>; reduced: boolean }) {
+  const colors = useAppTheme();
+  const entering = transition.direction === 'login';
+  const accent = transition.role === 'staff' ? colors.successStrong : transition.role === 'admin' ? colors.info : colors.brandText;
+  const name = transition.role[0].toUpperCase() + transition.role.slice(1);
+  const veil = useAnimatedStyle(() => ({ opacity: reduced ? 1 - progress.get() : interpolate(progress.get(), [0, 0.18, 0.92, 1], [1, 1, 0, 0], 'clamp') }));
+  const emblem = useAnimatedStyle(() => {
+    const p = progress.get();
+    const exit = interpolate(p, [0.18, 0.85], [0, 1], 'clamp');
+    return {
+      opacity: interpolate(p, [0, 0.12, 0.55, 0.9], [entering ? 0.5 : 1, 1, 0.7, 0], 'clamp'),
+      transform: [
+        { translateY: transition.role === 'student' ? entering ? 28 * (1 - p) - 108 * exit : -18 + 96 * exit : 0 },
+        { scale: entering ? 0.88 + 0.2 * p - 0.16 * exit : 1 - 0.3 * exit },
+        { rotate: `${transition.role === 'student' ? (entering ? -8 * (1 - p) : 8 * exit) : transition.role === 'admin' ? -24 * (1 - p) : 0}deg` },
+      ],
+    };
+  });
+  const opening = useAnimatedStyle(() => {
+    const p = progress.get();
+    return {
+      opacity: interpolate(p, [0, 0.1, 0.65, 0.92], [0.1, 0.26, 0.18, 0], 'clamp'),
+      transform: [
+        { scale: entering ? 0.76 + 5.2 * p : 1.7 + 3.3 * p },
+        { rotate: `${transition.role === 'admin' ? 35 * p : 0}deg` },
+      ],
+    };
+  });
+  const left = useAnimatedStyle(() => ({ transform: [{ translateX: entering ? interpolate(progress.get(), [0, 0.24, 1], [-62, -24, -170]) : -24 - 146 * progress.get() }] }));
+  const right = useAnimatedStyle(() => ({ transform: [{ translateX: entering ? interpolate(progress.get(), [0, 0.24, 1], [62, 24, 170]) : 24 + 146 * progress.get() }] }));
+
+  return <View testID="auth-transition" accessibilityViewIsModal accessibilityRole="alert" accessibilityLabel={`${name} ${entering ? 'signed in' : 'signed out'}`} style={styles.shield}>
+    <Animated.View testID="auth-transition-veil" pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceSubtle }, veil]} />
+    {!reduced && <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" aria-hidden style={styles.stage}>
+      <Animated.View style={[styles.opening, { borderColor: translucent(accent, 0.42), backgroundColor: translucent(accent, 0.04), borderRadius: transition.role === 'admin' ? 66 : 40 }, opening]} />
+      <Animated.View style={[styles.emblem, emblem]}>
+        {transition.role === 'student' ? <GlassSurface style={[styles.ticket, { backgroundColor: colors.infoSurface }]}>
+          <Ionicons name="ticket-outline" size={35} color={accent} />
+          <View style={[styles.ticketLine, { backgroundColor: translucent(accent, 0.35) }]} />
+          <View style={[styles.ticketLine, { width: 26, backgroundColor: translucent(accent, 0.18) }]} />
+        </GlassSurface> : transition.role === 'staff' ? <View style={styles.counter}>
+          <Animated.View style={[styles.counterSide, left]}><GlassSurface style={[styles.counterRail, { backgroundColor: colors.successSurface }]}><View style={[styles.counterMark, { backgroundColor: accent }]} /></GlassSurface></Animated.View>
+          <GlassSurface style={[styles.counterCenter, { backgroundColor: colors.successSurface }]}><Ionicons name="people-outline" size={32} color={accent} /></GlassSurface>
+          <Animated.View style={[styles.counterSide, right]}><GlassSurface style={[styles.counterRail, { backgroundColor: colors.successSurface }]}><View style={[styles.counterMark, { backgroundColor: accent }]} /></GlassSurface></Animated.View>
+        </View> : <GlassSurface style={[styles.control, { backgroundColor: colors.infoSurface }]}>
+          <View style={[styles.controlRing, { borderColor: translucent(accent, 0.22) }]} />
+          <Ionicons name="options-outline" size={31} color={accent} />
+        </GlassSurface>}
+      </Animated.View>
+    </View>}
+  </View>;
+}
+
+const styles = StyleSheet.create({
+  frame: { flex: 1, overflow: 'hidden' },
+  scene: { flex: 1 },
+  shield: { ...StyleSheet.absoluteFill, zIndex: 100 },
+  stage: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  opening: { position: 'absolute', width: 132, height: 132, borderWidth: 1 },
+  emblem: { width: 172, height: 160, alignItems: 'center', justifyContent: 'center' },
+  ticket: { width: 90, height: 116, borderRadius: 24, alignItems: 'center', justifyContent: 'center', gap: 10 },
+  ticketLine: { width: 43, height: 3, borderRadius: 2 },
+  counter: { width: 172, height: 108, alignItems: 'center', justifyContent: 'center' },
+  counterCenter: { width: 76, height: 84, borderRadius: 26, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
+  counterSide: { position: 'absolute' },
+  counterRail: { width: 30, height: 62, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
+  counterMark: { width: 3, height: 20, borderRadius: 2, opacity: 0.28 },
+  control: { width: 94, height: 94, borderRadius: 47, alignItems: 'center', justifyContent: 'center' },
+  controlRing: { ...StyleSheet.absoluteFill, margin: 9, borderWidth: 1, borderRadius: 38 },
+});

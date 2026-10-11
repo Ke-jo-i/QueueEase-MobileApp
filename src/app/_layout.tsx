@@ -12,9 +12,8 @@ import { useVerticalTransitions } from '@/hooks/use-navigation-transitions';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { TurnAlertsProvider } from '@/contexts/turn-alerts';
 import { useEffect } from 'react';
-import { View } from 'react-native';
 import { setBackgroundColorAsync } from 'expo-system-ui';
-import { AuthTransitionOverlay } from '@/components/auth-transition';
+import { AuthTransitionFrame } from '@/components/auth-transition';
 import { GlassBackdrop } from '@/components/glass-surface';
 
 export default function RootLayout() {
@@ -61,8 +60,8 @@ function RootNavigator() {
     }}>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
       <GlassBackdrop>
-      <View accessibilityElementsHidden={!!transition} importantForAccessibility={transition ? 'no-hide-descendants' : 'auto'} aria-hidden={!!transition} style={{ flex: 1 }}>
-      <Stack screenOptions={transitions}>
+      <AuthTransitionFrame>
+      <Stack screenOptions={transition ? { ...transitions, animation: 'none', cardStyleInterpolator: () => ({}) } : transitions}>
         <Stack.Protected guard={role === null}>
           <Stack.Screen name="index" />
           <Stack.Screen name="login" />
@@ -79,8 +78,7 @@ function RootNavigator() {
         </Stack.Protected>
         <Stack.Protected guard={role === 'staff'}><Stack.Screen name="staff" /></Stack.Protected>
       </Stack>
-      </View>
-      {transition && <AuthTransitionOverlay key={transition.id} transition={transition} />}
+      </AuthTransitionFrame>
       </GlassBackdrop>
     </ThemeProvider>
   );

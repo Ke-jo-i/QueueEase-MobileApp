@@ -8,7 +8,7 @@ export function WindowQueues() {
   const { windowQueues, studentTicket, services, ready, connected } = useQueue();
   return <View style={{ gap: 12 }} testID="window-queues">
     <Text style={{ fontSize: 20, fontWeight: '800', color: colors.text }}>All registrar windows</Text>
-    <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textMuted }}>{!ready ? 'Loading window queues…' : connected ? 'Updates as staff call and finish tickets. Each window has its own line.' : 'Showing the last update. Reconnect to see current progress.'}</Text>
+    {(!ready || !connected) && <Text style={{ fontSize: 13, lineHeight: 19, color: colors.textMuted }}>{!ready ? 'Loading window queues…' : 'Showing the last update. Reconnect to see current progress.'}</Text>}
     {ready && windowQueues.map(({ window, waitingCount, servingNumber, nextNumber }) => {
       const yours = studentTicket?.window === window;
       return <GlassSurface key={window} variant={yours ? 'tinted' : 'regular'} testID={`queue-${window.split(' - ')[0].replace(' ', '-').toLowerCase()}`} style={{ padding: 22, gap: 14, borderRadius: 26, backgroundColor: yours ? colors.infoSurface : colors.surface,
@@ -29,6 +29,5 @@ export function WindowQueues() {
         <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>{services.filter(service => service.window === window && service.enabled).map(service => service.name).join(' · ') || 'No services currently available at this window'}</Text>
       </GlassSurface>;
     })}
-    <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>Ticket numbers are shared across windows. Your place depends on your window’s line, not the difference between ticket numbers. Processing time varies by request.</Text>
   </View>;
 }

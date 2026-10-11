@@ -42,6 +42,7 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
   const submit = async (quickRole?: Role) => {
     if (pending.current) return;
     if (!quickRole && (!login.trim() || !password)) { setError('Enter your ID or email and password.'); return; }
+    if (!quickRole && login.includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login.trim())) { setError('Enter a valid email address.'); return; }
     const id = ++requestId.current;
     pending.current = true;
     setBusy(true);
@@ -60,7 +61,7 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
     }
   };
 
-  return <FormPage title={portal === 'student' ? 'Welcome back' : 'Staff sign in'} subtitle={portal === 'student' ? 'Your place in line, wherever you are on campus.' : 'Sign in with your registrar or administrator account.'}>
+  return <FormPage title={portal === 'student' ? 'Student sign in' : 'Staff sign in'}>
     {demoLoginEnabled && <Reveal><GlassSurface variant="tinted" style={{ borderRadius: 24, padding: 18, gap: 14 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Ionicons name="flash-outline" size={16} color={colors.textMuted} />

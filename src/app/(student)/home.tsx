@@ -5,7 +5,6 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useQueue } from '@/contexts/queue';
-import { serviceDescriptions } from '@/constants/registrar-services';
 import { useSession } from '@/contexts/session';
 import { ticketStatusLabels } from '@/constants/queue-labels';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,7 +36,7 @@ export default function HomeScreen() {
           <Ionicons name={studentTicket ? 'ticket-outline' : 'time-outline'} size={23} color={colors.brandText} />
         </View>
         <Text style={{ fontSize: studentTicket ? 48 : 30, fontWeight: '700', letterSpacing: -1.2, color: colors.brandText }}>{!ready ? 'Loading your queue…' : studentTicket ? studentTicket.number : 'Your next visit'}</Text>
-        <Text style={{ fontSize: 14, lineHeight: 22, color: colors.textSecondary }}>{studentTicket?.service ?? 'Choose a service below to get your queue ticket.'}</Text>
+        {studentTicket && <Text style={{ fontSize: 14, lineHeight: 22, color: colors.textSecondary }}>{studentTicket.service}</Text>}
         {studentTicket && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.brandText, backgroundColor: translucent(colors.surface, 0.65), paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 }}>{studentTicket.window.replace(' - Registrar', '')}</Text>
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.brandText, paddingVertical: 7 }}>{studentProgress?.peopleAhead !== null && studentProgress?.peopleAhead !== undefined
@@ -56,10 +55,10 @@ export default function HomeScreen() {
           {services.map(({ name, enabled }, index) => <Reveal key={name} delay={Math.min(index * 25, 100)}>
             <MotionButton accessibilityLabel={name} accessibilityState={{ disabled: !connected || !enabled || !acceptingTickets }} disabled={!connected || !enabled || !acceptingTickets}
               onPress={() => router.push({ pathname: '/confirm-service', params: { serviceName: name } })}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, minHeight: 88, opacity: !enabled || !acceptingTickets ? 0.45 : 1 }}>
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 18, minHeight: 76, opacity: !enabled || !acceptingTickets ? 0.45 : 1 }}>
               <View style={{ width: 42, height: 42, borderRadius: 14, backgroundColor: translucent(colors.infoSurface, 0.85), alignItems: 'center', justifyContent: 'center' }}><Ionicons name={serviceIcons[index % serviceIcons.length]} size={21} color={colors.brandText} /></View>
               <View style={{ flex: 1, gap: 5 }}><Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{name}</Text>
-                <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>{enabled ? serviceDescriptions[name] : 'Temporarily unavailable'}</Text>
+                {!enabled && <Text style={{ fontSize: 12, lineHeight: 18, color: colors.textMuted }}>Temporarily unavailable</Text>}
               </View><Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </MotionButton>
             {index < services.length - 1 && <View style={{ height: 1, backgroundColor: translucent(colors.borderStrong, 0.35), marginLeft: 74, marginRight: 18 }} />}

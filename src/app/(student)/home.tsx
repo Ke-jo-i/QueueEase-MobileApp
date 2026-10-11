@@ -31,11 +31,11 @@ export default function HomeScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
             <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: connected ? colors.success : colors.textMuted }} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>{!ready ? 'Connecting' : studentTicket ? ticketStatusLabels[studentTicket.status] : 'Ready when you are'}</Text>
+            <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textSecondary }}>{!ready ? 'Connecting' : studentTicket ? ticketStatusLabels[studentTicket.status] : 'QUEUE STATUS'}</Text>
           </View>
           <Ionicons name={studentTicket ? 'ticket-outline' : 'time-outline'} size={23} color={colors.brandText} />
         </View>
-        <Text style={{ fontSize: studentTicket ? 48 : 30, fontWeight: '700', letterSpacing: -1.2, color: colors.brandText }}>{!ready ? 'Loading your queue…' : studentTicket ? studentTicket.number : 'Your next visit'}</Text>
+        <Text style={{ fontSize: studentTicket ? 48 : 30, fontWeight: '700', letterSpacing: -1.2, color: colors.brandText }}>{!ready ? 'Loading your queue…' : studentTicket ? studentTicket.number : 'No active ticket'}</Text>
         {studentTicket && <Text style={{ fontSize: 14, lineHeight: 22, color: colors.textSecondary }}>{studentTicket.service}</Text>}
         {studentTicket && <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           <Text style={{ fontSize: 12, fontWeight: '600', color: colors.brandText, backgroundColor: translucent(colors.surface, 0.65), paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 }}>{studentTicket.window.replace(' - Registrar', '')}</Text>

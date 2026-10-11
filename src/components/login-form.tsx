@@ -77,8 +77,8 @@ export function LoginForm({ portal }: { portal: 'student' | 'staff' }) {
       </View>
     </GlassSurface></Reveal>}
     <Reveal><GlassSurface style={{ borderRadius: 28, padding: 22, gap: 20 }}>
-      <Field label={portal === 'student' ? 'Student ID or email' : 'Staff ID or email'} placeholder={portal === 'student' ? 'Your student ID or email' : 'Your staff ID or email'} value={login} onChangeText={setLogin} editable={!busy} autoCapitalize="none" autoCorrect={false} autoComplete="username" returnKeyType="next" />
-      <Field label="Password" placeholder="Your password" value={password} onChangeText={setPassword} editable={!busy} secureTextEntry autoComplete="current-password" onSubmitEditing={() => void submit()} returnKeyType="go" />
+      <Field label={portal === 'student' ? 'Student ID or email' : 'Staff ID or email'} placeholder={portal === 'student' ? 'Your student ID or email' : 'Your staff ID or email'} value={login} onChangeText={value => { setLogin(value); setError(''); }} editable={!busy} autoCapitalize="none" autoCorrect={false} autoComplete="username" returnKeyType="next" />
+      <Field label="Password" placeholder="Your password" value={password} onChangeText={value => { setPassword(value); setError(''); }} editable={!busy} secureTextEntry autoComplete="current-password" onSubmitEditing={() => void submit()} returnKeyType="go" />
       <Notice text={error} error />
       <ActionButton label={portal === 'student' ? 'Log In' : 'LOG IN AS STAFF'} busy={busy} onPress={() => void submit()} />
       <MotionButton onPress={() => router.push('/forgot-password')} style={{ alignSelf: 'center', padding: 8 }}><Text style={{ fontSize: 14, color: colors.brandText, fontWeight: '600' }}>Forgot password?</Text></MotionButton>

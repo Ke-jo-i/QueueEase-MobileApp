@@ -4,7 +4,7 @@ import { useAppTheme } from '@/hooks/use-app-theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export function DarkModeToggle() {
-  const { colorScheme, setDarkMode, isReady, storageError } = useAppearance();
+  const { colorScheme, setDarkMode, isReady, storageError, isTransitioning } = useAppearance();
   const colors = useAppTheme();
 
   return (
@@ -22,7 +22,7 @@ export function DarkModeToggle() {
         accessibilityLabel="Dark mode"
         value={colorScheme === 'dark'}
         onValueChange={setDarkMode}
-        disabled={!isReady}
+        disabled={!isReady || isTransitioning}
         trackColor={{ false: colors.borderStrong, true: colors.brand }}
         thumbColor="#FFFFFF"
       />

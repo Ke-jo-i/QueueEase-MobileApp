@@ -6,7 +6,7 @@ process.env.QUEUE_DEMO_LOGIN = '0';
 
 export default defineConfig({
   testDir: './tests',
-  testMatch: ['web-release.spec.ts', 'window-availability.spec.ts', 'live-cancellation.spec.ts', 'window-queues.spec.ts'],
+  testMatch: ['web-release.spec.ts', 'window-availability.spec.ts', 'live-cancellation.spec.ts', 'window-queues.spec.ts', 'ui-refinements.spec.ts'],
   outputDir: '.local/test-results/web',
   workers: 1,
   timeout: 60_000,

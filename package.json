@@ -52,6 +52,7 @@
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "@types/react": "~19.2.2",
+    "@types/react-dom": "~19.2.0",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
     "tsx": "^4.23.15",

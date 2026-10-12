@@ -8,16 +8,18 @@ import { Disclosure } from './disclosure';
 import { MotionButton } from './motion';
 
 export function ThemePicker() {
-  const { themeName, setThemeName, isReady } = useAppearance();
+  const { themeName, setThemeName, isReady, isTransitioning } = useAppearance();
   const colors = useAppTheme();
-  const [expanded, setExpanded] = useState(false);
+  const [expandedTheme, setExpandedTheme] = useState<string | null>(null);
+  const expanded = expandedTheme !== null && (isTransitioning || expandedTheme === themeName);
   const currentTheme = ThemeOptions.find((option) => option.id === themeName) ?? ThemeOptions[0];
 
   return (
     <View style={[styles.container, { borderColor: colors.border }]}>
       <MotionButton
         style={styles.toggle}
-        onPress={() => setExpanded((open) => !open)}
+        onPress={() => setExpandedTheme(expanded ? null : themeName)}
+        disabled={isTransitioning}
         accessibilityRole="button"
         accessibilityLabel="Color Theme"
         accessibilityState={{ expanded }}
@@ -42,12 +44,12 @@ export function ThemePicker() {
               }]}
               onPress={() => {
                 setThemeName(option.id);
-                setExpanded(false);
+                if (selected) setExpandedTheme(null);
               }}
-              disabled={!isReady}
+              disabled={!isReady || isTransitioning}
               accessibilityRole="radio"
               accessibilityLabel={`${option.label} theme`}
-              accessibilityState={{ checked: selected, disabled: !isReady }}
+              accessibilityState={{ checked: selected, disabled: !isReady || isTransitioning }}
               aria-checked={selected}
             >
               <View style={[styles.swatch, { backgroundColor: option.swatch, borderColor: colors.borderStrong }]} />

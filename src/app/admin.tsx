@@ -1,6 +1,7 @@
 import { ActionButton, Field, Notice } from '@/components/form';
 import { AdminShell } from '@/components/admin-shell';
 import { AdminOverview } from '@/components/admin-overview';
+import { AppearanceSurface } from '@/components/appearance-surface';
 import { ProfilePhoto } from '@/components/profile-photo';
 import { CardOverlay } from '@/components/card-overlay';
 import { DirectoryTransition } from '@/components/directory-transition';
@@ -439,7 +440,7 @@ export default function AdminScreen() {
   </> }));
   return <AdminShell pages={pages} section={section} name={data?.accounts.find(account => account.id === user?.id)?.name ?? user?.name} busy={busy} onRefresh={reload} onSettings={() => setSettingsOpen(true)} onSignOut={() => { if (!mutation.current) void signOut(); }}
     onSelect={value => { const next = sections.find(item => item === value); if (next) { setSection(next); setError(''); setNotice(''); setActionError(null); } }}>
-    <CardOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)}><SafeAreaView style={{ flex: 1 }}>
+    <CardOverlay open={settingsOpen} onClose={() => setSettingsOpen(false)}><AppearanceSurface active={settingsOpen} priority={10}><SafeAreaView style={{ flex: 1 }}>
     <KeyboardScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40, gap: 20, width: '100%', maxWidth: 620, alignSelf: 'center' }}>
     <ActionButton label="Close settings" secondary onPress={() => setSettingsOpen(false)} />
     <Text accessibilityRole="header" style={{ fontSize: 29, fontWeight: '700', color: colors.textStrong }}>Administration settings</Text>
@@ -458,6 +459,6 @@ export default function AdminScreen() {
         <ActionButton label="Change password and sign out" disabled={busy || !currentPassword || newPassword.length < 10 || !confirmPassword} onPress={() => void changePassword()} />
       </Disclosure>
     </GlassSurface>
-    </KeyboardScrollView></SafeAreaView></CardOverlay>
+    </KeyboardScrollView></SafeAreaView></AppearanceSurface></CardOverlay>
   </AdminShell>;
 }

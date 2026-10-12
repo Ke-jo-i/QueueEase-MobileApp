@@ -17,6 +17,7 @@ import { AuthTransitionFrame } from '@/components/auth-transition';
 import { GlassBackdrop } from '@/components/glass-surface';
 import { StateScreen, stateOverlay } from '@/components/state-screen';
 import { View } from 'react-native';
+import { AppearanceSurface } from '@/components/appearance-surface';
 
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
   return <AppearanceProvider><StateScreen title="Something went wrong" message="Your saved tickets are still on the server." onRetry={retry} /></AppearanceProvider>;
@@ -27,7 +28,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}><SafeAreaProvider>
       <Head><title>Queue Ease · Registrar</title></Head>
       <AppearanceProvider>
-        <SessionProvider><TurnAlertsProvider><QueueProvider><NavigationMotionProvider><RootNavigator /></NavigationMotionProvider></QueueProvider></TurnAlertsProvider></SessionProvider>
+        <AppearanceSurface><SessionProvider><TurnAlertsProvider><QueueProvider><NavigationMotionProvider><RootNavigator /></NavigationMotionProvider></QueueProvider></TurnAlertsProvider></SessionProvider></AppearanceSurface>
       </AppearanceProvider>
     </SafeAreaProvider></GestureHandlerRootView>
   );
